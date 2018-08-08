@@ -13,7 +13,7 @@
 # Modified by Pavel Zlamal <zlamal@cesnet.cz>
 #
 # 23.03.2018 Reworked perun-engine init.d script for LDAPc
-# 17.04.2018 Respect $LAST_PROCESSED_ID is set in /etc/perun/perun-ldapc
+# 17.04.2018 Respect $LAST_PROCESSED_ID is set in /home/pvysk/.perun/perun-ldapc
 #            (specify where ldapc should start reading auditer log)
 #
 PATH=/sbin:/bin:/usr/sbin:/usr/bin
@@ -23,8 +23,8 @@ JAR=/home/perun/perun-ldapc/perun-ldapc-3.0.1-SNAPSHOT-production.jar
 NAME=perun-ldapc
 SCRIPTNAME=/etc/init.d/$NAME
 PIDFILE=/var/run/perun/$NAME.pid
-LOG_CONF=/etc/perun/logback-ldapc.xml
-PERUN_LDAPC_CONF_DIR=/etc/perun/
+LOG_CONF=/home/pvysk/.perun/logback-ldapc.xml
+PERUN_LDAPC_CONF_DIR=/home/pvysk/.perun/
 DAEMON_USER=perun
 JAVA=`which java`
 EXEC_DIR=/home/perun/perun-ldapc/
@@ -40,9 +40,9 @@ export KRB5CCNAME
 [ -x "$JAVA" ] || exit 0
 
 # Read configuration if it is present.
-[ -r /etc/perun/$NAME ] && . /etc/perun/$NAME
+[ -r /home/pvysk/.perun/$NAME ] && . /home/pvysk/.perun/$NAME
 
-# Last processed ID can be set in /etc/perun/perun-ldapc (line above)
+# Last processed ID can be set in /home/pvysk/.perun/perun-ldapc (line above)
 if [ $LAST_PROCESSED_ID ]; then
   DAEMON_OPTS="-Dlogback.configurationFile=$LOG_CONF -Dperun.conf.custom=$PERUN_LDAPC_CONF_DIR $JAVA_OPTS -Dspring.profiles.default=production -jar $JAR $LAST_PROCESSED_ID"
 else

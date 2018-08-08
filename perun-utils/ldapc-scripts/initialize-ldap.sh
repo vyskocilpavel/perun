@@ -4,7 +4,7 @@ PERUN_LDAP_INITIALIZATOR=/home/perun/perun-ldapc/perun-ldapc-initializer-3.0.1-S
 LDIF_DIFF_LIBRARY=/home/perun/perun-ldapc/ldifdiff.pl
 LDIF_SORT_LIBRARY=/home/perun/perun-ldapc/ldifsort.pl
 LDIF_DIFF_SORT_LIBRARY=/home/perun/perun-ldapc/ldifdiff-sort.pl
-LDAP_PROPERTIES_FILE=/etc/perun/perun-ldapc.properties
+LDAP_PROPERTIES_FILE=/home/pvysk/.perun/perun-ldapc.properties
 
 LDAP_INIT_FILE=/tmp/init-perun.ldif
 LDAP_CONTENT_FILE=/tmp/ldap-content.ldif

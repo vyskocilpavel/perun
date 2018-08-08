@@ -148,7 +148,7 @@ public interface MailManager {
 	 *
 	 * If VO or Group have non-empty attribute urn:perun:[vo/group]:attribute-def:def:applicationURL
 	 * content is used as link to application form. Otherwise link is automatically generated based on
-	 * required AUTHZ in template and registrar url set in /etc/perun/perun-registrar.properties.
+	 * required AUTHZ in template and registrar url set in /home/pvysk/.perun/perun-registrar.properties.
 	 *
 	 * @param sess PerunSession for authz
 	 * @param vo VO to link form to
@@ -166,7 +166,7 @@ public interface MailManager {
 	 *
 	 * If VO or Group have non-empty attribute urn:perun:[vo/group]:attribute-def:def:applicationURL
 	 * content is used as link to application form. Otherwise link is automatically generated based on
-	 * required AUTHZ in template and registrar url set in /etc/perun/perun-registrar.properties.
+	 * required AUTHZ in template and registrar url set in /home/pvysk/.perun/perun-registrar.properties.
 	 *
 	 * @param sess PerunSession for authz
 	 * @param vo VO to link form to

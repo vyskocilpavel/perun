@@ -5,7 +5,7 @@
 	(i.e. not provided by a module or specified by system property logback.configurationFile).
 	
     You can load another file by e.g.
-     -Dlogback.configurationFile=file:///etc/perun/logback.xml
+     -Dlogback.configurationFile=file:///home/pvysk/.perun/logback.xml
     and change the directory for log files by e.g.
      -Dperun.log=/var/log/perun/
 
