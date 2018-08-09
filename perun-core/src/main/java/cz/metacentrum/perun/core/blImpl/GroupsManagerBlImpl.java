@@ -13,7 +13,6 @@ import java.util.TreeMap;
 
 import cz.metacentrum.perun.core.api.*;
 import cz.metacentrum.perun.core.api.exceptions.*;
-import cz.metacentrum.perun.core.impl.Utils;
 import cz.metacentrum.perun.core.implApi.ExtSourceApi;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
