@@ -1900,11 +1900,11 @@ public class GroupsManagerBlImpl implements GroupsManagerBl {
 			} catch (UserExtSourceNotExistsException | UserNotExistsException ex) {
 				//If not find, get more information about him from member extSource
 				List<Map<String, String>> subjectToConvert = Arrays.asList(subjectFromLoginSource);
-				List<Candidate> converetedCandidatesList = convertSubjectsToCandidates(sess, subjectToConvert, memberSource, loginSource, skippedMembers);
+				List<Candidate> convertedCandidatesList = convertSubjectsToCandidates(sess, subjectToConvert, memberSource, loginSource, skippedMembers);
 				//Empty means not found (skipped)
-				if(!converetedCandidatesList.isEmpty()) {
+				if(!convertedCandidatesList.isEmpty()) {
 					//We add one subject so we take the one converted candidate
-					candidate = converetedCandidatesList.get(0);
+					candidate = convertedCandidatesList.get(0);
 				}
 			}
 
