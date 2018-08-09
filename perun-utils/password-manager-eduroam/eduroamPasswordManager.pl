@@ -7,7 +7,7 @@
 # It takes up to 4 parameters in following order: action, namespace, login, pass
 # where action can be "check", "change", "reserve", "validate", "reserve_random", "delete"
 # where namespace represents login-namespace used by radius server (eduroam) and should match passed login
-# namespace also must match PWDM config file /etc/perun/pwchange.[namespace].eduroam
+# namespace also must match PWDM config file /home/pvysk/.perun/pwchange.[namespace].eduroam
 # where login is users login to reserve
 # where password is users password in plaintext (required only for actions check, change, reserve)
 #
@@ -36,7 +36,7 @@ my $action = $ARGV[0];
 my $namespace = $ARGV[1];
 my $login = $ARGV[2];
 
-my $filename = "/etc/perun/pwchange.".$namespace.".eduroam";
+my $filename = "/home/pvysk/.perun/pwchange.".$namespace.".eduroam";
 unless (-e $filename) {
 	edu_log("Configuration file for namespace \"" . $namespace . "\" doesn't exist!");
 	exit 2; # login-namespace is not supported
@@ -247,7 +247,7 @@ sub checkAgainstAD($$$) {
 	my $login = shift;
 	my $pass = shift;
 
-	# AD config in /etc/perun/$namespace.ad
+	# AD config in /home/pvysk/.perun/$namespace.ad
 	my @credentials = init_config($namespace);
 	my $ad_location = resolve_pdc($credentials[0]);
 	my $ad = ldap_connect($ad_location);

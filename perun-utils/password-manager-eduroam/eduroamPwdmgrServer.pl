@@ -7,7 +7,7 @@
 # It takes up to 4 parameters in following order: action, namespace, login, pass
 # where action can be "check", "change", "reserve", "validate", "reserve_random", "delete"
 # where namespace represents login-namespace used by radius server (eduroam) and should match passed login
-# namespace also must match PWDM config file /etc/perun/pwdchange.[namespace].eduroam
+# namespace also must match PWDM config file /home/pvysk/.perun/pwdchange.[namespace].eduroam
 # where login is users login to reserve
 # where password is users password in plaintext (required only for actions check, change, reserve)
 #

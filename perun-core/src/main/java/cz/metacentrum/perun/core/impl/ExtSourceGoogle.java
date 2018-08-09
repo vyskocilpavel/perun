@@ -250,7 +250,7 @@ public class ExtSourceGoogle extends ExtSource implements ExtSourceApi {
 
 	/**
 	 * Setting values for attributes in 'googleMapping' attribute from
-	 * /etc/perun/perun-extSources.xml file.
+	 * /home/pvysk/.perun/perun-extSources.xml file.
 	 *
 	 * It's possible to fill these attributes for Google Groups ExtSource: -
 	 * urn:perun:user:attribute-def:virt:logins-namespace:google={userID}, -

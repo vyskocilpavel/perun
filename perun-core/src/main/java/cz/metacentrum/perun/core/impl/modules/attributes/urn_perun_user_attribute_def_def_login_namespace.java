@@ -71,7 +71,7 @@ public class urn_perun_user_attribute_def_def_login_namespace extends UserAttrib
 
 	/**
 	 * Filling implemented for:
-	 * - namespaces configured in /etc/perun/perun.properties as property: "perun.loginNamespace.generated"
+	 * - namespaces configured in /home/pvysk/.perun/perun.properties as property: "perun.loginNamespace.generated"
 	 * - You must create own attribute module for that namespace to define filling function
 	 *
 	 * @param perunSession PerunSession

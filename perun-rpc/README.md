@@ -11,7 +11,7 @@ You can find full documentation of Perun RPC API [on our web](https://perun.cesn
 > Please note, that to actually run Perun, you must:
 >
 > * Setup DB and create initial user entry including roles and authz data.
-> * Have a bunch of configuration files with proper settings in /etc/perun/ folder
+> * Have a bunch of configuration files with proper settings in /home/pvysk/.perun/ folder
 > * Setup some authentication in Apache.
 > * Pass requests and authentication data from Apache to Tomcat (AJP port) so Perun can locate user based on that.
 >
@@ -37,7 +37,7 @@ You can also run Perun locally (e.g. for some tests). Just run Maven with tomcat
 # in memory version
 mvn tomcat7:run-war
 
-# against real DB with config in /etc/perun/
+# against real DB with config in /home/pvysk/.perun/
 mvn tomcat7:run-war -Ddevel 
 ```
 
