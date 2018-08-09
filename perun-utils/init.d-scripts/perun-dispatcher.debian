@@ -21,8 +21,8 @@ JAR=/home/perun/perun-dispatcher/perun-dispatcher-3.0.1-SNAPSHOT-production.jar
 NAME=perun-dispatcher
 SCRIPTNAME=/etc/init.d/$NAME
 PIDFILE=/var/run/perun/$NAME.pid
-LOG4J_CONF=/etc/perun/log4j.xml
-PERUN_DISPATCHER_CONF_DIR=/etc/perun/
+LOG4J_CONF=/home/pvysk/.perun/log4j.xml
+PERUN_DISPATCHER_CONF_DIR=/home/pvysk/.perun/
 DAEMON_USER=perun
 JAVA=`which java`
 EXEC_DIR=/home/perun/perun-dispatcher/
@@ -34,7 +34,7 @@ EXEC_DIR=/home/perun/perun-dispatcher/
 [ -x "$JAVA" ] || exit 0
 
 # Read configuration if it is present.
-[ -r /etc/perun/$NAME ] && . /etc/perun/$NAME
+[ -r /home/pvysk/.perun/$NAME ] && . /home/pvysk/.perun/$NAME
 
 DAEMON_OPTS="-Dlog4j.debug -Djava.util.logging.config.file=$LOG4J_CONF -Dlog4j.configuration=file:$LOG4J_CONF -Dperun.conf.custom=$PERUN_DISPATCHER_CONF_DIR $JAVA_OPTS -Dspring.profiles.default=production -jar $JAR"
 

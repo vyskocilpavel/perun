@@ -35,7 +35,7 @@ public class BeansUtils {
 	private static final char LIST_DELIMITER = ',';
 	private static final char KEY_VALUE_DELIMITER = ':';
 	private final static int MAX_SIZE_OF_ITEMS_IN_SQL_IN_CLAUSE = 1000;
-	private final static String configurationsLocations = "/etc/perun/";
+	private final static String configurationsLocations = "/home/pvysk/.perun/";
 	public final static String largeStringClassName = "java.lang.LargeString";
 	public final static String largeArrayListClassName = "java.util.LargeArrayList";
 

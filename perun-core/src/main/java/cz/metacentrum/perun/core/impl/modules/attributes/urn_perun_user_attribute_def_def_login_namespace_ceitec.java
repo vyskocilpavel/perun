@@ -61,7 +61,7 @@ public class urn_perun_user_attribute_def_def_login_namespace_ceitec extends urn
 
 	/**
 	 * Filling implemented for:
-	 * - namespaces configured in /etc/perun/perun.properties as property: "perun.loginNamespace.generated"
+	 * - namespaces configured in /home/pvysk/.perun/perun.properties as property: "perun.loginNamespace.generated"
 	 *
 	 * Resulting format/rules:
 	 * - "firstName.lastName[number]" where number is opt and start with 1 when same login is already present.

@@ -9,7 +9,7 @@ http://www.springframework.org/schema/context http://www.springframework.org/sch
 http://www.springframework.org/schema/aop http://www.springframework.org/schema/aop/spring-aop.xsd">
 
     <!-- Use in initialize script -->
-    <!-- -Dperun.conf.custom=/etc/perun/filename -->
+    <!-- -Dperun.conf.custom=/home/pvysk/.perun/filename -->
     <context:property-placeholder
             ignore-resource-not-found="true" ignore-unresolvable="true"
             location="@perun.jdbc@, file:${perun.conf.custom}jdbc.properties,

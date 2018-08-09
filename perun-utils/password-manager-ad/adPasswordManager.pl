@@ -7,7 +7,7 @@
 # It takes up to 4 parameters in following order: action, namespace, login, pass
 # where action can be "check", "change", "reserve", "validate", "reserve_random", "delete"
 # where namespace represents login-namespace used by this LDAP and should match passed login
-# namespace also must match LDAPs PWDM config file /etc/perun/pwdchange.[namespace].ad
+# namespace also must match LDAPs PWDM config file /home/pvysk/.perun/pwdchange.[namespace].ad
 # where login is users login to reserve
 # where password is users password in plaintext (required only for actions check, change, reserve)
 #
@@ -98,7 +98,7 @@ switch ($action){
 		my $dn = $entry->dn();
 		ldap_disconnect();
 
-		my $filename = "/etc/perun/pwchange.".$namespace.".ad";
+		my $filename = "/home/pvysk/.perun/pwchange.".$namespace.".ad";
 		unless (-e $filename) {
 			ldap_log("[PWDM] Configuration file for namespace \"" . $namespace . "\" doesn't exist!");
 			exit 2; # login-namespace is not supported
@@ -147,7 +147,7 @@ switch ($action){
 		my $converted_pass = convertPassword($user_pass);
 		ldap_connect( $namespace );
 
-		my $filename = "/etc/perun/pwchange.".$namespace.".ad";
+		my $filename = "/home/pvysk/.perun/pwchange.".$namespace.".ad";
 		unless (-e $filename) {
 			ldap_log("[PWDM] Configuration file for namespace \"" . $namespace . "\" doesn't exist!");
 			exit 2; # login-namespace is not supported
@@ -330,7 +330,7 @@ sub ldap_connect{
 	my $namespace = shift;
 
 	# check if config file for namespace exists
-	my $filename = "/etc/perun/pwchange.".$namespace.".ad";
+	my $filename = "/home/pvysk/.perun/pwchange.".$namespace.".ad";
 	unless (-e $filename) {
 		ldap_log("[PWDM] Configuration file for namespace \"" . $namespace . "\" doesn't exist!");
 		exit 2; # login-namespace is not supported

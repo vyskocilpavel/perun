@@ -39,7 +39,7 @@ import java.util.regex.Pattern;
 public class Utils {
 
 	private final static Logger log = LoggerFactory.getLogger(Utils.class);
-	public final static String configurationsLocations = "/etc/perun/";
+	public final static String configurationsLocations = "/home/pvysk/.perun/";
 	public static final String TITLE_BEFORE = "titleBefore";
 	public static final String FIRST_NAME = "firstName";
 	public static final String LAST_NAME = "lastName";

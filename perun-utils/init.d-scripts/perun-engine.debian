@@ -12,7 +12,7 @@
 # Written by Michal Prochazka <michalp@ics.muni.cz>
 # Modified by Pavel Zlamal <zlamal@cesnet.cz>
 #
-# 22.06.2017 Use /etc/perun/logback.xml and /var/log/perun/
+# 22.06.2017 Use /home/pvysk/.perun/logback.xml and /var/log/perun/
 # 24.03.2016 Create /var/run/perun if not exists, will work when started on system boot
 # 24.03.2016 Own logging for perun-engine to /var/log/perun-engine/
 # 04.05.2015 Create, chown and delete pidfile in order to allow user "perun" to start/stop the service
@@ -26,8 +26,8 @@ JAR=/home/perun/perun-engine/perun-engine-3.0.1-SNAPSHOT-production.jar
 NAME=perun-engine
 SCRIPTNAME=/etc/init.d/$NAME
 PIDFILE=/var/run/perun/$NAME.pid
-LOG_CONF=/etc/perun/logback-engine.xml
-PERUN_ENGINE_CONF_DIR=/etc/perun/
+LOG_CONF=/home/pvysk/.perun/logback-engine.xml
+PERUN_ENGINE_CONF_DIR=/home/pvysk/.perun/
 DAEMON_USER=perun
 JAVA=`which java`
 EXEC_DIR=/home/perun/perun-engine/
@@ -43,7 +43,7 @@ EXEC_DIR=/home/perun/perun-engine/
 [ -x "$JAVA" ] || exit 0
 
 # Read configuration if it is present.
-[ -r /etc/perun/$NAME ] && . /etc/perun/$NAME
+[ -r /home/pvysk/.perun/$NAME ] && . /home/pvysk/.perun/$NAME
 
 DAEMON_OPTS="-Dlogback.configurationFile=$LOG_CONF -Dperun.conf.custom=$PERUN_ENGINE_CONF_DIR $JAVA_OPTS -Dspring.profiles.default=production -jar $JAR"
 
