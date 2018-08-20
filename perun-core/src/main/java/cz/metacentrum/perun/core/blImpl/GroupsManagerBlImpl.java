@@ -1,7 +1,12 @@
 package cz.metacentrum.perun.core.blImpl;
 
 import cz.metacentrum.perun.core.api.PerunPrincipal;
+
+import java.sql.Timestamp;
 import java.text.ParseException;
+import java.time.Instant;
+import java.time.LocalDateTime;
+import java.time.ZoneId;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
@@ -10,6 +15,9 @@ import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.TreeMap;
+
+import java.time.LocalTime;
+
 
 import cz.metacentrum.perun.core.api.*;
 import cz.metacentrum.perun.core.api.exceptions.*;
@@ -1241,25 +1249,14 @@ public class GroupsManagerBlImpl implements GroupsManagerBl {
 		}
 	}
 
-	/**
-	 * Start and check threads with synchronization of groups. (max threads is defined by constant)
-	 * It also add new groups to the queue.
-	 * This method is run by the scheduler every 5 minutes.
-	 *
-	 * Note: this method is synchronized
-	 *
-	 * @throws InternalErrorException
-	 */
-	public synchronized void synchronizeGroups(PerunSession sess) throws InternalErrorException {
-		// Get the default synchronization interval and synchronization timeout from the configuration file
-		int timeout = BeansUtils.getCoreConfig().getGroupSynchronizationTimeout();
-		int defaultIntervalMultiplier = BeansUtils.getCoreConfig().getGroupSynchronizationInterval();
-		// Get the number of seconds from the epoch, so we can divide it by the synchronization interval value
-		long minutesFromEpoch = System.currentTimeMillis()/1000/60;
-
+	private int removeInteruptedGroups() {
 		int numberOfNewlyRemovedThreads = 0;
-		// Firstly interrupt threads after timeout, then remove all interrupted threads
+
+		// Get the default synchronization timeout from the configuration file
+		int timeout = BeansUtils.getCoreConfig().getGroupSynchronizationTimeout();
+
 		Iterator<GroupSynchronizerThread> threadIterator = groupSynchronizerThreads.iterator();
+
 		while(threadIterator.hasNext()) {
 			GroupSynchronizerThread thread = threadIterator.next();
 			long threadStart = thread.getStartTime();
@@ -1280,6 +1277,31 @@ public class GroupsManagerBlImpl implements GroupsManagerBl {
 			}
 		}
 
+		return numberOfNewlyRemovedThreads;
+
+	}
+
+	/**
+	 * Start and check threads with synchronization of groups. (max threads is defined by constant)
+	 * It also add new groups to the queue.
+	 * This method is run by the scheduler every 5 minutes.
+	 *
+	 * Note: this method is synchronized
+	 *
+	 * @throws InternalErrorException
+	 */
+	public synchronized void synchronizeGroups(PerunSession sess) throws InternalErrorException {
+		// Get the default synchronization interval
+		int defaultIntervalMultiplier = BeansUtils.getCoreConfig().getGroupSynchronizationInterval();
+		// Get the number of seconds from the epoch, so we can divide it by the synchronization interval value
+		long milisecondsFromEpoch = System.currentTimeMillis();
+
+		long minutesFromEpoch = milisecondsFromEpoch/1000/60;
+
+		LocalDateTime localDateTime = new Timestamp(milisecondsFromEpoch).toLocalDateTime();
+		
+		int numberOfNewlyRemovedThreads = removeInteruptedGroups();
+
 		int numberOfNewlyCreatedThreads = 0;
 		// Start new threads if there is place for them
 		while(groupSynchronizerThreads.size() < maxConcurentGroupsToSynchronize) {
@@ -1295,6 +1317,37 @@ public class GroupsManagerBlImpl implements GroupsManagerBl {
 
 		int numberOfNewlyAddedGroups = 0;
 		for (Group group: groups) {
+			//// Synchronization at time
+			ArrayList<String> synchronizationTimes = new ArrayList<>();
+			try {
+				Attribute synchronizationTimesAttr = getPerunBl().getAttributesManagerBl().getAttribute(sess,group,GroupsManager.GROUPSYNCHROTIMES_ATTRNAME);
+				if (synchronizationTimesAttr.getValue() != null) {
+					synchronizationTimes = ((ArrayList<String>) synchronizationTimesAttr.getValue());
+				} else {
+					log.warn("Group {} hasn't set synchronizationTimes. ", group);
+				}
+			}  catch (AttributeNotExistsException e) {
+				log.error("Required attribute {} isn't defined in Perun!", GroupsManager.GROUPSYNCHROTIMES_ATTRNAME);
+			} catch (WrongAttributeAssignmentException e) {
+				log.error("Cannot get attribute " + GroupsManager.GROUPSYNCHROTIMES_ATTRNAME + " for group " + group + " due to exception. Using default value from properties instead!",e);
+			}
+
+			for (String synchronizationTime : synchronizationTimes) {
+				log.warn("Group synchronizationTime is {} . ", synchronizationTime);
+				String actualTime = localDateTime.getHour() + ":" + localDateTime.getMinute();
+				log.warn("Group actualTime is {} . ", actualTime);
+				if ((localDateTime.getHour() + ":" + localDateTime.getMinute()).equals(synchronizationTime)) {
+					if (poolOfGroupsToBeSynchronized.putJobIfAbsent(group, false)) {
+						numberOfNewlyAddedGroups++;
+						log.info("Group {} was added to the pool of groups waiting for synchronization.", group);
+						continue;
+					} else {
+						log.info("Group {} synchronzation is already running.", group);
+					}
+				}
+			}
+
+			//// Synchronization at interval
 			// Get the synchronization interval for the group
 			int intervalMultiplier;
 			try {
