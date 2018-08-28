@@ -24,6 +24,7 @@ public class Synchronizer {
 
 	private PerunBl perunBl;
 	private AtomicBoolean synchronizeGroupsRunning = new AtomicBoolean(false);
+	private AtomicBoolean synchronizeExtSourcesRunning = new AtomicBoolean(false);
 
 	public Synchronizer() {
 	}
@@ -58,6 +59,25 @@ public class Synchronizer {
 			}
 		} else {
 			log.debug("Synchronizer: group synchronization currently running.");
+		}
+	}
+
+	public void synchronizeExtSources() {
+		log.debug("This instance is just read only so skip synchronization of groups.");
+		if (synchronizeExtSourcesRunning.compareAndSet(false, true)) {
+			try {
+				log.debug("Synchronizer starting synchronizing the extSources");
+				this.perunBl.getExtSourcesManagerBl().synchronizeExtSources(this.sess);
+				if (!synchronizeExtSourcesRunning.compareAndSet(true, false)) {
+					log.error("Synchronizer: extSource synchronization out of sync, resetting.");
+					synchronizeExtSourcesRunning.set(false);
+				}
+			} catch (InternalErrorException e) {
+				log.error("Cannot synchronize extSources:", e);
+				synchronizeExtSourcesRunning.set(false);
+			}
+		} else {
+			log.debug("Synchronizer: extSources synchronization currently running.");
 		}
 	}
 

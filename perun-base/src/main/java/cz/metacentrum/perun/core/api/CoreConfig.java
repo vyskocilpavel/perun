@@ -31,6 +31,7 @@ public class CoreConfig {
 	private boolean dbInitializatorEnabled;
 	private boolean readOnlyPerun;
 	private int userMaxConcurentUsersToSynchronize;
+	private int extSourceSynchronizationTimeout;
 	private int extSourceMaxConcurentExtSourcesToSynchronize;
 	private int groupSynchronizationInterval;
 	private int groupSynchronizationTimeout;
@@ -70,6 +71,14 @@ public class CoreConfig {
 
 	public void setUserMaxConcurentUsersToSynchronize(int userMaxConcurentUsersToSynchronize) {
 		this.userMaxConcurentUsersToSynchronize = userMaxConcurentUsersToSynchronize;
+	}
+
+	public int getExtSourceSynchronizationTimeout() {
+		return extSourceSynchronizationTimeout;
+	}
+
+	public void setExtSourceSynchronizationTimeout(int extSourceSynchronizationTimeout) {
+		this.extSourceSynchronizationTimeout = extSourceSynchronizationTimeout;
 	}
 
 	public int getExtSourceMaxConcurentExtSourcesToSynchronize() {

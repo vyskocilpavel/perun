@@ -3,6 +3,7 @@ package cz.metacentrum.perun.core.blImpl;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.atomic.AtomicBoolean;
@@ -478,9 +479,54 @@ public class ExtSourcesManagerBlImpl implements ExtSourcesManagerBl {
 
 	}
 
+	public int removeInteruptedExtSources() {
+		int numberOfNewlyRemovedThreads = 0;
+
+		// Get the default synchronization timeout from the configuration file
+		int timeout = BeansUtils.getCoreConfig().getExtSourceSynchronizationTimeout();
+
+		Iterator<ExtSourceSynchronizerThread> threadIterator = extSourceSynchronizerThreads.iterator();
+
+		while(threadIterator.hasNext()) {
+			ExtSourceSynchronizerThread thread = threadIterator.next();
+			long threadStart = thread.getStartTime();
+			//If thread start time is 0, this thread is waiting for another job, skip it
+			if(threadStart == 0) continue;
+
+			long timeDiff = System.currentTimeMillis() - threadStart;
+			//If thread was interrupted by anything, remove it from the pool of active threads
+			if (thread.isInterrupted()) {
+				numberOfNewlyRemovedThreads++;
+				threadIterator.remove();
+			} else if(timeDiff/1000/60 > timeout) {
+				// If the time is greater than timeout set in the configuration file (in minutes), interrupt and remove this thread from pool
+				log.error("One of threads was interrupted because of timeout!");
+				thread.interrupt();
+				threadIterator.remove();
+				numberOfNewlyRemovedThreads++;
+			}
+		}
+
+		return numberOfNewlyRemovedThreads;
+	}
+
 	public synchronized void synchronizeExtSources(PerunSession sess) throws InternalErrorException {
+		log.info("ExtSourceManagerBlImpl:  synchronizeExtSources started");
 		LocalDateTime localDateTime = LocalDateTime.now();
 		String pattern = "^(([0-1][0-9])|(2[0-3])):[0-5][0,5]$";
+
+		int numberOfNewlyRemovedThreads = removeInteruptedExtSources();
+
+		int numberOfNewlyCreatedThreads = 0;
+
+		// Start new threads if there is place for them
+		while(extSourceSynchronizerThreads.size() < maxConcurentExtSourcesToSynchronize) {
+			ExtSourceSynchronizerThread thread = new ExtSourceSynchronizerThread(sess);
+			thread.start();
+			extSourceSynchronizerThreads.add(thread);
+			numberOfNewlyCreatedThreads++;
+			log.debug("New thread for extSources synchronization started.");
+		}
 
 		List<ExtSource> extSources = extSourcesManagerImpl.getExtSourcesToSynchronize(sess);
 
@@ -488,12 +534,28 @@ public class ExtSourcesManagerBlImpl implements ExtSourcesManagerBl {
 		for (ExtSource extSource : extSources) {
 			Map<String, String> attributes = extSourcesManagerImpl.getAttributes(extSource);
 			String[] synchronizationTimes = attributes.get(ExtSourcesManager.USERSYNCHROTIMES_ATTRNAME).split(",");
+			log.info("ExtSourceManagerBlImpl:  SynchronizationTimes- {}", synchronizationTimes.toString());
+			log.info("ExtSourceManagerBlImpl:  ActualTime- {}", localDateTime.getHour() + ":" + localDateTime.getMinute() );
 			for (String synchronizationTime : synchronizationTimes) {
 				if (synchronizationTime.matches(pattern) && synchronizationTime.equals(localDateTime.getHour() + ":" + localDateTime.getMinute())) {
-					//Added ExtSource to pool for synchronization
+					if (poolOfExtSourcesToBeSynchronized.putJobIfAbsent(extSource, false)) {
+						numberOfNewlyAddedExtSource++;
+						log.info("ExtSource {} was added to the pool of extSources waiting for synchronization.", extSource);
+						continue;
+					} else {
+						log.info("ExtSource {} synchronzation is already running.", extSource);
+					}
 				}
 			}
 		}
+
+		// Save state of synchronization to the info log
+		log.info("SynchronizeExtSources method ends with these states: " +
+				"'number of newly removed threads'='" + numberOfNewlyRemovedThreads + "', " +
+				"'number of newly created threads'='" + numberOfNewlyAddedExtSource + "', " +
+				"'number of newly added extSources to the pool'='" + numberOfNewlyAddedExtSource + "', " +
+				"'right now synchronized extSources'='" + poolOfExtSourcesToBeSynchronized.getRunningJobs() + "', " +
+				"'right now waiting extSources'='" + poolOfExtSourcesToBeSynchronized.getWaitingJobs() + "'.");
 	}
 
 	@Override
