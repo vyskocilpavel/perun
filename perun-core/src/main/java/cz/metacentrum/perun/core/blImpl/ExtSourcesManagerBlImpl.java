@@ -1,6 +1,7 @@
 package cz.metacentrum.perun.core.blImpl;
 
 import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.Iterator;
@@ -8,13 +9,18 @@ import java.util.List;
 import java.util.Map;
 import java.util.concurrent.atomic.AtomicBoolean;
 
+import cz.metacentrum.perun.core.api.Attribute;
 import cz.metacentrum.perun.core.api.BeansUtils;
+import cz.metacentrum.perun.core.api.DatabaseManager;
 import cz.metacentrum.perun.core.api.ExtSourcesManager;
 import cz.metacentrum.perun.core.api.PerunBeanProcessingPool;
 import cz.metacentrum.perun.core.api.PerunClient;
 import cz.metacentrum.perun.core.api.PerunPrincipal;
+import cz.metacentrum.perun.core.api.RichUser;
+import cz.metacentrum.perun.core.api.Subject;
 import cz.metacentrum.perun.core.api.exceptions.AttributeNotExistsException;
 import cz.metacentrum.perun.core.api.exceptions.GroupNotExistsException;
+import cz.metacentrum.perun.core.api.exceptions.UserNotExistsException;
 import cz.metacentrum.perun.core.api.exceptions.WrongAttributeAssignmentException;
 import cz.metacentrum.perun.core.api.exceptions.WrongAttributeValueException;
 import cz.metacentrum.perun.core.api.exceptions.WrongReferenceAttributeValueException;
@@ -46,6 +52,8 @@ import cz.metacentrum.perun.core.bl.PerunBl;
 import cz.metacentrum.perun.core.impl.ExtSourcesManagerImpl;
 import cz.metacentrum.perun.core.implApi.ExtSourceSimpleApi;
 import cz.metacentrum.perun.core.implApi.ExtSourcesManagerImplApi;
+import org.w3c.dom.Attr;
+
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -471,11 +479,37 @@ public class ExtSourcesManagerBlImpl implements ExtSourcesManagerBl {
 		return getExtSourcesManagerImpl().getAttributes(extSource);
 	}
 
-	public List<String> synchronizeExtSource(PerunSession sess, ExtSource extSource){
+	public void synchronizeExtSource(PerunSession sess, ExtSource extSource) throws InternalErrorException, AttributeNotExistsException, ExtSourceUnsupportedOperationException {
+		log.trace("ExtSource synchronization started for extSource: {} ", extSource.toString());
 
-		List<String> skippedUsers = new ArrayList<>();
+		//Get subjects from extSource
+		List<Subject> subjects = getSubjectsFromExtSource(sess, extSource);
 
-		return skippedUsers;
+		for (Subject subject : subjects) {
+			getPerunBl().getUsersManagerBl().addSubjectToPool(subject);
+			log.debug("Subject: {}" , subject);
+		}
+		log.trace("ExtSource synchronization ended for extSource: {} ", extSource.toString());
+
+	}
+
+	private List<Subject> getSubjectsFromExtSource(PerunSession sess, ExtSource extSource) throws InternalErrorException {
+		Map<String, String> attributes = extSourcesManagerImpl.getAttributes(extSource);
+
+		List<Subject> subjects = new ArrayList<>();
+		List<Map<String, String>> subjectsAttrs;
+
+//		List<Map<String, String>> subjects;
+		try {
+			subjectsAttrs = ((ExtSourceSimpleApi) extSource).getSubjects(attributes);
+
+		} catch (ExtSourceUnsupportedOperationException e) {
+			throw new InternalErrorException("ExtSource " + extSource.getName() + " doesn't support getSubjects", e);
+		}
+		for (Map<String, String> subjectAttrs: subjectsAttrs) {
+			subjects.add(new Subject(extSource, subjectAttrs));
+		}
+		return subjects;
 
 	}
 
@@ -534,16 +568,22 @@ public class ExtSourcesManagerBlImpl implements ExtSourcesManagerBl {
 		for (ExtSource extSource : extSources) {
 			Map<String, String> attributes = extSourcesManagerImpl.getAttributes(extSource);
 			String[] synchronizationTimes = attributes.get(ExtSourcesManager.USERSYNCHROTIMES_ATTRNAME).split(",");
-			log.info("ExtSourceManagerBlImpl:  SynchronizationTimes- {}", synchronizationTimes.toString());
-			log.info("ExtSourceManagerBlImpl:  ActualTime- {}", localDateTime.getHour() + ":" + localDateTime.getMinute() );
+			String time = localDateTime.format(DateTimeFormatter.ofPattern("HH:mm"));
+			String synchronizationTimesString = "";
 			for (String synchronizationTime : synchronizationTimes) {
-				if (synchronizationTime.matches(pattern) && synchronizationTime.equals(localDateTime.getHour() + ":" + localDateTime.getMinute())) {
+				synchronizationTimesString += synchronizationTime + " ";
+			}
+			log.info("ExtSourceManagerBlImpl:  SynchronizationTimes- {}", synchronizationTimesString);
+			log.info("ExtSourceManagerBlImpl:  ActualTime- {}", time );
+			for (String synchronizationTime : synchronizationTimes) {
+				log.info("ExtSourceManagerBlImpl:  SynchronizationTime- {}", synchronizationTime);
+				if (synchronizationTime.matches(pattern) && synchronizationTime.equals(time)) {
 					if (poolOfExtSourcesToBeSynchronized.putJobIfAbsent(extSource, false)) {
 						numberOfNewlyAddedExtSource++;
 						log.info("ExtSource {} was added to the pool of extSources waiting for synchronization.", extSource);
 						continue;
 					} else {
-						log.info("ExtSource {} synchronzation is already running.", extSource);
+						log.info("ExtSource {} synchronization is already running.", extSource);
 					}
 				}
 			}
@@ -588,8 +628,6 @@ public class ExtSourcesManagerBlImpl implements ExtSourcesManagerBl {
 
 				//text of exception if was thrown, null in exceptionMessage means "no exception, it's ok"
 				String exceptionMessage = null;
-				//text with all skipped members and reasons of this skipping
-				String skippedUsersMessage = null;
 				//if exception which produce fail of whole synchronization was thrown
 				boolean failedDueToException = false;
 
@@ -610,22 +648,8 @@ public class ExtSourcesManagerBlImpl implements ExtSourcesManagerBl {
 
 					log.debug("Synchronization thread started synchronization for ExtSource {}.", extSource);
 
-					//Synchronize ExtSource and get information about skipped Users
-					List<String> skippedUsers = perunBl.getExtSourcesManagerBl().synchronizeExtSource(sess, extSource);
-					//synchronize Group and get information about skipped Members
-					//List<String> skippedMembers = perunBl.getGroupsManagerBl().synchronizeGroup(sess, group);
-
-					if (!skippedUsers.isEmpty()) {
-						skippedUsersMessage = "These users from extSource were skipped: { ";
-
-						for (String skippedUser : skippedUsers) {
-							if (skippedUser == null) continue;
-
-							skippedUsersMessage += skippedUser + ", ";
-						}
-						skippedUsersMessage += " }";
-						exceptionMessage = skippedUsersMessage;
-					}
+					//Synchronize ExtSource
+					perunBl.getExtSourcesManagerBl().synchronizeExtSource(sess, extSource);
 
 					log.debug("Synchronization thread for extSource {} has finished in {} ms.", extSource, System.currentTimeMillis() - startTime);
 				} /*catch (InternalErrorException e) {
@@ -644,7 +668,6 @@ public class ExtSourcesManagerBlImpl implements ExtSourcesManagerBl {
 						perunBl.getExtSourcesManagerBl().saveInformationAboutExtSourceSynchronization(sess, extSource, failedDueToException, exceptionMessage);
 					} catch (Exception ex) {
 						log.error("When synchronization extSource " + extSource + ", exception was thrown.", ex);
-						log.info("Info about exception from synchronization: " + skippedUsersMessage);
 					}
 					//Remove job from running jobs
 					if(!poolOfExtSourcesToBeSynchronized.removeJob(extSource)) {

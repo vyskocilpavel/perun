@@ -39,7 +39,7 @@ public class UsersManagerBlImpl implements UsersManagerBl {
 	private UsersManagerImplApi usersManagerImpl;
 	private PerunBl perunBl;
 	private Integer maxConcurentUsersToSynchronize;
-	private final PerunBeanProcessingPool<User> poolOfUsersToBeSynchronized;
+	private final PerunBeanProcessingPool<Subject> poolOfSubjectsToBeSynchronized;
 	private final ArrayList<UserSynchronizerThread> userSynchronizerThreads;
 
 	private static final String A_USER_DEF_ALT_PASSWORD_NAMESPACE = AttributesManager.NS_USER_ATTR_DEF + ":altPasswords:";
@@ -61,7 +61,7 @@ public class UsersManagerBlImpl implements UsersManagerBl {
 	public UsersManagerBlImpl(UsersManagerImplApi usersManagerImpl) {
 		this.usersManagerImpl = usersManagerImpl;
 		this.userSynchronizerThreads = new ArrayList<>();
-		this.poolOfUsersToBeSynchronized = new PerunBeanProcessingPool<>();
+		this.poolOfSubjectsToBeSynchronized = new PerunBeanProcessingPool<>();
 		//set maximum concurrent groups to synchronize by property
 		this.maxConcurentUsersToSynchronize = BeansUtils.getCoreConfig().getUserMaxConcurentUsersToSynchronize();
 
@@ -2065,12 +2065,70 @@ public class UsersManagerBlImpl implements UsersManagerBl {
 		return usersManagerImpl.findUsersWithExtSourceAttributeValueEnding(sess,attributeName,valueEnd,excludeValueEnds);
 	}
 
-	public synchronized void synchronizeUsers(PerunSession sess) {
+	public int removeInteruptedUsers() {
+		int numberOfNewlyRemovedThreads = 0;
+
+		// Get the default synchronization timeout from the configuration file
+		int timeout = BeansUtils.getCoreConfig().getExtSourceSynchronizationTimeout();
+
+		Iterator<UserSynchronizerThread> threadIterator = userSynchronizerThreads.iterator();
+
+		while(threadIterator.hasNext()) {
+			UserSynchronizerThread thread = threadIterator.next();
+			long threadStart = thread.getStartTime();
+			//If thread start time is 0, this thread is waiting for another job, skip it
+			if(threadStart == 0) continue;
+
+			long timeDiff = System.currentTimeMillis() - threadStart;
+			//If thread was interrupted by anything, remove it from the pool of active threads
+			if (thread.isInterrupted()) {
+				numberOfNewlyRemovedThreads++;
+				threadIterator.remove();
+			} else if(timeDiff/1000/60 > timeout) {
+				// If the time is greater than timeout set in the configuration file (in minutes), interrupt and remove this thread from pool
+				log.error("One of threads was interrupted because of timeout!");
+				thread.interrupt();
+				threadIterator.remove();
+				numberOfNewlyRemovedThreads++;
+			}
+		}
+
+		return numberOfNewlyRemovedThreads;
+	}
+
+	public synchronized void synchronizeUsers(PerunSession sess) throws InternalErrorException {
+		log.info("UserManagerBlImpl:  synchronizeUsers started");
+
+		int numberOfNewlyRemovedThreads = removeInteruptedUsers();
+
+		int numberOfNewlyCreatedThreads = 0;
+
+		// Start new threads if there is place for them
+		while(userSynchronizerThreads.size() < maxConcurentUsersToSynchronize) {
+			UserSynchronizerThread thread = new UserSynchronizerThread(sess);
+			thread.start();
+			userSynchronizerThreads.add(thread);
+			numberOfNewlyCreatedThreads++;
+			log.debug("New thread for user synchronization started.");
+		}
+
+		// Save state of synchronization to the info log
+		log.info("SynchronizeUsers method ends with these states: " +
+				"'number of newly removed threads'='" + numberOfNewlyRemovedThreads + "', " +
+				"'number of newly created threads'='" + numberOfNewlyCreatedThreads + "', " +
+				"'right now synchronized users with subjects'='" + poolOfSubjectsToBeSynchronized.getRunningJobs() + "', " +
+				"'right now waiting users with subjects'='" + poolOfSubjectsToBeSynchronized.getWaitingJobs() + "'.");
+	}
+
+	public synchronized void synchronizeUser(PerunSession sess, Subject subject ) throws InternalErrorException {
+		log.info("User synchronization started for subject: {}", subject);
+
+
 
 	}
 
-	public synchronized void synchronizeUser(PerunSession sess, User user) throws InternalErrorException {
-		log.info("User synchronization {}: started.", user);
+	public void addSubjectToPool(Subject subject) throws InternalErrorException {
+		poolOfSubjectsToBeSynchronized.putJobIfAbsent(subject,false);
 	}
 
 	private class UserSynchronizerThread extends Thread {
@@ -2098,17 +2156,15 @@ public class UsersManagerBlImpl implements UsersManagerBl {
 
 				//text of exception if was thrown, null in exceptionMessage means "no exception, it's ok"
 				String exceptionMessage = null;
-				//text with all skipped members and reasons of this skipping
-				String skippedMembersMessage = null;
 				//if exception which produce fail of whole synchronization was thrown
 				boolean failedDueToException = false;
 
 				//Take another user from the pool to synchronize it
-				User user = null;
+				Subject subject = null;
 				try {
-					user = poolOfUsersToBeSynchronized.takeJob();
+					subject = poolOfSubjectsToBeSynchronized.takeJob();
 				} catch (InterruptedException ex) {
-					log.error("Thread was interrupted when trying to take another user to synchronize from pool", ex);
+					log.error("Thread was interrupted when trying to take another subject to synchronize from pool", ex);
 					//Interrupt this thread
 					this.interrupt();
 					return;
@@ -2118,8 +2174,9 @@ public class UsersManagerBlImpl implements UsersManagerBl {
 					// Set the start time, so we can check the timeout of the thread
 					startTime = System.currentTimeMillis();
 
-					log.debug("Synchronization thread started synchronization for user {}.", user);
+					log.debug("Synchronization thread started synchronization for user with subject {}.", subject);
 
+					synchronizeUser(sess,subject);
 					//synchronize Group and get information about skipped Members
 					//List<String> skippedMembers = perunBl.getGroupsManagerBl().synchronizeGroup(sess, group);
 /*
@@ -2134,7 +2191,7 @@ public class UsersManagerBlImpl implements UsersManagerBl {
 						skippedMembersMessage += " }";
 						exceptionMessage = skippedMembersMessage;
 					}*/
-					log.debug("Synchronization thread for group {} has finished in {} ms.", user, System.currentTimeMillis() - startTime);
+					log.debug("Synchronization thread for subject {} has finished in {} ms.", subject, System.currentTimeMillis() - startTime);
 				} /*catch (WrongAttributeValueException | WrongReferenceAttributeValueException | InternalErrorException |
 						WrongAttributeAssignmentException  | GroupNotExistsException |
 						AttributeNotExistsException  | ExtSourceNotExistsException e) {
@@ -2144,23 +2201,22 @@ public class UsersManagerBlImpl implements UsersManagerBl {
 					exceptionMessage += "due to exception: " + e.getName() + " => " + e.getMessage();
 				} */catch (Exception e) {
 					failedDueToException = true;
-					exceptionMessage = "Cannot synchronize group ";
-					log.error(exceptionMessage + user, e);
+					exceptionMessage = "Cannot synchronize user ";
+					log.error(exceptionMessage + subject, e);
 					exceptionMessage += "due to unexpected exception: " + e.getClass().getName() + " => " + e.getMessage();
 				} finally {
 					//Save information about group synchronization, this method run in new transaction
 					try {
 						//perunBl.getGroupsManagerBl().saveInformationAboutGroupSynchronization(sess, group, failedDueToException, exceptionMessage);
 					} catch (Exception ex) {
-						log.error("When synchronization group " + user + ", exception was thrown.", ex);
-						log.info("Info about exception from synchronization: " + skippedMembersMessage);
+						log.error("When synchronization user with subjects " + subject + ", exception was thrown.", ex);
 					}
 					//Remove job from running jobs
-					if(!poolOfUsersToBeSynchronized.removeJob(user)) {
-						log.error("Can't remove running job for object " + user + " from pool of running jobs because it is not containing it.");
+					if(!poolOfSubjectsToBeSynchronized.removeJob(subject)) {
+						log.error("Can't remove running job for object " + subject + " from pool of running jobs because it is not containing it.");
 					}
 
-					log.debug("GroupSynchronizerThread finished for group: {}", user);
+					log.debug("UserSynchronizationThread finished for subject: {}", subject);
 				}
 			}
 		}

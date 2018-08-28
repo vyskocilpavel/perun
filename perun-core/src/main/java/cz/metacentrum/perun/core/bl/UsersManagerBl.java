@@ -1176,4 +1176,10 @@ public interface UsersManagerBl {
 	 */
 	List<User> findUsersWithExtSourceAttributeValueEnding(PerunSessionImpl sess, String attributeName, String valueEnd, List<String> excludeValueEnds) throws AttributeNotExistsException, InternalErrorException;
 
+	void addSubjectToPool(Subject subject) throws InternalErrorException;
+
+	void synchronizeUsers(PerunSession sess ) throws InternalErrorException;
+
+
+	void synchronizeUser(PerunSession sess, Subject subject ) throws InternalErrorException;
 }

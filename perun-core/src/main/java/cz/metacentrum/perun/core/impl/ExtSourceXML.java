@@ -144,6 +144,12 @@ public class ExtSourceXML extends ExtSource implements ExtSourceApi {
 		return xpathParsing(queryForGroup, 0);
 	}
 
+	@Override
+	public List<Map<String, String>> getSubjects(Map<String, String> attributes) throws InternalErrorException, ExtSourceUnsupportedOperationException {
+		throw new ExtSourceUnsupportedOperationException();
+	}
+
+
 	protected void prepareEnvironment() throws InternalErrorException {
 		//Get file or uri of xml
 		file = (String) getAttributes().get("file");

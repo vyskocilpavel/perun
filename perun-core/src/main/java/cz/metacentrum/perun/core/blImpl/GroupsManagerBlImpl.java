@@ -7,6 +7,7 @@ import java.text.ParseException;
 import java.time.Instant;
 import java.time.LocalDateTime;
 import java.time.ZoneId;
+import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
@@ -1334,9 +1335,9 @@ public class GroupsManagerBlImpl implements GroupsManagerBl {
 
 			for (String synchronizationTime : synchronizationTimes) {
 				log.warn("Group synchronizationTime is {} . ", synchronizationTime);
-				String actualTime = localDateTime.getHour() + ":" + localDateTime.getMinute();
+				String actualTime = localDateTime.format(DateTimeFormatter.ofPattern("HH:mm"));
 				log.warn("Group actualTime is {} . ", actualTime);
-				if ((localDateTime.getHour() + ":" + localDateTime.getMinute()).equals(synchronizationTime)) {
+				if (actualTime.equals(synchronizationTime)) {
 					if (poolOfGroupsToBeSynchronized.putJobIfAbsent(group, false)) {
 						numberOfNewlyAddedGroups++;
 						log.info("Group {} was added to the pool of groups waiting for synchronization.", group);
