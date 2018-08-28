@@ -1,11 +1,22 @@
 package cz.metacentrum.perun.core.blImpl;
 
+import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.atomic.AtomicBoolean;
 
+import cz.metacentrum.perun.core.api.BeansUtils;
+import cz.metacentrum.perun.core.api.ExtSourcesManager;
+import cz.metacentrum.perun.core.api.PerunBeanProcessingPool;
+import cz.metacentrum.perun.core.api.PerunClient;
+import cz.metacentrum.perun.core.api.PerunPrincipal;
+import cz.metacentrum.perun.core.api.exceptions.AttributeNotExistsException;
+import cz.metacentrum.perun.core.api.exceptions.GroupNotExistsException;
+import cz.metacentrum.perun.core.api.exceptions.WrongAttributeAssignmentException;
+import cz.metacentrum.perun.core.api.exceptions.WrongAttributeValueException;
+import cz.metacentrum.perun.core.api.exceptions.WrongReferenceAttributeValueException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -45,10 +56,17 @@ public class ExtSourcesManagerBlImpl implements ExtSourcesManagerBl {
 	private final ExtSourcesManagerImplApi extSourcesManagerImpl;
 	private PerunBl perunBl;
 	private AtomicBoolean initialized = new AtomicBoolean(false);
+	private Integer maxConcurentExtSourcesToSynchronize;
+	private final PerunBeanProcessingPool<ExtSource> poolOfExtSourcesToBeSynchronized;
+	private final ArrayList<ExtSourceSynchronizerThread> extSourceSynchronizerThreads;
 
 
 	public ExtSourcesManagerBlImpl(ExtSourcesManagerImplApi extSourcesManagerImpl) {
 		this.extSourcesManagerImpl = extSourcesManagerImpl;
+		this.extSourceSynchronizerThreads = new ArrayList<>();
+		this.poolOfExtSourcesToBeSynchronized = new PerunBeanProcessingPool<>();
+		//set maximum concurrent extSources to synchronize by property
+		this.maxConcurentExtSourcesToSynchronize = BeansUtils.getCoreConfig().getExtSourceMaxConcurentExtSourcesToSynchronize();
 	}
 
 	public void initialize(PerunSession sess) {
@@ -450,5 +468,138 @@ public class ExtSourcesManagerBlImpl implements ExtSourcesManagerBl {
 
 	public Map<String, String> getAttributes(ExtSource extSource) throws InternalErrorException {
 		return getExtSourcesManagerImpl().getAttributes(extSource);
+	}
+
+	public List<String> synchronizeExtSource(PerunSession sess, ExtSource extSource){
+
+		List<String> skippedUsers = new ArrayList<>();
+
+		return skippedUsers;
+
+	}
+
+	public synchronized void synchronizeExtSources(PerunSession sess) throws InternalErrorException {
+		LocalDateTime localDateTime = LocalDateTime.now();
+		String pattern = "^(([0-1][0-9])|(2[0-3])):[0-5][0,5]$";
+
+		List<ExtSource> extSources = extSourcesManagerImpl.getExtSourcesToSynchronize(sess);
+
+		int numberOfNewlyAddedExtSource = 0;
+		for (ExtSource extSource : extSources) {
+			Map<String, String> attributes = extSourcesManagerImpl.getAttributes(extSource);
+			String[] synchronizationTimes = attributes.get(ExtSourcesManager.USERSYNCHROTIMES_ATTRNAME).split(",");
+			for (String synchronizationTime : synchronizationTimes) {
+				if (synchronizationTime.matches(pattern) && synchronizationTime.equals(localDateTime.getHour() + ":" + localDateTime.getMinute())) {
+					//Added ExtSource to pool for synchronization
+				}
+			}
+		}
+	}
+
+	@Override
+	public void saveInformationAboutExtSourceSynchronization(PerunSession sess, ExtSource extSource, boolean failedDueToException, String exceptionMessage) {
+
+	}
+
+	private class ExtSourceSynchronizerThread extends Thread {
+		// all synchronization runs under synchronizer identity.
+		private final PerunPrincipal pp = new PerunPrincipal("perunSynchronizer", ExtSourcesManager.EXTSOURCE_NAME_INTERNAL, ExtSourcesManager.EXTSOURCE_INTERNAL);
+		private final PerunBl perunBl;
+		private final PerunSession sess;
+		private volatile long startTime;
+
+		public ExtSourceSynchronizerThread(PerunSession sess) throws InternalErrorException {
+			// take only reference to perun
+			this.perunBl = (PerunBl) sess.getPerun();
+			this.sess = perunBl.getPerunSession(pp, new PerunClient());
+			//Default settings of not running thread (waiting for another group)
+			this.startTime = 0;
+		}
+
+		public void run() {
+			while (true) {
+				//Set thread to default state (waiting for another group to synchronize)
+				this.setThreadToDefaultState();
+
+				//If this thread was interrupted, end it's running
+				if(this.isInterrupted()) return;
+
+				//text of exception if was thrown, null in exceptionMessage means "no exception, it's ok"
+				String exceptionMessage = null;
+				//text with all skipped members and reasons of this skipping
+				String skippedUsersMessage = null;
+				//if exception which produce fail of whole synchronization was thrown
+				boolean failedDueToException = false;
+
+				//Take another extSource from the pool to synchronize it
+				ExtSource extSource = null;
+				try {
+					extSource = poolOfExtSourcesToBeSynchronized.takeJob();
+				} catch (InterruptedException ex) {
+					log.error("Thread was interrupted when trying to take another ExtSource to synchronize from pool", ex);
+					//Interrupt this thread
+					this.interrupt();
+					return;
+				}
+
+				try {
+					// Set the start time, so we can check the timeout of the thread
+					startTime = System.currentTimeMillis();
+
+					log.debug("Synchronization thread started synchronization for ExtSource {}.", extSource);
+
+					//Synchronize ExtSource and get information about skipped Users
+					List<String> skippedUsers = perunBl.getExtSourcesManagerBl().synchronizeExtSource(sess, extSource);
+					//synchronize Group and get information about skipped Members
+					//List<String> skippedMembers = perunBl.getGroupsManagerBl().synchronizeGroup(sess, group);
+
+					if (!skippedUsers.isEmpty()) {
+						skippedUsersMessage = "These users from extSource were skipped: { ";
+
+						for (String skippedUser : skippedUsers) {
+							if (skippedUser == null) continue;
+
+							skippedUsersMessage += skippedUser + ", ";
+						}
+						skippedUsersMessage += " }";
+						exceptionMessage = skippedUsersMessage;
+					}
+
+					log.debug("Synchronization thread for extSource {} has finished in {} ms.", extSource, System.currentTimeMillis() - startTime);
+				} /*catch (InternalErrorException e) {
+					failedDueToException = true;
+					exceptionMessage = "Cannot synchronize extSource ";
+					log.error(exceptionMessage + extSource, e);
+					exceptionMessage += "due to exception: " + e.getName() + " => " + e.getMessage();
+				} */catch (Exception e) {
+					failedDueToException = true;
+					exceptionMessage = "Cannot synchronize extSource ";
+					log.error(exceptionMessage + extSource, e);
+					exceptionMessage += "due to unexpected exception: " + e.getClass().getName() + " => " + e.getMessage();
+				} finally {
+					//Save information about extSources synchronization, this method run in new transaction
+					try {
+						perunBl.getExtSourcesManagerBl().saveInformationAboutExtSourceSynchronization(sess, extSource, failedDueToException, exceptionMessage);
+					} catch (Exception ex) {
+						log.error("When synchronization extSource " + extSource + ", exception was thrown.", ex);
+						log.info("Info about exception from synchronization: " + skippedUsersMessage);
+					}
+					//Remove job from running jobs
+					if(!poolOfExtSourcesToBeSynchronized.removeJob(extSource)) {
+						log.error("Can't remove running job for object " + extSource + " from pool of running jobs because it is not containing it.");
+					}
+
+					log.debug("ExtSourceSynchronizerThread finished for extSource: {}", extSource);
+				}
+			}
+		}
+
+		public long getStartTime() {
+			return startTime;
+		}
+
+		private void setThreadToDefaultState() {
+			this.startTime = 0;
+		}
 	}
 }

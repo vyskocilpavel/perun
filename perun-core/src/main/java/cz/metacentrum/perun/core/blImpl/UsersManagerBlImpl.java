@@ -38,6 +38,9 @@ public class UsersManagerBlImpl implements UsersManagerBl {
 
 	private UsersManagerImplApi usersManagerImpl;
 	private PerunBl perunBl;
+	private Integer maxConcurentUsersToSynchronize;
+	private final PerunBeanProcessingPool<User> poolOfUsersToBeSynchronized;
+	private final ArrayList<UserSynchronizerThread> userSynchronizerThreads;
 
 	private static final String A_USER_DEF_ALT_PASSWORD_NAMESPACE = AttributesManager.NS_USER_ATTR_DEF + ":altPasswords:";
 
@@ -57,6 +60,11 @@ public class UsersManagerBlImpl implements UsersManagerBl {
 	 */
 	public UsersManagerBlImpl(UsersManagerImplApi usersManagerImpl) {
 		this.usersManagerImpl = usersManagerImpl;
+		this.userSynchronizerThreads = new ArrayList<>();
+		this.poolOfUsersToBeSynchronized = new PerunBeanProcessingPool<>();
+		//set maximum concurrent groups to synchronize by property
+		this.maxConcurentUsersToSynchronize = BeansUtils.getCoreConfig().getUserMaxConcurentUsersToSynchronize();
+
 	}
 
 	public User getUserByUserExtSource(PerunSession sess, UserExtSource userExtSource) throws InternalErrorException, UserNotExistsException {
@@ -2055,5 +2063,114 @@ public class UsersManagerBlImpl implements UsersManagerBl {
 			throw new InternalErrorException("only ues attributes of type String can be used in findUsersWithExtSourceAttributeValueEnding()");
 		}
 		return usersManagerImpl.findUsersWithExtSourceAttributeValueEnding(sess,attributeName,valueEnd,excludeValueEnds);
+	}
+
+	public synchronized void synchronizeUsers(PerunSession sess) {
+
+	}
+
+	public synchronized void synchronizeUser(PerunSession sess, User user) throws InternalErrorException {
+		log.info("User synchronization {}: started.", user);
+	}
+
+	private class UserSynchronizerThread extends Thread {
+
+		// all synchronization runs under synchronizer identity.
+		private final PerunPrincipal pp = new PerunPrincipal("perunSynchronizer", ExtSourcesManager.EXTSOURCE_NAME_INTERNAL, ExtSourcesManager.EXTSOURCE_INTERNAL);
+		private final PerunBl perunBl;
+		private final PerunSession sess;
+		private volatile long startTime;
+
+		public UserSynchronizerThread(PerunSession sess) throws InternalErrorException {
+			this.perunBl = (PerunBl) sess.getPerun();
+			this.sess = perunBl.getPerunSession(pp, new PerunClient());
+			//Default settings of not running thread (waiting for another User)
+			this.startTime = 0;
+		}
+
+		public void run() {
+			while (true) {
+				//Set thread to default state (waiting for another group to synchronize)
+				this.setThreadToDefaultState();
+
+				//If this thread was interrupted, end it's running
+				if(this.isInterrupted()) return;
+
+				//text of exception if was thrown, null in exceptionMessage means "no exception, it's ok"
+				String exceptionMessage = null;
+				//text with all skipped members and reasons of this skipping
+				String skippedMembersMessage = null;
+				//if exception which produce fail of whole synchronization was thrown
+				boolean failedDueToException = false;
+
+				//Take another user from the pool to synchronize it
+				User user = null;
+				try {
+					user = poolOfUsersToBeSynchronized.takeJob();
+				} catch (InterruptedException ex) {
+					log.error("Thread was interrupted when trying to take another user to synchronize from pool", ex);
+					//Interrupt this thread
+					this.interrupt();
+					return;
+				}
+
+				try {
+					// Set the start time, so we can check the timeout of the thread
+					startTime = System.currentTimeMillis();
+
+					log.debug("Synchronization thread started synchronization for user {}.", user);
+
+					//synchronize Group and get information about skipped Members
+					//List<String> skippedMembers = perunBl.getGroupsManagerBl().synchronizeGroup(sess, group);
+/*
+					if (!skippedMembers.isEmpty()) {
+						skippedMembersMessage = "These members from extSource were skipped: { ";
+
+						for (String skippedMember : skippedMembers) {
+							if (skippedMember == null) continue;
+
+							skippedMembersMessage += skippedMember + ", ";
+						}
+						skippedMembersMessage += " }";
+						exceptionMessage = skippedMembersMessage;
+					}*/
+					log.debug("Synchronization thread for group {} has finished in {} ms.", user, System.currentTimeMillis() - startTime);
+				} /*catch (WrongAttributeValueException | WrongReferenceAttributeValueException | InternalErrorException |
+						WrongAttributeAssignmentException  | GroupNotExistsException |
+						AttributeNotExistsException  | ExtSourceNotExistsException e) {
+					failedDueToException = true;
+					exceptionMessage = "Cannot synchronize group ";
+					log.error(exceptionMessage + user, e);
+					exceptionMessage += "due to exception: " + e.getName() + " => " + e.getMessage();
+				} */catch (Exception e) {
+					failedDueToException = true;
+					exceptionMessage = "Cannot synchronize group ";
+					log.error(exceptionMessage + user, e);
+					exceptionMessage += "due to unexpected exception: " + e.getClass().getName() + " => " + e.getMessage();
+				} finally {
+					//Save information about group synchronization, this method run in new transaction
+					try {
+						//perunBl.getGroupsManagerBl().saveInformationAboutGroupSynchronization(sess, group, failedDueToException, exceptionMessage);
+					} catch (Exception ex) {
+						log.error("When synchronization group " + user + ", exception was thrown.", ex);
+						log.info("Info about exception from synchronization: " + skippedMembersMessage);
+					}
+					//Remove job from running jobs
+					if(!poolOfUsersToBeSynchronized.removeJob(user)) {
+						log.error("Can't remove running job for object " + user + " from pool of running jobs because it is not containing it.");
+					}
+
+					log.debug("GroupSynchronizerThread finished for group: {}", user);
+				}
+			}
+		}
+
+		public long getStartTime() {
+			return startTime;
+		}
+
+		private void setThreadToDefaultState() {
+			this.startTime = 0;
+		}
 	}
 }

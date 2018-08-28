@@ -314,4 +314,17 @@ public class ExtSourcesManagerEntry implements ExtSourcesManager {
 		getExtSourcesManagerBl().checkExtSourceExists(sess, extSource);
 		return getExtSourcesManagerBl().getAttributes(extSource);
 	}
+
+	@Override
+	public void synchronizeExtSources(PerunSession sess) throws InternalErrorException, PrivilegeException {
+		log.info("ExtSourceManagerEntry:  synchronizeExtSources started");
+		Utils.checkPerunSession(sess);
+
+		// Authorization
+		if (!AuthzResolver.isAuthorized(sess, Role.PERUNADMIN))  {
+			throw new PrivilegeException(sess, "synchronizeExtSources");
+		}
+
+		getExtSourcesManagerBl().synchronizeExtSources(sess);
+	}
 }

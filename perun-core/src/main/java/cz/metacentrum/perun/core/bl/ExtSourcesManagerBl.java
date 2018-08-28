@@ -253,4 +253,10 @@ public interface ExtSourcesManagerBl {
 	 * @throws InternalErrorException
 	 */
 	Map<String, String> getAttributes(ExtSource extSource) throws InternalErrorException;
+
+	void saveInformationAboutExtSourceSynchronization(PerunSession sess, ExtSource extSource, boolean failedDueToException, String exceptionMessage);
+
+	List<String> synchronizeExtSource(PerunSession sess, ExtSource extSource);
+
+	void synchronizeExtSources(PerunSession sess) throws InternalErrorException;
 }

@@ -187,5 +187,15 @@ public enum ExtSourcesManagerMethod implements ManagerMethod {
 			ac.getExtSourcesManager().loadExtSourcesDefinitions(ac.getSession());
 			return null;
 		}
+	},
+
+	synchronizeExtSources {
+
+		@Override
+		public Void call(ApiCaller ac, Deserializer parms) throws PerunException {
+
+			ac.getExtSourcesManager().synchronizeExtSources(ac.getSession());
+			return null;
+		}
 	};
 }
