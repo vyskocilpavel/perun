@@ -3,27 +3,19 @@ package cz.metacentrum.perun.core.blImpl;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.HashMap;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.atomic.AtomicBoolean;
 
-import cz.metacentrum.perun.core.api.Attribute;
 import cz.metacentrum.perun.core.api.BeansUtils;
-import cz.metacentrum.perun.core.api.DatabaseManager;
 import cz.metacentrum.perun.core.api.ExtSourcesManager;
 import cz.metacentrum.perun.core.api.PerunBeanProcessingPool;
 import cz.metacentrum.perun.core.api.PerunClient;
 import cz.metacentrum.perun.core.api.PerunPrincipal;
-import cz.metacentrum.perun.core.api.RichUser;
-import cz.metacentrum.perun.core.api.Subject;
 import cz.metacentrum.perun.core.api.exceptions.AttributeNotExistsException;
-import cz.metacentrum.perun.core.api.exceptions.GroupNotExistsException;
-import cz.metacentrum.perun.core.api.exceptions.UserNotExistsException;
-import cz.metacentrum.perun.core.api.exceptions.WrongAttributeAssignmentException;
-import cz.metacentrum.perun.core.api.exceptions.WrongAttributeValueException;
-import cz.metacentrum.perun.core.api.exceptions.WrongReferenceAttributeValueException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -52,7 +44,6 @@ import cz.metacentrum.perun.core.bl.PerunBl;
 import cz.metacentrum.perun.core.impl.ExtSourcesManagerImpl;
 import cz.metacentrum.perun.core.implApi.ExtSourceSimpleApi;
 import cz.metacentrum.perun.core.implApi.ExtSourcesManagerImplApi;
-import org.w3c.dom.Attr;
 
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -479,35 +470,31 @@ public class ExtSourcesManagerBlImpl implements ExtSourcesManagerBl {
 		return getExtSourcesManagerImpl().getAttributes(extSource);
 	}
 
-	public void synchronizeExtSource(PerunSession sess, ExtSource extSource) throws InternalErrorException, AttributeNotExistsException, ExtSourceUnsupportedOperationException {
+	public void synchronizeExtSource(PerunSession sess, ExtSource extSource) throws InternalErrorException, AttributeNotExistsException, ExtSourceUnsupportedOperationException, CandidateNotExistsException, ExtSourceNotExistsException {
 		log.trace("ExtSource synchronization started for extSource: {} ", extSource.toString());
 
 		//Get subjects from extSource
-		List<Subject> subjects = getSubjectsFromExtSource(sess, extSource);
+		List<Map<String, String>> subjects = getSubjectsFromExtSource(sess, extSource);
 
-		for (Subject subject : subjects) {
-			getPerunBl().getUsersManagerBl().addSubjectToPool(subject);
-			log.debug("Subject: {}" , subject);
+		for (Map<String, String> subject : subjects) {
+			Candidate candidate = getCandidate(sess, subject, extSource, subject.get("login"));
+			getPerunBl().getUsersManagerBl().addCandidateToPool(candidate);
 		}
 		log.trace("ExtSource synchronization ended for extSource: {} ", extSource.toString());
 
 	}
 
-	private List<Subject> getSubjectsFromExtSource(PerunSession sess, ExtSource extSource) throws InternalErrorException {
+	private List<Map<String, String>> getSubjectsFromExtSource(PerunSession sess, ExtSource extSource) throws InternalErrorException {
 		Map<String, String> attributes = extSourcesManagerImpl.getAttributes(extSource);
 
-		List<Subject> subjects = new ArrayList<>();
-		List<Map<String, String>> subjectsAttrs;
+		List<Map<String, String>> subjects = new ArrayList<>();
 
 //		List<Map<String, String>> subjects;
 		try {
-			subjectsAttrs = ((ExtSourceSimpleApi) extSource).getSubjects(attributes);
+			subjects = ((ExtSourceSimpleApi) extSource).getSubjects(attributes);
 
 		} catch (ExtSourceUnsupportedOperationException e) {
 			throw new InternalErrorException("ExtSource " + extSource.getName() + " doesn't support getSubjects", e);
-		}
-		for (Map<String, String> subjectAttrs: subjectsAttrs) {
-			subjects.add(new Subject(extSource, subjectAttrs));
 		}
 		return subjects;
 
@@ -686,5 +673,17 @@ public class ExtSourcesManagerBlImpl implements ExtSourcesManagerBl {
 		private void setThreadToDefaultState() {
 			this.startTime = 0;
 		}
+	}
+
+	public List<String> getOverwriteUserAttributesListFromExtSource(ExtSource extSource) throws InternalErrorException {
+		Map<String, String> attributes = getPerunBl().getExtSourcesManagerBl().getAttributes(extSource);
+		List<String> overwriteUserAttributesList = new ArrayList<>();
+		String overwriteUserAttributes = attributes.get("overwriteUserAttributes");
+		if(overwriteUserAttributes != null && !overwriteUserAttributes.isEmpty()) {
+			//remove all white spaces and invisible characters
+			overwriteUserAttributes = overwriteUserAttributes.replaceAll("\\s", "");
+			overwriteUserAttributesList = Arrays.asList(overwriteUserAttributes.split(","));
+		}
+		return overwriteUserAttributesList;
 	}
 }

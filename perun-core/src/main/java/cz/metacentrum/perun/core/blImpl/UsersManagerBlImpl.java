@@ -39,7 +39,7 @@ public class UsersManagerBlImpl implements UsersManagerBl {
 	private UsersManagerImplApi usersManagerImpl;
 	private PerunBl perunBl;
 	private Integer maxConcurentUsersToSynchronize;
-	private final PerunBeanProcessingPool<Subject> poolOfSubjectsToBeSynchronized;
+	private final PerunBeanProcessingPool<Candidate> poolOfSubjectsToBeSynchronized;
 	private final ArrayList<UserSynchronizerThread> userSynchronizerThreads;
 
 	private static final String A_USER_DEF_ALT_PASSWORD_NAMESPACE = AttributesManager.NS_USER_ATTR_DEF + ":altPasswords:";
@@ -2120,15 +2120,39 @@ public class UsersManagerBlImpl implements UsersManagerBl {
 				"'right now waiting users with subjects'='" + poolOfSubjectsToBeSynchronized.getWaitingJobs() + "'.");
 	}
 
-	public synchronized void synchronizeUser(PerunSession sess, Subject subject ) throws InternalErrorException {
-		log.info("User synchronization started for subject: {}", subject);
+	public synchronized void synchronizeUser(PerunSession sess, Candidate candidate) throws InternalErrorException, UserNotExistsException, UserExtSourceNotExistsException, ExtSourceNotExistsException, AttributeNotExistsException, WrongAttributeAssignmentException {
+		log.info("User synchronization started for candidate: {}", candidate);
+		List<String> overwriteUserAttributesList = getPerunBl().getExtSourcesManagerBl().getOverwriteUserAttributesListFromExtSource(candidate.getUserExtSource().getExtSource());
 
+		User user;
+		try {
+			user = perunBl.getUsersManagerBl().getUserByExtSourceNameAndExtLogin(sess, candidate.getUserExtSource().getExtSource().getName(), candidate.getUserExtSource().getLogin());
+			//update UserCoreAttribute
+			log.debug("User: {}", user);
+		} catch (UserNotExistsException | UserExtSourceNotExistsException e) {
+			log.error("UserNotExistException: {}",e);
+			user = new User();
+			user.setFirstName(candidate.getFirstName());
+			user.setLastName(candidate.getLastName());
+			user.setMiddleName(candidate.getMiddleName());
+			user.setTitleAfter(candidate.getTitleAfter());
+			user.setTitleBefore(candidate.getTitleBefore());
+			user = getPerunBl().getUsersManagerBl().createUser(sess, user);
 
+			perunBl.getUsersManagerBl().createUser(sess,user);
+			log.debug("User: {} successfully created.", user);
+		}
 
+		for (String attributeName : candidate.getAttributes().keySet()) {
+			if (attributeName.startsWith(AttributesManager.NS_USER_ATTR)) {
+				updateUserAttribute(sess, user, candidate, attributeName, overwriteUserAttributesList);
+			}
+		}
+		//updateUserAttribute
 	}
 
-	public void addSubjectToPool(Subject subject) throws InternalErrorException {
-		poolOfSubjectsToBeSynchronized.putJobIfAbsent(subject,false);
+	public void addCandidateToPool(Candidate candidate) throws InternalErrorException {
+		poolOfSubjectsToBeSynchronized.putJobIfAbsent(candidate,false);
 	}
 
 	private class UserSynchronizerThread extends Thread {
@@ -2160,9 +2184,9 @@ public class UsersManagerBlImpl implements UsersManagerBl {
 				boolean failedDueToException = false;
 
 				//Take another user from the pool to synchronize it
-				Subject subject = null;
+				Candidate candidate = null;
 				try {
-					subject = poolOfSubjectsToBeSynchronized.takeJob();
+					candidate = poolOfSubjectsToBeSynchronized.takeJob();
 				} catch (InterruptedException ex) {
 					log.error("Thread was interrupted when trying to take another subject to synchronize from pool", ex);
 					//Interrupt this thread
@@ -2174,9 +2198,9 @@ public class UsersManagerBlImpl implements UsersManagerBl {
 					// Set the start time, so we can check the timeout of the thread
 					startTime = System.currentTimeMillis();
 
-					log.debug("Synchronization thread started synchronization for user with subject {}.", subject);
+					log.debug("Synchronization thread started synchronization for user with subject {}.", candidate);
 
-					synchronizeUser(sess,subject);
+					synchronizeUser(sess, candidate);
 					//synchronize Group and get information about skipped Members
 					//List<String> skippedMembers = perunBl.getGroupsManagerBl().synchronizeGroup(sess, group);
 /*
@@ -2191,7 +2215,7 @@ public class UsersManagerBlImpl implements UsersManagerBl {
 						skippedMembersMessage += " }";
 						exceptionMessage = skippedMembersMessage;
 					}*/
-					log.debug("Synchronization thread for subject {} has finished in {} ms.", subject, System.currentTimeMillis() - startTime);
+					log.debug("Synchronization thread for candidate {} has finished in {} ms.", candidate, System.currentTimeMillis() - startTime);
 				} /*catch (WrongAttributeValueException | WrongReferenceAttributeValueException | InternalErrorException |
 						WrongAttributeAssignmentException  | GroupNotExistsException |
 						AttributeNotExistsException  | ExtSourceNotExistsException e) {
@@ -2202,21 +2226,21 @@ public class UsersManagerBlImpl implements UsersManagerBl {
 				} */catch (Exception e) {
 					failedDueToException = true;
 					exceptionMessage = "Cannot synchronize user ";
-					log.error(exceptionMessage + subject, e);
+					log.error(exceptionMessage + candidate, e);
 					exceptionMessage += "due to unexpected exception: " + e.getClass().getName() + " => " + e.getMessage();
 				} finally {
 					//Save information about group synchronization, this method run in new transaction
 					try {
 						//perunBl.getGroupsManagerBl().saveInformationAboutGroupSynchronization(sess, group, failedDueToException, exceptionMessage);
 					} catch (Exception ex) {
-						log.error("When synchronization user with subjects " + subject + ", exception was thrown.", ex);
+						log.error("When synchronization user with candidate " + candidate + ", exception was thrown.", ex);
 					}
 					//Remove job from running jobs
-					if(!poolOfSubjectsToBeSynchronized.removeJob(subject)) {
-						log.error("Can't remove running job for object " + subject + " from pool of running jobs because it is not containing it.");
+					if(!poolOfSubjectsToBeSynchronized.removeJob(candidate)) {
+						log.error("Can't remove running job for object " + candidate + " from pool of running jobs because it is not containing it.");
 					}
 
-					log.debug("UserSynchronizationThread finished for subject: {}", subject);
+					log.debug("UserSynchronizationThread finished for candidate: {}", candidate);
 				}
 			}
 		}
@@ -2228,5 +2252,91 @@ public class UsersManagerBlImpl implements UsersManagerBl {
 		private void setThreadToDefaultState() {
 			this.startTime = 0;
 		}
+	}
+
+	private void updateUserCoreAttribute(PerunSession sess, User user, Candidate candidate, List<String> overwriteUserAttributesList) throws InternalErrorException {
+		// try to find user core attributes and update user -> update name and titles
+		if (overwriteUserAttributesList != null) {
+			boolean someFound = false;
+			for (String attrName : overwriteUserAttributesList) {
+				if (attrName.startsWith(AttributesManager.NS_USER_ATTR_CORE+":firstName")) {
+					user.setFirstName(candidate.getFirstName());
+					someFound = true;
+				} else if (attrName.startsWith(AttributesManager.NS_USER_ATTR_CORE+":middleName")) {
+					user.setMiddleName(candidate.getMiddleName());
+					someFound = true;
+				} else if (attrName.startsWith(AttributesManager.NS_USER_ATTR_CORE+":lastName")) {
+					user.setLastName(candidate.getLastName());
+					someFound = true;
+				} else if (attrName.startsWith(AttributesManager.NS_USER_ATTR_CORE+":titleBefore")) {
+					user.setTitleBefore(candidate.getTitleBefore());
+					someFound = true;
+				} else if (attrName.startsWith(AttributesManager.NS_USER_ATTR_CORE+":titleAfter")) {
+					user.setTitleAfter(candidate.getTitleAfter());
+					someFound = true;
+				}
+			}
+			if (someFound) {
+				try {
+					perunBl.getUsersManagerBl().updateUser(sess, user);
+				} catch (UserNotExistsException e) {
+					throw new ConsistencyErrorException("User from perun not exists when should - removed during sync.", e);
+				}
+			}
+		}
+	}
+
+//Dokončit
+	private void updateUserAttribute(PerunSession sess, User user, Candidate candidate, String attributeName, List<String> overwriteUserAttributesList) throws InternalErrorException, AttributeNotExistsException, WrongAttributeAssignmentException {
+		boolean attributeFound = false;
+		RichUser richUser;
+		try {
+			richUser = getRichUserWithAttributes(sess, user);
+			for (Attribute userAttribute: richUser.getUserAttributes()) {
+				if(userAttribute.getName().equals(attributeName)) {
+					attributeFound = true;
+					Object subjectAttributeValue = getPerunBl().getAttributesManagerBl().stringToAttributeValue(candidate.getAttributes().get(attributeName), userAttribute.getType());
+					if (!Objects.equals(userAttribute.getValue(), subjectAttributeValue)) {
+//						log.trace("Group synchronization {}: value of the attribute {} for memberId {} changed. Original value {}, new value {}.",
+//								new Object[] {group, userAttribute, richMember.getId(), userAttribute.getValue(), subjectAttributeValue});
+						userAttribute.setValue(subjectAttributeValue);
+						try {
+							//Choose set or merge by extSource attribute overwriteUserAttributes (if contains this one)
+							if(overwriteUserAttributesList.contains(userAttribute.getName())) {
+								getPerunBl().getAttributesManagerBl().setAttributeInNestedTransaction(sess, user, userAttribute);
+							} else {
+								getPerunBl().getAttributesManagerBl().mergeAttributeValueInNestedTransaction(sess, user, userAttribute);
+							}
+						} catch (AttributeValueException e) {
+							// There is a problem with attribute value, so set INVALID status for the member
+							//getPerunBl().getMembersManagerBl().invalidateMember(sess, richMember);
+						} catch (WrongAttributeAssignmentException e) {
+							throw new ConsistencyErrorException(e);
+						}
+					}
+					//we found it, but there is no change
+					break;
+				}
+			}
+			//user has not set this attribute so set it now if
+			if(!attributeFound) {
+				// FIXME - this whole section probably can be removed. Previously null attributes were not retrieved with member
+				// FIXME - they are now always present, if not the same, then they are set in a code above.
+				Attribute newAttribute = new Attribute(getPerunBl().getAttributesManagerBl().getAttributeDefinition(sess, attributeName));
+				Object subjectAttributeValue = getPerunBl().getAttributesManagerBl().stringToAttributeValue(candidate.getAttributes().get(attributeName), newAttribute.getType());
+				newAttribute.setValue(subjectAttributeValue);
+				try {
+					// Try to set user's attributes
+					getPerunBl().getAttributesManagerBl().setAttributeInNestedTransaction(sess, user, newAttribute);
+					log.trace("Setting the {} value {}", newAttribute, candidate.getAttributes().get(attributeName));
+				} catch (AttributeValueException e) {
+					// There is a problem with attribute value, so set INVALID status for the member
+//					getPerunBl().getMembersManagerBl().invalidateMember(sess, richMember);
+				}
+			}
+		} catch (UserNotExistsException e) {
+			e.printStackTrace();
+		}
+
 	}
 }

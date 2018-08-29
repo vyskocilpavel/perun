@@ -258,7 +258,9 @@ public interface ExtSourcesManagerBl {
 
 	void saveInformationAboutExtSourceSynchronization(PerunSession sess, ExtSource extSource, boolean failedDueToException, String exceptionMessage);
 
-	void synchronizeExtSource(PerunSession sess, ExtSource extSource) throws UserNotExistsException, InternalErrorException, AttributeNotExistsException, ExtSourceUnsupportedOperationException;
+	void synchronizeExtSource(PerunSession sess, ExtSource extSource) throws UserNotExistsException, InternalErrorException, AttributeNotExistsException, ExtSourceUnsupportedOperationException, CandidateNotExistsException, ExtSourceNotExistsException;
 
 	void synchronizeExtSources(PerunSession sess) throws InternalErrorException;
+
+	List<String> getOverwriteUserAttributesListFromExtSource(ExtSource extSource) throws InternalErrorException;
 }
