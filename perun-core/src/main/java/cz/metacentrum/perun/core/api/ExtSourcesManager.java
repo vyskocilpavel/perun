@@ -50,6 +50,8 @@ public interface ExtSourcesManager {
 
 	String USERSYNCHROENABLED_ATTRNAME = "userSynchronizationEnabled";
 	String USERSYNCHROTIMES_ATTRNAME = "userSynchronizationTimes";
+	String USEROVERWRITEATTRIBUTES_ATTRNAME = "overwriteUserAttributes";
+
 
 	String SUBJECTSQUERY_ATTRNAME = "subjectQuery";
 	/**

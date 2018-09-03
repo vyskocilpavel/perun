@@ -2122,33 +2122,64 @@ public class UsersManagerBlImpl implements UsersManagerBl {
 
 	public synchronized void synchronizeUser(PerunSession sess, Candidate candidate) throws InternalErrorException, UserNotExistsException, UserExtSourceNotExistsException, ExtSourceNotExistsException, AttributeNotExistsException, WrongAttributeAssignmentException {
 		log.info("User synchronization started for candidate: {}", candidate);
-		List<String> overwriteUserAttributesList = getPerunBl().getExtSourcesManagerBl().getOverwriteUserAttributesListFromExtSource(candidate.getUserExtSource().getExtSource());
-
-		User user;
-		try {
-			user = perunBl.getUsersManagerBl().getUserByExtSourceNameAndExtLogin(sess, candidate.getUserExtSource().getExtSource().getName(), candidate.getUserExtSource().getLogin());
-			//update UserCoreAttribute
-			log.debug("User: {}", user);
-		} catch (UserNotExistsException | UserExtSourceNotExistsException e) {
-			log.error("UserNotExistException: {}",e);
+		Map<String, String> attributes = getPerunBl().getExtSourcesManagerBl().getAttributes(candidate.getUserExtSource().getExtSource());
+		String[] overwriteUserAttributes = attributes.get(ExtSourcesManager.USEROVERWRITEATTRIBUTES_ATTRNAME).split(",");
+		List<String> overwriteUserAttributeList = Arrays.asList(overwriteUserAttributes);
+		User user = null;
+		UserExtSource ues;
+		if ((ues = candidate.getUserExtSource()) != null) {
+			ExtSource tmpExtSource = getPerunBl().getExtSourcesManagerBl().checkOrCreateExtSource(sess, ues.getExtSource().getName(),
+					ues.getExtSource().getType());
+			// Set the extSource ID
+			ues.getExtSource().setId(tmpExtSource.getId());
+			try {
+				// Try to find the user by userExtSource
+				user = getPerunBl().getUsersManagerBl().getUserByExtSourceNameAndExtLogin(sess, ues.getExtSource().getName(), ues.getLogin());
+			} catch (UserExtSourceNotExistsException e) {
+				// This is OK, non-existent userExtSource will be assigned later
+			} catch (UserNotExistsException | ExtSourceNotExistsException e) {
+				// Ignore, we are only checking if the user exists
+			}
+		}
+		// If user hasn't been found, then create him
+		if (user == null) {
 			user = new User();
 			user.setFirstName(candidate.getFirstName());
 			user.setLastName(candidate.getLastName());
 			user.setMiddleName(candidate.getMiddleName());
 			user.setTitleAfter(candidate.getTitleAfter());
 			user.setTitleBefore(candidate.getTitleBefore());
+			user.setServiceUser(candidate.isServiceUser());
+			user.setSponsoredUser(candidate.isSponsoredUser());
+			// Store the user, this must be done in separate transaction
 			user = getPerunBl().getUsersManagerBl().createUser(sess, user);
-
-			perunBl.getUsersManagerBl().createUser(sess,user);
-			log.debug("User: {} successfully created.", user);
+		} else {
+			updateUserCoreAttributes(sess, user, candidate, overwriteUserAttributeList);
 		}
 
-		for (String attributeName : candidate.getAttributes().keySet()) {
-			if (attributeName.startsWith(AttributesManager.NS_USER_ATTR)) {
-				updateUserAttribute(sess, user, candidate, attributeName, overwriteUserAttributesList);
+		// Update user attributes
+		updateUserAttributes(sess, user, candidate, overwriteUserAttributeList);
+
+		// Assign missing userExtSource and update LoA
+		if (candidate.getUserExtSources() != null) {
+			for (UserExtSource userExtSource : candidate.getUserExtSources()) {
+				try {
+					UserExtSource currentUserExtSource = getPerunBl().getUsersManagerBl().getUserExtSourceByExtLogin(sess, userExtSource.getExtSource(), userExtSource.getLogin());
+					// Update LoA
+					currentUserExtSource.setLoa(userExtSource.getLoa());
+					getPerunBl().getUsersManagerBl().updateUserExtSource(sess, currentUserExtSource);
+				} catch (UserExtSourceNotExistsException e) {
+					// Create userExtSource
+					try {
+						getPerunBl().getUsersManagerBl().addUserExtSource(sess, user, userExtSource);
+					} catch (UserExtSourceExistsException e1) {
+						throw new ConsistencyErrorException("Adding userExtSource which already exists: " + userExtSource);
+					}
+				} catch (UserExtSourceExistsException e1) {
+					throw new ConsistencyErrorException("Updating login of userExtSource to value which already exists: " + userExtSource);
+				}
 			}
 		}
-		//updateUserAttribute
 	}
 
 	public void addCandidateToPool(Candidate candidate) throws InternalErrorException {
@@ -2254,7 +2285,7 @@ public class UsersManagerBlImpl implements UsersManagerBl {
 		}
 	}
 
-	private void updateUserCoreAttribute(PerunSession sess, User user, Candidate candidate, List<String> overwriteUserAttributesList) throws InternalErrorException {
+	private void updateUserCoreAttributes(PerunSession sess, User user, Candidate candidate, List<String> overwriteUserAttributesList) throws InternalErrorException {
 		// try to find user core attributes and update user -> update name and titles
 		if (overwriteUserAttributesList != null) {
 			boolean someFound = false;
@@ -2287,56 +2318,64 @@ public class UsersManagerBlImpl implements UsersManagerBl {
 	}
 
 //Dokončit
-	private void updateUserAttribute(PerunSession sess, User user, Candidate candidate, String attributeName, List<String> overwriteUserAttributesList) throws InternalErrorException, AttributeNotExistsException, WrongAttributeAssignmentException {
-		boolean attributeFound = false;
-		RichUser richUser;
-		try {
-			richUser = getRichUserWithAttributes(sess, user);
-			for (Attribute userAttribute: richUser.getUserAttributes()) {
-				if(userAttribute.getName().equals(attributeName)) {
-					attributeFound = true;
-					Object subjectAttributeValue = getPerunBl().getAttributesManagerBl().stringToAttributeValue(candidate.getAttributes().get(attributeName), userAttribute.getType());
-					if (!Objects.equals(userAttribute.getValue(), subjectAttributeValue)) {
-//						log.trace("Group synchronization {}: value of the attribute {} for memberId {} changed. Original value {}, new value {}.",
-//								new Object[] {group, userAttribute, richMember.getId(), userAttribute.getValue(), subjectAttributeValue});
-						userAttribute.setValue(subjectAttributeValue);
-						try {
-							//Choose set or merge by extSource attribute overwriteUserAttributes (if contains this one)
-							if(overwriteUserAttributesList.contains(userAttribute.getName())) {
-								getPerunBl().getAttributesManagerBl().setAttributeInNestedTransaction(sess, user, userAttribute);
-							} else {
-								getPerunBl().getAttributesManagerBl().mergeAttributeValueInNestedTransaction(sess, user, userAttribute);
+	private void updateUserAttributes(PerunSession sess, User user, Candidate candidate, List<String> overwriteUserAttributesList) throws InternalErrorException, AttributeNotExistsException, WrongAttributeAssignmentException {
+		for (String attributeName : candidate.getAttributes().keySet()) {
+			if(attributeName.startsWith(AttributesManager.NS_USER_ATTR)) {
+				boolean attributeFound = false;
+				RichUser richUser;
+
+				try {
+					richUser = getRichUserWithAttributes(sess, user);
+					for (Attribute userAttribute: richUser.getUserAttributes()) {
+						if(userAttribute.getName().equals(attributeName)) {
+							attributeFound = true;
+							Object subjectAttributeValue = getPerunBl().getAttributesManagerBl().stringToAttributeValue(candidate.getAttributes().get(attributeName), userAttribute.getType());
+							if (!Objects.equals(userAttribute.getValue(), subjectAttributeValue)) {
+							log.trace("User synchronization: value of the attribute {} for userId {} changed. Original value {}, new value {}.",
+								userAttribute, richUser.getId(), userAttribute.getValue(), subjectAttributeValue);
+								userAttribute.setValue(subjectAttributeValue);
+								try {
+									//Choose set or merge by extSource attribute overwriteUserAttributes (if contains this one)
+									if(overwriteUserAttributesList.contains(userAttribute.getName())) {
+										getPerunBl().getAttributesManagerBl().setAttributeInNestedTransaction(sess, user, userAttribute);
+									} else {
+										getPerunBl().getAttributesManagerBl().mergeAttributeValueInNestedTransaction(sess, user, userAttribute);
+									}
+								} catch (AttributeValueException e) {
+									log.error("Problem with store new attribute value {} of attribute {} for userId {} ." , userAttribute.getValue(), userAttribute.getName(), richUser.getId());
+									// There is a problem with attribute value, so set INVALID status for the member
+									//getPerunBl().getMembersManagerBl().invalidateMember(sess, richMember);
+								} catch (WrongAttributeAssignmentException e) {
+									throw new ConsistencyErrorException(e);
+								}
 							}
-						} catch (AttributeValueException e) {
-							// There is a problem with attribute value, so set INVALID status for the member
-							//getPerunBl().getMembersManagerBl().invalidateMember(sess, richMember);
-						} catch (WrongAttributeAssignmentException e) {
-							throw new ConsistencyErrorException(e);
+							//we found it, but there is no change
+							break;
 						}
 					}
-					//we found it, but there is no change
-					break;
-				}
-			}
-			//user has not set this attribute so set it now if
-			if(!attributeFound) {
-				// FIXME - this whole section probably can be removed. Previously null attributes were not retrieved with member
-				// FIXME - they are now always present, if not the same, then they are set in a code above.
-				Attribute newAttribute = new Attribute(getPerunBl().getAttributesManagerBl().getAttributeDefinition(sess, attributeName));
-				Object subjectAttributeValue = getPerunBl().getAttributesManagerBl().stringToAttributeValue(candidate.getAttributes().get(attributeName), newAttribute.getType());
-				newAttribute.setValue(subjectAttributeValue);
-				try {
-					// Try to set user's attributes
-					getPerunBl().getAttributesManagerBl().setAttributeInNestedTransaction(sess, user, newAttribute);
-					log.trace("Setting the {} value {}", newAttribute, candidate.getAttributes().get(attributeName));
-				} catch (AttributeValueException e) {
-					// There is a problem with attribute value, so set INVALID status for the member
+					//user has not set this attribute so set it now if
+					if(!attributeFound) {
+						// FIXME - this whole section probably can be removed. Previously null attributes were not retrieved with member
+						// FIXME - they are now always present, if not the same, then they are set in a code above.
+						Attribute newAttribute = new Attribute(getPerunBl().getAttributesManagerBl().getAttributeDefinition(sess, attributeName));
+						Object subjectAttributeValue = getPerunBl().getAttributesManagerBl().stringToAttributeValue(candidate.getAttributes().get(attributeName), newAttribute.getType());
+						newAttribute.setValue(subjectAttributeValue);
+						try {
+							// Try to set user's attributes
+							getPerunBl().getAttributesManagerBl().setAttributeInNestedTransaction(sess, user, newAttribute);
+							log.trace("Setting the {} value {}", newAttribute, candidate.getAttributes().get(attributeName));
+						} catch (AttributeValueException e) {
+							// There is a problem with attribute value, so set INVALID status for the member
 //					getPerunBl().getMembersManagerBl().invalidateMember(sess, richMember);
+						}
+					}
+				} catch (UserNotExistsException e) {
+					e.printStackTrace();
 				}
 			}
-		} catch (UserNotExistsException e) {
-			e.printStackTrace();
 		}
+
+
 
 	}
 }
