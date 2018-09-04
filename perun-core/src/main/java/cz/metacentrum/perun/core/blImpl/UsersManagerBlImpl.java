@@ -6,7 +6,6 @@ import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.io.OutputStream;
 import java.io.PrintWriter;
-import java.lang.reflect.Array;
 import java.util.*;
 
 import cz.metacentrum.perun.core.api.*;
@@ -2199,9 +2198,7 @@ public class UsersManagerBlImpl implements UsersManagerBl {
 				}
 				try {
 					// Store priority for UserExtSource
-					Attribute priorityAttribute = getPerunBl().getAttributesManagerBl().getAttribute(sess, uesFromPerun, UsersManager.USEREXTSOURCEPRIORITY_ATTRNAME);
-					priorityAttribute.setValue(getLowestPriority(sess, user) + 1);
-					getPerunBl().getAttributesManagerBl().setAttribute(sess, uesFromPerun, priorityAttribute);
+					getAndSetLowestPriority(sess, user, uesFromPerun);
 
 					//Store or update Stored attributes
 					Attribute userExtSourceStoredAttributesAttr = getPerunBl().getAttributesManagerBl().getAttribute(sess, uesFromPerun, UsersManager.USEREXTSOURCESTOREDATTRIBUTES_ATTRNAME);
@@ -2226,56 +2223,26 @@ public class UsersManagerBlImpl implements UsersManagerBl {
 			updateUserCoreAttributes(sess, user, candidate, overwriteUserAttributeList);
 			updateUserAttributes(sess, user, candidate, overwriteUserAttributeList);
 		} else {
-
 			updateUserAttributes(sess, user, candidate, getOverWriteUserAttributeListForActualUserExtSource(sess, user, ues));
-
 		}
 
 	}
 
 	private List<String> getOverWriteUserAttributeListForActualUserExtSource(PerunSession sess, User user, UserExtSource userExtSource) {
-		int actualPriority;
-
-		List<String> actualOverwriteUserAttributeList;
 		try {
-			Attribute actualPriorityAttribute = getPerunBl().getAttributesManagerBl().getAttribute(sess, userExtSource, UsersManager.USEREXTSOURCEPRIORITY_ATTRNAME);
-			if (actualPriorityAttribute == null || actualPriorityAttribute.getValue() == null) {
-				//Set lowest priority
-				actualPriority = 0;
-			} else {
-				actualPriority = actualPriorityAttribute.valueAsInteger();
-			}
-			Attribute actualOverwriteUserAttributeList_attr = getPerunBl().getAttributesManagerBl().getAttribute(sess, userExtSource, UsersManager.USEREXTSOURCEOVERWRITEUSERATTRIBUTELIST_ATTRNAME);
-			if (actualOverwriteUserAttributeList_attr != null && actualOverwriteUserAttributeList_attr.getValue() != null) {
-				actualOverwriteUserAttributeList = actualOverwriteUserAttributeList_attr.valueAsList();
-				if (actualOverwriteUserAttributeList.isEmpty()) {
-					return actualOverwriteUserAttributeList;
-				}
-			} else {
-				return new ArrayList<>();
-			}
+			int actualPriority = getAndSetLowestPriority(sess, user, userExtSource);
+			List<String> actualOverwriteUserAttributeList = getOverwriteAttributeList(sess, userExtSource);
 
 			List<UserExtSource> userExtSourceList = getPerunBl().getUsersManagerBl().getUserExtSources(sess, user);
 			for (UserExtSource ues : userExtSourceList) {
 				int priority = 0;
 				try {
-					Attribute priorityAttribute = getPerunBl().getAttributesManagerBl().getAttribute(sess, ues, UsersManager.USEREXTSOURCEPRIORITY_ATTRNAME);
-					if (priorityAttribute == null || priorityAttribute.getValue() == null) {
-						//Set lowest priority
-					} else {
-						priority = priorityAttribute.valueAsInteger();
-					}
-
+					priority = getAndSetLowestPriority(sess, user, ues);
 					if (priority < actualPriority) {
-						Attribute overwriteUserAttributeList_attr = getPerunBl().getAttributesManagerBl().getAttribute(sess, ues, UsersManager.USEREXTSOURCEOVERWRITEUSERATTRIBUTELIST_ATTRNAME);
-						if (actualOverwriteUserAttributeList_attr != null && actualOverwriteUserAttributeList_attr.getValue() != null) {
-							List<String> overwriteUserAttributeList = actualOverwriteUserAttributeList_attr.valueAsList();
-							if (!overwriteUserAttributeList.isEmpty()) {
-								for (String attrName: actualOverwriteUserAttributeList) {
-									if (overwriteUserAttributeList.contains(attrName)) {
-										actualOverwriteUserAttributeList.remove(attrName);
-									}
-								}
+						List<String> overwriteUserAttributeList = getOverwriteAttributeList(sess, ues);
+						for (String attrName: overwriteUserAttributeList) {
+							if (overwriteUserAttributeList.contains(attrName)) {
+								actualOverwriteUserAttributeList.remove(attrName);
 							}
 						}
 					}
@@ -2294,34 +2261,13 @@ public class UsersManagerBlImpl implements UsersManagerBl {
 	}
 
 	private boolean hasHighestPriority(PerunSession sess, User user, UserExtSource userExtSource) {
-		int actualPriority;
 		try {
-			Attribute actualPriorityAttribute = getPerunBl().getAttributesManagerBl().getAttribute(sess, userExtSource, UsersManager.USEREXTSOURCEPRIORITY_ATTRNAME);
-			if (actualPriorityAttribute == null || actualPriorityAttribute.getValue() == null ) {
-				//Set lowest priority
-				actualPriority = 0;
-			} else {
-				actualPriority = actualPriorityAttribute.valueAsInteger();
-			}
+			int actualPriority = getAndSetLowestPriority(sess, user, userExtSource);
 
 			List<UserExtSource> userExtSourceList = getPerunBl().getUsersManagerBl().getUserExtSources(sess,user);
 			for (UserExtSource ues : userExtSourceList) {
-				int priority = 0;
-				try {
-					Attribute priorityAttribute = getPerunBl().getAttributesManagerBl().getAttribute(sess, ues, UsersManager.USEREXTSOURCEPRIORITY_ATTRNAME);
-					if (priorityAttribute == null || priorityAttribute.getValue() == null ) {
-						//Set lowest priority
-					} else {
-						priority = priorityAttribute.valueAsInteger();
-					}
-
-					if (priority < actualPriority) {
-						return false;
-					}
-				} catch (WrongAttributeAssignmentException e) {
-					e.printStackTrace();
-				} catch (AttributeNotExistsException e) {
-					e.printStackTrace();
+				if (getAndSetLowestPriority(sess, user, ues) < actualPriority) {
+					return false;
 				}
 			}
 
@@ -2331,28 +2277,68 @@ public class UsersManagerBlImpl implements UsersManagerBl {
 			e.printStackTrace();
 		} catch (AttributeNotExistsException e) {
 			e.printStackTrace();
+		} catch (WrongAttributeValueException e) {
+			e.printStackTrace();
+		} catch (WrongReferenceAttributeValueException e) {
+			e.printStackTrace();
 		}
 		return true;
 	}
 
-	private int getLowestPriority(PerunSession sess, User user) throws InternalErrorException {
+
+
+	private List<String> getOverwriteAttributeList(PerunSession sess, UserExtSource userExtSource) throws WrongAttributeAssignmentException, InternalErrorException, AttributeNotExistsException {
+		List<String> overwriteUserAttributeList;
+		Attribute overwriteUserAttributeList_attr = getPerunBl().getAttributesManagerBl().getAttribute(sess, userExtSource, UsersManager.USEREXTSOURCEOVERWRITEUSERATTRIBUTELIST_ATTRNAME);
+		if (overwriteUserAttributeList_attr != null && overwriteUserAttributeList_attr.getValue() != null) {
+			overwriteUserAttributeList = overwriteUserAttributeList_attr.valueAsList();
+			if (!overwriteUserAttributeList.isEmpty()) {
+				return overwriteUserAttributeList;
+			}
+		}
+		return new ArrayList<>();
+	}
+
+	private int getUserExtSourcePriority(PerunSession sess, UserExtSource userExtSource) {
+		try {
+			Attribute priorityAttribute = getPerunBl().getAttributesManagerBl().getAttribute(sess, userExtSource, UsersManager.USEREXTSOURCEPRIORITY_ATTRNAME);
+			if (priorityAttribute != null && priorityAttribute.getValue() != null ) {
+				return priorityAttribute.valueAsInteger();
+			}
+		} catch (WrongAttributeAssignmentException e) {
+			e.printStackTrace();
+		} catch (InternalErrorException e) {
+			e.printStackTrace();
+		} catch (AttributeNotExistsException e) {
+			e.printStackTrace();
+		}
+		return 0;
+	}
+
+	private int getAndSetLowestPriority(PerunSession sess, User user, UserExtSource userExtSource) throws WrongAttributeAssignmentException, WrongAttributeValueException, WrongReferenceAttributeValueException, InternalErrorException, AttributeNotExistsException {
+		int priority;
+		Attribute priorityAttribute = getPerunBl().getAttributesManagerBl().getAttribute(sess, userExtSource, UsersManager.USEREXTSOURCEPRIORITY_ATTRNAME);
+		if (priorityAttribute == null || priorityAttribute.getValue() == null ) {
+			priority = getNewLowestPriority(sess, user);
+			priorityAttribute.setValue(priority);
+			getPerunBl().getAttributesManagerBl().setAttribute(sess, userExtSource, priorityAttribute);
+		} else {
+			priority = priorityAttribute.valueAsInteger();
+		}
+		return priority;
+	}
+
+	private int getNewLowestPriority(PerunSession sess, User user) throws InternalErrorException {
 		int lowestPriority = 0;
 		List<UserExtSource> userExtSourceList = getPerunBl().getUsersManagerBl().getUserExtSources(sess,user);
 
 		for (UserExtSource userExtSource : userExtSourceList) {
-			int priority = 0;
-			try {
-				Attribute priorityAttribute = getPerunBl().getAttributesManagerBl().getAttribute(sess, userExtSource, UsersManager.USEREXTSOURCEPRIORITY_ATTRNAME);
-				if (priorityAttribute != null && priorityAttribute.getValue() != null && (priority = priorityAttribute.valueAsInteger()) > lowestPriority) {
-					lowestPriority = priority;
-				}
-			} catch (WrongAttributeAssignmentException e) {
-				e.printStackTrace();
-			} catch (AttributeNotExistsException e) {
-				e.printStackTrace();
+			int priority = getUserExtSourcePriority(sess, userExtSource);
+			if (priority > lowestPriority) {
+				lowestPriority = priority;
 			}
 		}
-		return lowestPriority;
+		return lowestPriority + 1;
 	}
 
 	public void addCandidateToPool(Candidate candidate) throws InternalErrorException {
@@ -2514,8 +2500,6 @@ public class UsersManagerBlImpl implements UsersManagerBl {
 									}
 								} catch (AttributeValueException e) {
 									log.error("Problem with store new attribute value {} of attribute {} for userId {} ." , userAttribute.getValue(), userAttribute.getName(), richUser.getId());
-									// There is a problem with attribute value, so set INVALID status for the member
-									//getPerunBl().getMembersManagerBl().invalidateMember(sess, richMember);
 								} catch (WrongAttributeAssignmentException e) {
 									throw new ConsistencyErrorException(e);
 								}
