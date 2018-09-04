@@ -556,14 +556,7 @@ public class ExtSourcesManagerBlImpl implements ExtSourcesManagerBl {
 			Map<String, String> attributes = extSourcesManagerImpl.getAttributes(extSource);
 			String[] synchronizationTimes = attributes.get(ExtSourcesManager.USERSYNCHROTIMES_ATTRNAME).split(",");
 			String time = localDateTime.format(DateTimeFormatter.ofPattern("HH:mm"));
-			String synchronizationTimesString = "";
 			for (String synchronizationTime : synchronizationTimes) {
-				synchronizationTimesString += synchronizationTime + " ";
-			}
-			log.info("ExtSourceManagerBlImpl:  SynchronizationTimes- {}", synchronizationTimesString);
-			log.info("ExtSourceManagerBlImpl:  ActualTime- {}", time );
-			for (String synchronizationTime : synchronizationTimes) {
-				log.info("ExtSourceManagerBlImpl:  SynchronizationTime- {}", synchronizationTime);
 				if (synchronizationTime.matches(pattern) && synchronizationTime.equals(time)) {
 					if (poolOfExtSourcesToBeSynchronized.putJobIfAbsent(extSource, false)) {
 						numberOfNewlyAddedExtSource++;

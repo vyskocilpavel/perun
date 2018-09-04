@@ -2210,7 +2210,7 @@ public class UsersManagerBlImpl implements UsersManagerBl {
 
 					//Store or updated overwriteAttributeList
 					Attribute overwriteAttributeListAttr = getPerunBl().getAttributesManagerBl().getAttribute(sess, uesFromPerun, UsersManager.USEREXTSOURCEOVERWRITEUSERATTRIBUTELIST_ATTRNAME);
-					overwriteAttributeListAttr.setValue(overwriteUserAttributeList);
+					overwriteAttributeListAttr.setValue(new ArrayList<>(overwriteUserAttributeList));
 					getPerunBl().getAttributesManagerBl().setAttribute(sess, uesFromPerun, overwriteAttributeListAttr);
 				} catch (WrongAttributeValueException e) {
 					e.printStackTrace();
