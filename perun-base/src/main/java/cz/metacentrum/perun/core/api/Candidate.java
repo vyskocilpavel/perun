@@ -13,6 +13,7 @@ import java.util.Set;
 import cz.metacentrum.perun.core.api.BeansUtils;
 import org.codehaus.jackson.JsonNode;
 import org.codehaus.jackson.map.util.JSONPObject;
+import org.json.JSONArray;
 import org.json.JSONObject;
 
 /**
@@ -175,9 +176,13 @@ public class Candidate extends User {
 			+ attrNew).append("', additionalUserExtSources='").append(additionalUserExtSources).append("']").toString();
 	}
 
-	public JSONObject convertAttributesToJSON() {
-		JSONObject candidateAttributes = new JSONObject();
-
+	public JSONArray convertAttributesToJSON() {
+		JSONArray candidateAttributes = new JSONArray();
+		for (Map.Entry<String, String> attribute : attributes.entrySet()) {
+			JSONObject object = new JSONObject();
+			object.append(attribute.getKey(), attribute.getValue());
+			candidateAttributes.put(object);
+		}
 		return candidateAttributes;
 	}
 

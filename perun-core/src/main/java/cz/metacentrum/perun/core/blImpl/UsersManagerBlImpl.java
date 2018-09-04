@@ -2169,6 +2169,11 @@ public class UsersManagerBlImpl implements UsersManagerBl {
 					currentUserExtSource.setLoa(userExtSource.getLoa());
 					getPerunBl().getUsersManagerBl().updateUserExtSource(sess, currentUserExtSource);
 
+					//Update Stored attributes
+					Attribute attribute = getPerunBl().getAttributesManagerBl().getAttribute(sess, currentUserExtSource, UsersManager.USEREXTSOURCESTOREDATTRIBUTES_ATTRNAME);
+					attribute.setValue(candidate.convertAttributesToJSON().toString());
+					getPerunBl().getAttributesManagerBl().setAttribute(sess, currentUserExtSource, attribute);
+
 				} catch (UserExtSourceNotExistsException e) {
 					// Create userExtSource
 					try {
@@ -2185,6 +2190,10 @@ public class UsersManagerBlImpl implements UsersManagerBl {
 					}
 				} catch (UserExtSourceExistsException e1) {
 					throw new ConsistencyErrorException("Updating login of userExtSource to value which already exists: " + userExtSource);
+				} catch (WrongAttributeValueException e) {
+					e.printStackTrace();
+				} catch (WrongReferenceAttributeValueException e) {
+					e.printStackTrace();
 				}
 			}
 		}
