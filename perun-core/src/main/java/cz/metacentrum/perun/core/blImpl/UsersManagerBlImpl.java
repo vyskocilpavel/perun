@@ -15,6 +15,8 @@ import cz.metacentrum.perun.core.api.exceptions.IllegalArgumentException;
 import cz.metacentrum.perun.core.api.exceptions.rt.*;
 import cz.metacentrum.perun.core.bl.AttributesManagerBl;
 import cz.metacentrum.perun.core.implApi.modules.pwdmgr.PasswordManagerModule;
+import org.json.JSONArray;
+import org.json.JSONObject;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -24,6 +26,7 @@ import cz.metacentrum.perun.core.impl.PerunSessionImpl;
 import cz.metacentrum.perun.core.impl.Utils;
 import cz.metacentrum.perun.core.implApi.UsersManagerImplApi;
 import cz.metacentrum.perun.core.implApi.modules.attributes.UserVirtualAttributesModuleImplApi;
+import org.w3c.dom.Attr;
 
 /**
  * UsersManager business logic
@@ -480,9 +483,21 @@ public class UsersManagerBlImpl implements UsersManagerBl {
 		return afterUpdatingUser;
 	}
 
-	public UserExtSource updateUserExtSource(PerunSession sess, UserExtSource userExtSource) throws InternalErrorException, UserExtSourceExistsException {
+	public UserExtSource updateUserExtSource(PerunSession sess, UserExtSource userExtSource) throws InternalErrorException, UserExtSourceExistsException, UserNotExistsException {
 		getPerunBl().getAuditer().log(sess, "{} updated.", userExtSource);
-		return getUsersManagerImpl().updateUserExtSource(sess, userExtSource);
+		UserExtSource updatedUserExtSource = getUsersManagerImpl().updateUserExtSource(sess, userExtSource);
+		try {
+			updateUserAttributesAfterUserExtSourceChanged(sess, getPerunBl().getUsersManagerBl().getUserByUserExtSource(sess,userExtSource));
+		} catch (WrongAttributeValueException e) {
+			e.printStackTrace();
+		} catch (WrongAttributeAssignmentException e) {
+			e.printStackTrace();
+		} catch (AttributeNotExistsException e) {
+			e.printStackTrace();
+		} catch (WrongReferenceAttributeValueException e) {
+			e.printStackTrace();
+		}
+		return updatedUserExtSource;
 	}
 
 	public void updateUserExtSourceLastAccess(PerunSession sess, UserExtSource userExtSource) throws InternalErrorException {
@@ -2286,12 +2301,18 @@ public class UsersManagerBlImpl implements UsersManagerBl {
 	}
 
 
+	private String getUserExtSourceStoredAttributesAttr (PerunSession sess, UserExtSource userExtSource) throws WrongAttributeAssignmentException, InternalErrorException, AttributeNotExistsException {
+		Attribute UserExtSourceStoredAttributesAttr = getPerunBl().getAttributesManagerBl().getAttribute(sess, userExtSource, UsersManager.USEREXTSOURCESTOREDATTRIBUTES_ATTRNAME);
+		if (UserExtSourceStoredAttributesAttr != null && UserExtSourceStoredAttributesAttr.getValue() != null) {
+			String UserExtSourceStoredAttributes = UserExtSourceStoredAttributesAttr.valueAsString();
+		}
+		return null;
+	}
 
 	private List<String> getOverwriteAttributeList(PerunSession sess, UserExtSource userExtSource) throws WrongAttributeAssignmentException, InternalErrorException, AttributeNotExistsException {
-		List<String> overwriteUserAttributeList;
 		Attribute overwriteUserAttributeList_attr = getPerunBl().getAttributesManagerBl().getAttribute(sess, userExtSource, UsersManager.USEREXTSOURCEOVERWRITEUSERATTRIBUTELIST_ATTRNAME);
 		if (overwriteUserAttributeList_attr != null && overwriteUserAttributeList_attr.getValue() != null) {
-			overwriteUserAttributeList = overwriteUserAttributeList_attr.valueAsList();
+			List<String> overwriteUserAttributeList = overwriteUserAttributeList_attr.valueAsList();
 			if (!overwriteUserAttributeList.isEmpty()) {
 				return overwriteUserAttributeList;
 			}
@@ -2474,6 +2495,47 @@ public class UsersManagerBlImpl implements UsersManagerBl {
 				}
 			}
 		}
+	}
+
+	private Attribute getUserAttributeValueFromExtSourceWithHighestPriority(PerunSession sess, User user, String attrName) throws WrongAttributeAssignmentException, InternalErrorException, AttributeNotExistsException {
+		int highestPriority = Integer.MAX_VALUE;
+		Attribute attribute = getPerunBl().getAttributesManagerBl().getAttribute(sess, user, attrName);
+
+		for (UserExtSource userExtSource: getPerunBl().getUsersManagerBl().getUserExtSources(sess, user)) {
+			int priority = getUserExtSourcePriority(sess, userExtSource);
+			if ( priority < highestPriority) {
+				JSONObject storedAttributes = new JSONObject(getUserExtSourceStoredAttributesAttr(sess, userExtSource));
+				if (storedAttributes.get(attrName) != null) {
+					highestPriority = priority;
+					attribute.setValue(storedAttributes.get(attrName));
+					/*
+					if (attribute.getType().equals("java.lang.Integer")) {
+						attribute.setValue(storedAttributes.getInt(attrName));
+					} else if (attribute.getType().equals("java.lang.Boolean")) {
+						attribute.setValue(storedAttributes.getBoolean(attrName));
+					} else if (attribute.getType().equals("java.lang.String")) {
+						attribute.setValue(storedAttributes.getString(attrName));
+					} else if (attribute.getType().equals("java.util.ArrayList")) {
+						attribute.setValue(storedAttributes.get(attrName));
+					} else if (attribute.getType().equals("java.util.LinkedHashMap")) {
+						attribute.setValue(storedAttributes.get(attrName));
+					}*/
+				}
+			}
+		}
+		return attribute;
+	}
+
+	private void updateUserAttributesAfterUserExtSourceChanged(PerunSession sess, User user) throws WrongAttributeAssignmentException, WrongAttributeValueException, WrongReferenceAttributeValueException, InternalErrorException, AttributeNotExistsException, UserNotExistsException {
+		RichUser richUser = getRichUserWithAttributes(sess, user);
+		for (Attribute userAttribute : richUser.getUserAttributes()) {
+			Attribute attribute = getUserAttributeValueFromExtSourceWithHighestPriority(sess, user, userAttribute.getName());
+			if (userAttribute.getValue() != attribute.getValue()) {
+				getPerunBl().getAttributesManagerBl().setAttribute(sess, user, attribute);
+			}
+		}
+
+
 	}
 
 //Dokončit

@@ -176,12 +176,10 @@ public class Candidate extends User {
 			+ attrNew).append("', additionalUserExtSources='").append(additionalUserExtSources).append("']").toString();
 	}
 
-	public JSONArray convertAttributesToJSON() {
-		JSONArray candidateAttributes = new JSONArray();
+	public JSONObject convertAttributesToJSON() {
+		JSONObject candidateAttributes = new JSONObject();
 		for (Map.Entry<String, String> attribute : attributes.entrySet()) {
-			JSONObject object = new JSONObject();
-			object.append(attribute.getKey(), attribute.getValue());
-			candidateAttributes.put(object);
+			candidateAttributes.append(attribute.getKey(), attribute.getValue());
 		}
 		return candidateAttributes;
 	}
