@@ -17,6 +17,7 @@ public interface UsersManager {
 
 	String USEREXTSOURCEPRIORITY_ATTRNAME = AttributesManager.NS_UES_ATTR_DEF + ":priority";
 	String USEREXTSOURCESTOREDATTRIBUTES_ATTRNAME = AttributesManager.NS_UES_ATTR_DEF + ":storedAttributes";
+	String USEREXTSOURCEOVERWRITEUSERATTRIBUTELIST_ATTRNAME = AttributesManager.NS_UES_ATTR_DEF + ":overwriteUserAttributeList";
 
 	/**
 	 * Returns user by his login in external source and external source.

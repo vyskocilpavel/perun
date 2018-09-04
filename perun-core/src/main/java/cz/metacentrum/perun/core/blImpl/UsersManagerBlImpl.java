@@ -2157,9 +2157,6 @@ public class UsersManagerBlImpl implements UsersManagerBl {
 			updateUserCoreAttributes(sess, user, candidate, overwriteUserAttributeList);
 		}
 
-		// Update user attributes
-		updateUserAttributes(sess, user, candidate, overwriteUserAttributeList);
-
 		// Assign missing userExtSource and update LoA
 		if (candidate.getUserExtSources() != null) {
 			for (UserExtSource userExtSource : candidate.getUserExtSources()) {
@@ -2169,18 +2166,35 @@ public class UsersManagerBlImpl implements UsersManagerBl {
 					currentUserExtSource.setLoa(userExtSource.getLoa());
 					getPerunBl().getUsersManagerBl().updateUserExtSource(sess, currentUserExtSource);
 
-					//Update Stored attributes
-					Attribute attribute = getPerunBl().getAttributesManagerBl().getAttribute(sess, currentUserExtSource, UsersManager.USEREXTSOURCESTOREDATTRIBUTES_ATTRNAME);
-					attribute.setValue(candidate.convertAttributesToJSON().toString());
-					getPerunBl().getAttributesManagerBl().setAttribute(sess, currentUserExtSource, attribute);
+					//Store or update Stored attributes
+					Attribute userExtSourceStoredAttributesAttr = getPerunBl().getAttributesManagerBl().getAttribute(sess, currentUserExtSource, UsersManager.USEREXTSOURCESTOREDATTRIBUTES_ATTRNAME);
+					userExtSourceStoredAttributesAttr.setValue(candidate.convertAttributesToJSON().toString());
+					getPerunBl().getAttributesManagerBl().setAttribute(sess, currentUserExtSource, userExtSourceStoredAttributesAttr);
+
+					//Store or updated overwriteAttributeList
+					Attribute overwriteAttributeListAttr = getPerunBl().getAttributesManagerBl().getAttribute(sess, currentUserExtSource, UsersManager.USEREXTSOURCEOVERWRITEUSERATTRIBUTELIST_ATTRNAME);
+					overwriteAttributeListAttr.setValue(overwriteUserAttributeList);
+					getPerunBl().getAttributesManagerBl().setAttribute(sess, currentUserExtSource, overwriteAttributeListAttr);
 
 				} catch (UserExtSourceNotExistsException e) {
 					// Create userExtSource
 					try {
 						UserExtSource createdUserExtSource = getPerunBl().getUsersManagerBl().addUserExtSource(sess, user, userExtSource);
+
+						// Store priority for UserExtSource
 						Attribute priorityAttribute = getPerunBl().getAttributesManagerBl().getAttribute(sess,createdUserExtSource, UsersManager.USEREXTSOURCEPRIORITY_ATTRNAME);
-						priorityAttribute.setValue(getHighestPriority(sess, user) + 1);
+						priorityAttribute.setValue(getLowestPriority(sess, user) + 1);
 						getPerunBl().getAttributesManagerBl().setAttribute(sess, createdUserExtSource, priorityAttribute);
+
+						//Store or update Stored attributes
+						Attribute userExtSourceStoredAttributesAttr = getPerunBl().getAttributesManagerBl().getAttribute(sess, createdUserExtSource, UsersManager.USEREXTSOURCESTOREDATTRIBUTES_ATTRNAME);
+						userExtSourceStoredAttributesAttr.setValue(candidate.convertAttributesToJSON().toString());
+						getPerunBl().getAttributesManagerBl().setAttribute(sess, createdUserExtSource, userExtSourceStoredAttributesAttr);
+
+						//Store or updated overwriteAttributeList
+						Attribute overwriteAttributeListAttr = getPerunBl().getAttributesManagerBl().getAttribute(sess, createdUserExtSource, UsersManager.USEREXTSOURCEOVERWRITEUSERATTRIBUTELIST_ATTRNAME);
+						overwriteAttributeListAttr.setValue(overwriteUserAttributeList);
+						getPerunBl().getAttributesManagerBl().setAttribute(sess, createdUserExtSource, overwriteAttributeListAttr);
 					} catch (UserExtSourceExistsException e1) {
 						throw new ConsistencyErrorException("Adding userExtSource which already exists: " + userExtSource);
 					} catch (WrongAttributeValueException e1) {
@@ -2197,18 +2211,21 @@ public class UsersManagerBlImpl implements UsersManagerBl {
 				}
 			}
 		}
+
+		// Update user attributes
+		updateUserAttributes(sess, user, candidate, overwriteUserAttributeList);
 	}
 
-	private int getHighestPriority(PerunSession sess, User user) throws InternalErrorException {
-		int highestPriority = 0;
+	private int getLowestPriority(PerunSession sess, User user) throws InternalErrorException {
+		int lowestPriority = 0;
 		List<UserExtSource> userExtSourceList = getPerunBl().getUsersManagerBl().getUserExtSources(sess,user);
 
 		for (UserExtSource userExtSource : userExtSourceList) {
 			int priority = 0;
 			try {
 				Attribute priorityAttribute = getPerunBl().getAttributesManagerBl().getAttribute(sess, userExtSource, UsersManager.USEREXTSOURCEPRIORITY_ATTRNAME);
-				if (priorityAttribute != null && priorityAttribute.getValue() != null && (priority = priorityAttribute.valueAsInteger()) > highestPriority) {
-					highestPriority = priority;
+				if (priorityAttribute != null && priorityAttribute.getValue() != null && (priority = priorityAttribute.valueAsInteger()) > lowestPriority) {
+					lowestPriority = priority;
 				}
 			} catch (WrongAttributeAssignmentException e) {
 				e.printStackTrace();
@@ -2216,7 +2233,7 @@ public class UsersManagerBlImpl implements UsersManagerBl {
 				e.printStackTrace();
 			}
 		}
-		return highestPriority;
+		return lowestPriority;
 	}
 
 	public void addCandidateToPool(Candidate candidate) throws InternalErrorException {
@@ -2358,14 +2375,19 @@ public class UsersManagerBlImpl implements UsersManagerBl {
 	private void updateUserAttributes(PerunSession sess, User user, Candidate candidate, List<String> overwriteUserAttributesList) throws InternalErrorException, AttributeNotExistsException, WrongAttributeAssignmentException {
 		for (String attributeName : candidate.getAttributes().keySet()) {
 			if(attributeName.startsWith(AttributesManager.NS_USER_ATTR)) {
-				boolean attributeFound = false;
+				boolean overwriteAttribute = false;
 				RichUser richUser;
 
 				try {
 					richUser = getRichUserWithAttributes(sess, user);
 					for (Attribute userAttribute: richUser.getUserAttributes()) {
 						if(userAttribute.getName().equals(attributeName)) {
-							attributeFound = true;
+							if (userAttribute.getValue().equals(null)) {
+								//First set of attribute
+								overwriteAttribute = true;
+							} else {
+
+							}
 							Object subjectAttributeValue = getPerunBl().getAttributesManagerBl().stringToAttributeValue(candidate.getAttributes().get(attributeName), userAttribute.getType());
 							if (!Objects.equals(userAttribute.getValue(), subjectAttributeValue)) {
 								log.trace("User synchronization: value of the attribute {} for userId {} changed. Original value {}, new value {}.",
@@ -2390,6 +2412,7 @@ public class UsersManagerBlImpl implements UsersManagerBl {
 							break;
 						}
 					}
+					/*
 					//user has not set this attribute so set it now if
 					if(!attributeFound) {
 						// FIXME - this whole section probably can be removed. Previously null attributes were not retrieved with member
@@ -2406,6 +2429,7 @@ public class UsersManagerBlImpl implements UsersManagerBl {
 //					getPerunBl().getMembersManagerBl().invalidateMember(sess, richMember);
 						}
 					}
+					*/
 				} catch (UserNotExistsException e) {
 					e.printStackTrace();
 				}
