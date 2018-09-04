@@ -2192,7 +2192,7 @@ public class UsersManagerBlImpl implements UsersManagerBl {
 
 					//Store or updated overwriteAttributeList
 					Attribute overwriteAttributeListAttr = getPerunBl().getAttributesManagerBl().getAttribute(sess, currentUserExtSource, UsersManager.USEREXTSOURCEOVERWRITEUSERATTRIBUTELIST_ATTRNAME);
-					overwriteAttributeListAttr.setValue(overwriteUserAttributeList.toArray());
+					overwriteAttributeListAttr.setValue(overwriteUserAttributeList.toString());
 					getPerunBl().getAttributesManagerBl().setAttribute(sess, currentUserExtSource, overwriteAttributeListAttr);
 
 				} catch (UserExtSourceNotExistsException e) {
@@ -2212,7 +2212,7 @@ public class UsersManagerBlImpl implements UsersManagerBl {
 
 						//Store or updated overwriteAttributeList
 						Attribute overwriteAttributeListAttr = getPerunBl().getAttributesManagerBl().getAttribute(sess, createdUserExtSource, UsersManager.USEREXTSOURCEOVERWRITEUSERATTRIBUTELIST_ATTRNAME);
-						overwriteAttributeListAttr.setValue(overwriteUserAttributeList.toArray());
+						overwriteAttributeListAttr.setValue(overwriteUserAttributeList.toString());
 						getPerunBl().getAttributesManagerBl().setAttribute(sess, createdUserExtSource, overwriteAttributeListAttr);
 					} catch (UserExtSourceExistsException e1) {
 						throw new ConsistencyErrorException("Adding userExtSource which already exists: " + userExtSource);
