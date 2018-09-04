@@ -73,7 +73,7 @@ public class UsersManagerBlImpl implements UsersManagerBl {
 
 	// FIXME do this in IMPL
 	public User getUserByUserExtSources(PerunSession sess, List<UserExtSource> userExtSources) throws InternalErrorException, UserNotExistsException {
-		for (UserExtSource ues: userExtSources) {
+		for (UserExtSource ues : userExtSources) {
 			try {
 				return getUsersManagerImpl().getUserByUserExtSource(sess, ues);
 			} catch (UserNotExistsException e) {
@@ -94,29 +94,35 @@ public class UsersManagerBlImpl implements UsersManagerBl {
 	}
 
 	public List<User> getUsersBySpecificUser(PerunSession sess, User specificUser) throws InternalErrorException {
-		if(specificUser.isServiceUser() && specificUser.isSponsoredUser()) throw new InternalErrorException("We are not support specific and sponsored users together yet.");
-		if(specificUser.getMajorSpecificType().equals(SpecificUserType.NORMAL)) throw new InternalErrorException("Incorrect type of specification for specific user!" + specificUser);
+		if (specificUser.isServiceUser() && specificUser.isSponsoredUser())
+			throw new InternalErrorException("We are not support specific and sponsored users together yet.");
+		if (specificUser.getMajorSpecificType().equals(SpecificUserType.NORMAL))
+			throw new InternalErrorException("Incorrect type of specification for specific user!" + specificUser);
 		return getUsersManagerImpl().getUsersBySpecificUser(sess, specificUser);
 	}
 
 	public void removeSpecificUserOwner(PerunSession sess, User user, User specificUser) throws InternalErrorException, RelationNotExistsException, SpecificUserMustHaveOwnerException, SpecificUserOwnerAlreadyRemovedException {
-		if(specificUser.isServiceUser() && specificUser.isSponsoredUser()) throw new InternalErrorException("We are not support specific and sponsored users together yet.");
-		if(specificUser.getMajorSpecificType().equals(SpecificUserType.NORMAL)) throw new InternalErrorException("Incorrect type of specification for specific user!" + specificUser);
-		if (user.getMajorSpecificType().equals(SpecificUserType.SERVICE)) throw new InternalErrorException("Service user can`t own another account (service or guest)!" + user);
+		if (specificUser.isServiceUser() && specificUser.isSponsoredUser())
+			throw new InternalErrorException("We are not support specific and sponsored users together yet.");
+		if (specificUser.getMajorSpecificType().equals(SpecificUserType.NORMAL))
+			throw new InternalErrorException("Incorrect type of specification for specific user!" + specificUser);
+		if (user.getMajorSpecificType().equals(SpecificUserType.SERVICE))
+			throw new InternalErrorException("Service user can`t own another account (service or guest)!" + user);
 
 		List<User> specificUserOwners = this.getUsersBySpecificUser(sess, specificUser);
-		if(!specificUserOwners.remove(user)) throw new RelationNotExistsException("User is not the active owner of the specificUser.");
+		if (!specificUserOwners.remove(user))
+			throw new RelationNotExistsException("User is not the active owner of the specificUser.");
 
-		if(!getUsersManagerImpl().specificUserOwnershipExists(sess, user, specificUser)) {
+		if (!getUsersManagerImpl().specificUserOwnershipExists(sess, user, specificUser)) {
 			throw new RelationNotExistsException("User has no relationship to specificUser.");
 		}
 
 		try {
 			// refresh authz for sponsors
-			if(specificUser.isSponsoredUser()) AuthzResolverBlImpl.unsetRole(sess, user, specificUser, Role.SPONSOR);
+			if (specificUser.isSponsoredUser()) AuthzResolverBlImpl.unsetRole(sess, user, specificUser, Role.SPONSOR);
 			// refresh authz for service user owners
-			if(specificUser.isServiceUser() && sess.getPerunPrincipal() != null) {
-				if(user.getId() == sess.getPerunPrincipal().getUserId()) {
+			if (specificUser.isServiceUser() && sess.getPerunPrincipal() != null) {
+				if (user.getId() == sess.getPerunPrincipal().getUserId()) {
 					AuthzResolverBlImpl.refreshAuthz(sess);
 				}
 			}
@@ -129,13 +135,17 @@ public class UsersManagerBlImpl implements UsersManagerBl {
 	}
 
 	public void addSpecificUserOwner(PerunSession sess, User user, User specificUser) throws InternalErrorException, RelationExistsException {
-		if(specificUser.isServiceUser() && specificUser.isSponsoredUser()) throw new InternalErrorException("We are not support specific and sponsored users together yet.");
-		if(specificUser.getMajorSpecificType().equals(SpecificUserType.NORMAL)) throw new InternalErrorException("Incorrect type of specification for specific user!" + specificUser);
-		if (user.getMajorSpecificType().equals(SpecificUserType.SERVICE)) throw new InternalErrorException("Service user can`t own another account (service or guest)!" + user);
+		if (specificUser.isServiceUser() && specificUser.isSponsoredUser())
+			throw new InternalErrorException("We are not support specific and sponsored users together yet.");
+		if (specificUser.getMajorSpecificType().equals(SpecificUserType.NORMAL))
+			throw new InternalErrorException("Incorrect type of specification for specific user!" + specificUser);
+		if (user.getMajorSpecificType().equals(SpecificUserType.SERVICE))
+			throw new InternalErrorException("Service user can`t own another account (service or guest)!" + user);
 		List<User> specificUserOwners = this.getUsersBySpecificUser(sess, specificUser);
-		if(specificUserOwners.remove(user)) throw new RelationExistsException("User is already the active owner of specific user.");
+		if (specificUserOwners.remove(user))
+			throw new RelationExistsException("User is already the active owner of specific user.");
 
-		if(getUsersManagerImpl().specificUserOwnershipExists(sess, user, specificUser)) {
+		if (getUsersManagerImpl().specificUserOwnershipExists(sess, user, specificUser)) {
 			getUsersManagerImpl().enableOwnership(sess, user, specificUser);
 			getPerunBl().getAuditer().log(sess, "{} ownership was enabled for specificUser {}.", user, specificUser);
 		} else {
@@ -145,10 +155,10 @@ public class UsersManagerBlImpl implements UsersManagerBl {
 
 		try {
 			// refresh authz for sponsors
-			if(specificUser.isSponsoredUser()) AuthzResolverBlImpl.setRole(sess, user, specificUser, Role.SPONSOR);
+			if (specificUser.isSponsoredUser()) AuthzResolverBlImpl.setRole(sess, user, specificUser, Role.SPONSOR);
 			// refresh authz for service user owners
-			if(specificUser.isServiceUser() && sess.getPerunPrincipal() != null) {
-				if(user.getId() == sess.getPerunPrincipal().getUserId()) {
+			if (specificUser.isServiceUser() && sess.getPerunPrincipal() != null) {
+				if (user.getId() == sess.getPerunPrincipal().getUserId()) {
 					AuthzResolverBlImpl.refreshAuthz(sess);
 				}
 			}
@@ -158,8 +168,10 @@ public class UsersManagerBlImpl implements UsersManagerBl {
 	}
 
 	public boolean specificUserOwnershipExists(PerunSession sess, User user, User specificUser) throws InternalErrorException {
-		if(specificUser.isServiceUser() && specificUser.isSponsoredUser()) throw new InternalErrorException("We are not support specific and sponsored users together yet.");
-		if(specificUser.getMajorSpecificType().equals(SpecificUserType.NORMAL)) throw new InternalErrorException("Incorrect type of specification for specific user!" + specificUser);
+		if (specificUser.isServiceUser() && specificUser.isSponsoredUser())
+			throw new InternalErrorException("We are not support specific and sponsored users together yet.");
+		if (specificUser.getMajorSpecificType().equals(SpecificUserType.NORMAL))
+			throw new InternalErrorException("Incorrect type of specification for specific user!" + specificUser);
 		return getUsersManagerImpl().specificUserOwnershipExists(sess, user, specificUser);
 	}
 
@@ -206,14 +218,14 @@ public class UsersManagerBlImpl implements UsersManagerBl {
 		List<User> users = new ArrayList<User>();
 		users.add(user);
 		List<RichUser> richUsers = this.convertUsersToRichUsers(sess, users);
-		List<RichUser> richUsersWithAttributes =  this.convertRichUsersToRichUsersWithAttributes(sess, richUsers);
+		List<RichUser> richUsersWithAttributes = this.convertRichUsersToRichUsersWithAttributes(sess, richUsers);
 		return richUsersWithAttributes.get(0);
 	}
 
 	public List<RichUser> convertUsersToRichUsers(PerunSession sess, List<User> users) throws InternalErrorException {
 		List<RichUser> richUsers = new ArrayList<RichUser>();
 
-		for (User user: users) {
+		for (User user : users) {
 			List<UserExtSource> userExtSources = getPerunBl().getUsersManagerBl().getUserExtSources(sess, user);
 			RichUser richUser = new RichUser(user, userExtSources);
 			richUsers.add(richUser);
@@ -221,8 +233,8 @@ public class UsersManagerBlImpl implements UsersManagerBl {
 		return richUsers;
 	}
 
-	public List<RichUser> convertRichUsersToRichUsersWithAttributes(PerunSession sess, List<RichUser> richUsers)  throws InternalErrorException, UserNotExistsException {
-		for (RichUser richUser: richUsers) {
+	public List<RichUser> convertRichUsersToRichUsersWithAttributes(PerunSession sess, List<RichUser> richUsers) throws InternalErrorException, UserNotExistsException {
+		for (RichUser richUser : richUsers) {
 			User user = getPerunBl().getUsersManagerBl().getUserById(sess, richUser.getId());
 			List<Attribute> userAttributes = getPerunBl().getAttributesManagerBl().getAttributes(sess, user);
 
@@ -235,7 +247,7 @@ public class UsersManagerBlImpl implements UsersManagerBl {
 	public List<RichUser> getAllRichUsers(PerunSession sess, boolean includedSpecificUsers) throws InternalErrorException, UserNotExistsException {
 		List<User> users = new ArrayList<User>();
 		users.addAll(this.getUsers(sess));
-		if(!includedSpecificUsers) users.removeAll(this.getSpecificUsers(sess));
+		if (!includedSpecificUsers) users.removeAll(this.getSpecificUsers(sess));
 		List<RichUser> richUsers = this.convertUsersToRichUsers(sess, users);
 		return richUsers;
 	}
@@ -243,7 +255,7 @@ public class UsersManagerBlImpl implements UsersManagerBl {
 	public List<RichUser> getAllRichUsersWithAttributes(PerunSession sess, boolean includedSpecificUsers) throws InternalErrorException, UserNotExistsException {
 		List<User> users = new ArrayList<User>();
 		users.addAll(this.getUsers(sess));
-		if(!includedSpecificUsers) users.removeAll(this.getSpecificUsers(sess));
+		if (!includedSpecificUsers) users.removeAll(this.getSpecificUsers(sess));
 		List<RichUser> richUsers = this.convertUsersToRichUsers(sess, users);
 		List<RichUser> richUsersWithAttributes = this.convertRichUsersToRichUsersWithAttributes(sess, richUsers);
 		return richUsersWithAttributes;
@@ -261,18 +273,18 @@ public class UsersManagerBlImpl implements UsersManagerBl {
 		return richUsersWithAttributes;
 	}
 
-	public List<RichUser> convertUsersToRichUsersWithAttributes(PerunSession sess, List<RichUser> richUsers, List<AttributeDefinition> attrsDef)  throws InternalErrorException {
+	public List<RichUser> convertUsersToRichUsersWithAttributes(PerunSession sess, List<RichUser> richUsers, List<AttributeDefinition> attrsDef) throws InternalErrorException {
 		List<AttributeDefinition> usersAttributesDef = new ArrayList<AttributeDefinition>();
 
-		for(AttributeDefinition attrd: attrsDef) {
-			if(attrd.getName().startsWith(AttributesManager.NS_USER_ATTR)) usersAttributesDef.add(attrd);
+		for (AttributeDefinition attrd : attrsDef) {
+			if (attrd.getName().startsWith(AttributesManager.NS_USER_ATTR)) usersAttributesDef.add(attrd);
 			//If not, skip this attribute, it is not user Attribute
 		}
 
-		for (RichUser richUser: richUsers) {
+		for (RichUser richUser : richUsers) {
 			List<Attribute> userAttributes = new ArrayList<Attribute>();
 			List<String> userAttrNames = new ArrayList<String>();
-			for(AttributeDefinition ad: usersAttributesDef) {
+			for (AttributeDefinition ad : usersAttributesDef) {
 				userAttrNames.add(ad.getName());
 			}
 			userAttributes.addAll(getPerunBl().getAttributesManagerBl().getAttributes(sess, richUser, userAttrNames));
@@ -286,18 +298,18 @@ public class UsersManagerBlImpl implements UsersManagerBl {
 	public User createUser(PerunSession sess, User user) throws InternalErrorException {
 
 		// trim input
-		if(user.getFirstName() != null) user.setFirstName(user.getFirstName().trim());
-		if(user.getLastName() != null) user.setLastName(user.getLastName().trim());
-		if(user.getMiddleName() != null) user.setMiddleName(user.getMiddleName().trim());
-		if(user.getTitleBefore() != null) user.setTitleBefore(user.getTitleBefore().trim());
-		if(user.getTitleAfter() != null) user.setTitleAfter(user.getTitleAfter().trim());
+		if (user.getFirstName() != null) user.setFirstName(user.getFirstName().trim());
+		if (user.getLastName() != null) user.setLastName(user.getLastName().trim());
+		if (user.getMiddleName() != null) user.setMiddleName(user.getMiddleName().trim());
+		if (user.getTitleBefore() != null) user.setTitleBefore(user.getTitleBefore().trim());
+		if (user.getTitleAfter() != null) user.setTitleAfter(user.getTitleAfter().trim());
 
 		//Convert empty strings to null
-		if(user.getFirstName() != null && user.getFirstName().isEmpty()) user.setFirstName(null);
-		if(user.getLastName() != null && user.getLastName().isEmpty()) user.setLastName(null);
-		if(user.getMiddleName() != null && user.getMiddleName().isEmpty()) user.setMiddleName(null);
-		if(user.getTitleBefore() != null && user.getTitleBefore().isEmpty()) user.setTitleBefore(null);
-		if(user.getTitleAfter() != null && user.getTitleAfter().isEmpty()) user.setTitleAfter(null);
+		if (user.getFirstName() != null && user.getFirstName().isEmpty()) user.setFirstName(null);
+		if (user.getLastName() != null && user.getLastName().isEmpty()) user.setLastName(null);
+		if (user.getMiddleName() != null && user.getMiddleName().isEmpty()) user.setMiddleName(null);
+		if (user.getTitleBefore() != null && user.getTitleBefore().isEmpty()) user.setTitleBefore(null);
+		if (user.getTitleAfter() != null && user.getTitleAfter().isEmpty()) user.setTitleAfter(null);
 
 		user = getUsersManagerImpl().createUser(sess, user);
 		getPerunBl().getAuditer().log(sess, "{} created.", user);
@@ -307,7 +319,7 @@ public class UsersManagerBlImpl implements UsersManagerBl {
 		try {
 			es = getPerunBl().getExtSourcesManagerBl().getExtSourceByName(sess, ExtSourcesManager.EXTSOURCE_NAME_PERUN);
 		} catch (ExtSourceNotExistsException e1) {
-			throw new ConsistencyErrorException("Default extSource PERUN must exists! It is created in ExtSourcesManagerImpl.init function.",e1);
+			throw new ConsistencyErrorException("Default extSource PERUN must exists! It is created in ExtSourcesManagerImpl.init function.", e1);
 		}
 		UserExtSource ues = new UserExtSource(es, 0, String.valueOf(user.getId()));
 		try {
@@ -328,7 +340,7 @@ public class UsersManagerBlImpl implements UsersManagerBl {
 
 		if (members != null && (members.size() > 0)) {
 			if (forceDelete) {
-				for (Member member: members) {
+				for (Member member : members) {
 					getPerunBl().getMembersManagerBl().deleteMember(sess, member);
 				}
 			} else {
@@ -338,8 +350,8 @@ public class UsersManagerBlImpl implements UsersManagerBl {
 
 		//Remove all information about user on facilities (facilities contacts)
 		List<ContactGroup> userContactGroups = getPerunBl().getFacilitiesManagerBl().getFacilityContactGroups(sess, user);
-		if(!userContactGroups.isEmpty()) {
-			if(forceDelete) {
+		if (!userContactGroups.isEmpty()) {
+			if (forceDelete) {
 				getPerunBl().getFacilitiesManagerBl().removeAllUserContacts(sess, user);
 			} else {
 				throw new RelationExistsException("User has still some facilities contacts: " + userContactGroups);
@@ -366,10 +378,10 @@ public class UsersManagerBlImpl implements UsersManagerBl {
 		getUsersManagerImpl().removeAllPasswordResetRequests(sess, user);
 
 		// get all reserved logins of user
-		List<Pair<String,String>> logins = getUsersManagerImpl().getUsersReservedLogins(user);
+		List<Pair<String, String>> logins = getUsersManagerImpl().getUsersReservedLogins(user);
 
 		// delete them from KDC
-		for (Pair<String,String> login : logins) {
+		for (Pair<String, String> login : logins) {
 			try {
 				// !! left = namespace / right = login
 				this.deletePassword(sess, login.getRight(), login.getLeft());
@@ -391,7 +403,7 @@ public class UsersManagerBlImpl implements UsersManagerBl {
 		// all users applications and submitted data are deleted on cascade when "deleteUser()"
 
 		// Remove all possible passwords associated with logins (stored in attributes)
-		for (Attribute loginAttribute: getPerunBl().getAttributesManagerBl().getLogins(sess, user)) {
+		for (Attribute loginAttribute : getPerunBl().getAttributesManagerBl().getLogins(sess, user)) {
 			try {
 				this.deletePassword(sess, (String) loginAttribute.getValue(), loginAttribute.getFriendlyNameParameter());
 			} catch (LoginNotExistsException e) {
@@ -413,10 +425,10 @@ public class UsersManagerBlImpl implements UsersManagerBl {
 			getPerunBl().getAttributesManagerBl().removeAllAttributes(sess, user);
 			// User-Facilities one
 			getPerunBl().getAttributesManagerBl().removeAllUserFacilityAttributes(sess, user);
-		} catch(WrongAttributeValueException ex) {
+		} catch (WrongAttributeValueException ex) {
 			//All members are deleted => there are no required attribute => all atributes can be removed
 			throw new ConsistencyErrorException(ex);
-		} catch(WrongReferenceAttributeValueException ex) {
+		} catch (WrongReferenceAttributeValueException ex) {
 			//All members are deleted => there are no required attribute => all atributes can be removed
 			throw new ConsistencyErrorException(ex);
 		}
@@ -428,7 +440,7 @@ public class UsersManagerBlImpl implements UsersManagerBl {
 
 		//Remove all users bans
 		List<BanOnFacility> bansOnFacility = getPerunBl().getFacilitiesManagerBl().getBansForUser(sess, user.getId());
-		for(BanOnFacility banOnFacility : bansOnFacility) {
+		for (BanOnFacility banOnFacility : bansOnFacility) {
 			try {
 				getPerunBl().getFacilitiesManagerBl().removeBan(sess, banOnFacility.getId());
 			} catch (BanNotExistsException ex) {
@@ -437,7 +449,7 @@ public class UsersManagerBlImpl implements UsersManagerBl {
 		}
 
 		// Remove all sponsored user authz of his owners
-		if(user.isSponsoredUser()) AuthzResolverBlImpl.removeAllSponsoredUserAuthz(sess, user);
+		if (user.isSponsoredUser()) AuthzResolverBlImpl.removeAllSponsoredUserAuthz(sess, user);
 		// Finally delete the user
 		getUsersManagerImpl().deleteUser(sess, user);
 		getPerunBl().getAuditer().log(sess, "{} deleted.", user);
@@ -451,7 +463,7 @@ public class UsersManagerBlImpl implements UsersManagerBl {
 		User afterUpdatingUser = getUsersManagerImpl().updateUser(sess, user);
 
 		//Log only when something is changed
-		if(!beforeUpdatingUser.equals(afterUpdatingUser)) getPerunBl().getAuditer().log(sess, "{} updated.", user);
+		if (!beforeUpdatingUser.equals(afterUpdatingUser)) getPerunBl().getAuditer().log(sess, "{} updated.", user);
 		return afterUpdatingUser;
 	}
 
@@ -464,7 +476,7 @@ public class UsersManagerBlImpl implements UsersManagerBl {
 
 		//Log only when something is changed
 		// must audit like update user since it changes same object
-		if(!beforeUpdatingUser.equals(afterUpdatingUser)) getPerunBl().getAuditer().log(sess, "{} updated.", user);
+		if (!beforeUpdatingUser.equals(afterUpdatingUser)) getPerunBl().getAuditer().log(sess, "{} updated.", user);
 		return afterUpdatingUser;
 	}
 
@@ -495,7 +507,7 @@ public class UsersManagerBlImpl implements UsersManagerBl {
 
 	public UserExtSource addUserExtSource(PerunSession sess, User user, UserExtSource userExtSource) throws InternalErrorException, UserExtSourceExistsException {
 		// Check if the userExtSource already exists
-		if(usersManagerImpl.userExtSourceExists(sess,userExtSource)) {
+		if (usersManagerImpl.userExtSourceExists(sess, userExtSource)) {
 			throw new UserExtSourceExistsException("UserExtSource " + userExtSource + " already exists.");
 		}
 
@@ -504,8 +516,10 @@ public class UsersManagerBlImpl implements UsersManagerBl {
 			// If extSource of this userExtSource is type of IDP, test uniqueness of login in this extSource type for all users
 			String login = userExtSource.getLogin();
 			List<UserExtSource> userExtSources = getAllUserExtSourcesByTypeAndLogin(sess, ExtSourcesManager.EXTSOURCE_IDP, login);
-			if(userExtSources.size() == 1) throw new InternalErrorException("ExtLogin: " + login + " is already in used for extSourceType: " + ExtSourcesManager.EXTSOURCE_IDP);
-			else if(userExtSources.size() > 1) throw new ConsistencyErrorException("There are " + userExtSources.size() + "   extLogins: " + login + " for  extSourceType: " + ExtSourcesManager.EXTSOURCE_IDP);
+			if (userExtSources.size() == 1)
+				throw new InternalErrorException("ExtLogin: " + login + " is already in used for extSourceType: " + ExtSourcesManager.EXTSOURCE_IDP);
+			else if (userExtSources.size() > 1)
+				throw new ConsistencyErrorException("There are " + userExtSources.size() + "   extLogins: " + login + " for  extSourceType: " + ExtSourcesManager.EXTSOURCE_IDP);
 		}
 
 		userExtSource = getUsersManagerImpl().addUserExtSource(sess, user, userExtSource);
@@ -529,9 +543,9 @@ public class UsersManagerBlImpl implements UsersManagerBl {
 		List<Attribute> userExtSourceAttributes = getPerunBl().getAttributesManagerBl().getAttributes(sess, userExtSource);
 		Iterator<Attribute> iterator = userExtSourceAttributes.iterator();
 		//remove all virtual attributes (we don't need to take care about them)
-		while(iterator.hasNext()) {
+		while (iterator.hasNext()) {
 			Attribute attribute = iterator.next();
-			if(getPerunBl().getAttributesManagerBl().isVirtAttribute(sess, attribute)) iterator.remove();
+			if (getPerunBl().getAttributesManagerBl().isVirtAttribute(sess, attribute)) iterator.remove();
 		}
 
 		//remove userExtSource
@@ -588,7 +602,7 @@ public class UsersManagerBlImpl implements UsersManagerBl {
 		return this.convertRichUsersToRichUsersWithAttributes(sess, this.convertUsersToRichUsers(sess, users));
 	}
 
-	public List<User> getUsersWithoutVoAssigned(PerunSession sess) throws InternalErrorException  {
+	public List<User> getUsersWithoutVoAssigned(PerunSession sess) throws InternalErrorException {
 		return usersManagerImpl.getUsersWithoutVoAssigned(sess);
 	}
 
@@ -609,7 +623,7 @@ public class UsersManagerBlImpl implements UsersManagerBl {
 		List<Resource> allowedResources = new ArrayList<Resource>();
 
 		List<Resource> resources = getPerunBl().getFacilitiesManagerBl().getAssignedResources(sess, facility);
-		for(Resource resource : resources) {
+		for (Resource resource : resources) {
 			if (getPerunBl().getResourcesManagerBl().isUserAssigned(sess, user, resource)) {
 				allowedResources.add(resource);
 			}
@@ -621,8 +635,8 @@ public class UsersManagerBlImpl implements UsersManagerBl {
 		//TODO do this method in more efficient way
 		Set<Resource> resources = new HashSet<Resource>();
 		List<Member> members = getPerunBl().getMembersManagerBl().getMembersByUser(sess, user);
-		for(Member member : members) {
-			if(!getPerunBl().getMembersManagerBl().haveStatus(sess, member, Status.INVALID)) {
+		for (Member member : members) {
+			if (!getPerunBl().getMembersManagerBl().haveStatus(sess, member, Status.INVALID)) {
 				resources.addAll(getPerunBl().getResourcesManagerBl().getAllowedResources(sess, member));
 			}
 		}
@@ -633,7 +647,7 @@ public class UsersManagerBlImpl implements UsersManagerBl {
 		Set<Resource> resources = new HashSet<Resource>();
 		List<Member> members = getPerunBl().getMembersManagerBl().getMembersByUser(sess, user);
 
-		for(Member member : members) {
+		for (Member member : members) {
 			resources.addAll(getPerunBl().getResourcesManagerBl().getAssignedResources(sess, member));
 		}
 		return new ArrayList<Resource>(resources);
@@ -643,7 +657,7 @@ public class UsersManagerBlImpl implements UsersManagerBl {
 		Set<RichResource> resources = new HashSet<RichResource>();
 		List<Member> members = getPerunBl().getMembersManagerBl().getMembersByUser(sess, user);
 
-		for(Member member : members) {
+		for (Member member : members) {
 			resources.addAll(getPerunBl().getResourcesManagerBl().getAssignedRichResources(sess, member));
 		}
 		return new ArrayList<RichResource>(resources);
@@ -660,7 +674,7 @@ public class UsersManagerBlImpl implements UsersManagerBl {
 
 		// iterate over all users
 		List<User> matchedUsers = new ArrayList<User>();
-		for (User user: perunBl.getUsersManagerBl().getUsers(sess)) {
+		for (User user : perunBl.getUsersManagerBl().getUsers(sess)) {
 			Attribute userAttribute;
 			try {
 				userAttribute = perunBl.getAttributesManagerBl().getAttribute(sess, user, attributeDef.getName());
@@ -686,7 +700,7 @@ public class UsersManagerBlImpl implements UsersManagerBl {
 				return this.getUsersManagerImpl().getUsersByAttributeValue(sess, attributeDef, attributeValue);
 			}
 		} catch (AttributeNotExistsException e) {
-			throw new ConsistencyErrorException("Attribute name:'"  + attributeName + "', value:'" + attributeValue + "' not exists ", e);
+			throw new ConsistencyErrorException("Attribute name:'" + attributeName + "', value:'" + attributeValue + "' not exists ", e);
 		}
 	}
 
@@ -710,7 +724,7 @@ public class UsersManagerBlImpl implements UsersManagerBl {
 				return this.getUsersManagerImpl().getUsersByAttribute(sess, attribute);
 			}
 		} catch (AttributeNotExistsException e) {
-			throw new ConsistencyErrorException("Attribute name:'"  + attributeName + "', value:'" + attributeValue + "' not exists ", e);
+			throw new ConsistencyErrorException("Attribute name:'" + attributeName + "', value:'" + attributeValue + "' not exists ", e);
 		}
 	}
 
@@ -786,6 +800,7 @@ public class UsersManagerBlImpl implements UsersManagerBl {
 
 		//TODO Check also reserved logins in Registrar
 	}
+
 	/**
 	 * Gets the usersManagerImpl for this instance.
 	 *
@@ -800,8 +815,7 @@ public class UsersManagerBlImpl implements UsersManagerBl {
 	 *
 	 * @return The perunBl.
 	 */
-	public PerunBl getPerunBl()
-	{
+	public PerunBl getPerunBl() {
 		return this.perunBl;
 	}
 
@@ -834,13 +848,13 @@ public class UsersManagerBlImpl implements UsersManagerBl {
 	}
 
 	public RichUser filterOnlyAllowedAttributes(PerunSession sess, RichUser richUser) throws InternalErrorException {
-		if(richUser == null) throw new InternalErrorException("RichUser can't be null.");
+		if (richUser == null) throw new InternalErrorException("RichUser can't be null.");
 		//Filtering users attributes
-		if(richUser.getUserAttributes() != null) {
+		if (richUser.getUserAttributes() != null) {
 			List<Attribute> userAttributes = richUser.getUserAttributes();
 			List<Attribute> allowedUserAttributes = new ArrayList<Attribute>();
-			for(Attribute userAttr: userAttributes) {
-				if(AuthzResolver.isAuthorizedForAttribute(sess, ActionType.READ, userAttr, richUser, null)) {
+			for (Attribute userAttr : userAttributes) {
+				if (AuthzResolver.isAuthorizedForAttribute(sess, ActionType.READ, userAttr, richUser, null)) {
 					userAttr.setWritable(AuthzResolver.isAuthorizedForAttribute(sess, ActionType.WRITE, userAttr, richUser, null));
 					allowedUserAttributes.add(userAttr);
 				}
@@ -852,9 +866,9 @@ public class UsersManagerBlImpl implements UsersManagerBl {
 
 	public List<RichUser> filterOnlyAllowedAttributes(PerunSession sess, List<RichUser> richUsers) throws InternalErrorException {
 		List<RichUser> filteredRichUsers = new ArrayList<RichUser>();
-		if(richUsers == null || richUsers.isEmpty()) return filteredRichUsers;
+		if (richUsers == null || richUsers.isEmpty()) return filteredRichUsers;
 
-		for(RichUser ru: richUsers) {
+		for (RichUser ru : richUsers) {
 			filteredRichUsers.add(this.filterOnlyAllowedAttributes(sess, ru));
 		}
 
@@ -874,14 +888,14 @@ public class UsersManagerBlImpl implements UsersManagerBl {
 		Resource resource = null;
 
 		//Get object for primaryHolder of aidingAttr
-		if(perunBean != null) {
-			if(perunBean instanceof Vo) vo = (Vo) perunBean;
-			else if(perunBean instanceof Facility) facility = (Facility) perunBean;
-			else if(perunBean instanceof Group) group = (Group) perunBean;
-			else if(perunBean instanceof Member) member = (Member) perunBean;
-			else if(perunBean instanceof User) user = (User) perunBean;
-			else if(perunBean instanceof Host) host = (Host) perunBean;
-			else if(perunBean instanceof Resource) resource = (Resource) perunBean;
+		if (perunBean != null) {
+			if (perunBean instanceof Vo) vo = (Vo) perunBean;
+			else if (perunBean instanceof Facility) facility = (Facility) perunBean;
+			else if (perunBean instanceof Group) group = (Group) perunBean;
+			else if (perunBean instanceof Member) member = (Member) perunBean;
+			else if (perunBean instanceof User) user = (User) perunBean;
+			else if (perunBean instanceof Host) host = (Host) perunBean;
+			else if (perunBean instanceof Resource) resource = (Resource) perunBean;
 			else {
 				throw new InternalErrorException("There is unrecognized object in primaryHolder of aidingAttr.");
 			}
@@ -889,41 +903,41 @@ public class UsersManagerBlImpl implements UsersManagerBl {
 			throw new InternalErrorException("Aiding attribtue must have primaryHolder which is not null.");
 		}
 
-		if(group != null) {
+		if (group != null) {
 			List<Member> members = getPerunBl().getGroupsManagerBl().getGroupMembers(sess, group);
 			List<User> usersFromGroup = new ArrayList<User>();
-			for(Member memberElement: members) {
+			for (Member memberElement : members) {
 				usersFromGroup.add(getPerunBl().getUsersManagerBl().getUserByMember(sess, memberElement));
 			}
-			for(User userElement: usersFromGroup) {
+			for (User userElement : usersFromGroup) {
 				users.add(userElement);
 			}
-		} else if(member != null) {
+		} else if (member != null) {
 			user = getPerunBl().getUsersManagerBl().getUserByMember(sess, member);
 			users.add(user);
-		} else if(resource != null) {
+		} else if (resource != null) {
 			List<User> usersFromResource = getPerunBl().getResourcesManagerBl().getAllowedUsers(sess, resource);
 			users.addAll(usersFromResource);
-		} else if(user != null) {
+		} else if (user != null) {
 			users.add(user);
-		} else if(host != null) {
+		} else if (host != null) {
 			facility = getPerunBl().getFacilitiesManagerBl().getFacilityForHost(sess, host);
 			List<User> usersFromHost = getPerunBl().getFacilitiesManagerBl().getAllowedUsers(sess, facility);
-			for(User userElement: usersFromHost) {
+			for (User userElement : usersFromHost) {
 				users.add(userElement);
 			}
-		} else if(facility != null) {
+		} else if (facility != null) {
 			List<User> usersFromFacility = getPerunBl().getFacilitiesManagerBl().getAllowedUsers(sess, facility);
-			for(User userElement: usersFromFacility) {
+			for (User userElement : usersFromFacility) {
 				users.add(userElement);
 			}
-		} else if(vo != null) {
+		} else if (vo != null) {
 			List<Member> members = getPerunBl().getMembersManagerBl().getMembers(sess, vo);
 			List<User> usersFromVo = new ArrayList<User>();
-			for(Member memberElement: members) {
+			for (Member memberElement : members) {
 				usersFromVo.add(getPerunBl().getUsersManagerBl().getUserByMember(sess, memberElement));
 			}
-			for(User userElement: usersFromVo) {
+			for (User userElement : usersFromVo) {
 				users.add(userElement);
 			}
 		}
@@ -1102,7 +1116,7 @@ public class UsersManagerBlImpl implements UsersManagerBl {
 
 				try {
 					getPerunBl().getUsersManagerBl().addUserExtSource(sess, user, ues);
-				} catch(UserExtSourceExistsException ex) {
+				} catch (UserExtSourceExistsException ex) {
 					//this is OK
 				}
 
@@ -1112,7 +1126,7 @@ public class UsersManagerBlImpl implements UsersManagerBl {
 
 				try {
 					getPerunBl().getUsersManagerBl().addUserExtSource(sess, user, ues);
-				} catch(UserExtSourceExistsException ex) {
+				} catch (UserExtSourceExistsException ex) {
 					//this is OK
 				}
 
@@ -1122,7 +1136,7 @@ public class UsersManagerBlImpl implements UsersManagerBl {
 
 				try {
 					getPerunBl().getUsersManagerBl().addUserExtSource(sess, user, ues);
-				} catch(UserExtSourceExistsException ex) {
+				} catch (UserExtSourceExistsException ex) {
 					//this is OK
 				}
 
@@ -1157,7 +1171,7 @@ public class UsersManagerBlImpl implements UsersManagerBl {
 
 				try {
 					getPerunBl().getUsersManagerBl().addUserExtSource(sess, user, ues);
-				} catch(UserExtSourceExistsException ex) {
+				} catch (UserExtSourceExistsException ex) {
 					//this is OK
 				}
 
@@ -1183,7 +1197,7 @@ public class UsersManagerBlImpl implements UsersManagerBl {
 
 				try {
 					getPerunBl().getUsersManagerBl().addUserExtSource(sess, user, ues);
-				} catch(UserExtSourceExistsException ex) {
+				} catch (UserExtSourceExistsException ex) {
 					//this is OK
 				}
 
@@ -1209,7 +1223,7 @@ public class UsersManagerBlImpl implements UsersManagerBl {
 
 				try {
 					getPerunBl().getUsersManagerBl().addUserExtSource(sess, user, ues);
-				} catch(UserExtSourceExistsException ex) {
+				} catch (UserExtSourceExistsException ex) {
 					//this is OK
 				}
 
@@ -1233,7 +1247,7 @@ public class UsersManagerBlImpl implements UsersManagerBl {
 
 				try {
 					getPerunBl().getUsersManagerBl().addUserExtSource(sess, user, ues);
-				} catch(UserExtSourceExistsException ex) {
+				} catch (UserExtSourceExistsException ex) {
 					//this is OK
 				}
 
@@ -1246,7 +1260,7 @@ public class UsersManagerBlImpl implements UsersManagerBl {
 
 				try {
 					getPerunBl().getUsersManagerBl().addUserExtSource(sess, user, ues);
-				} catch(UserExtSourceExistsException ex) {
+				} catch (UserExtSourceExistsException ex) {
 					//this is OK
 				}
 			} else if (loginNamespace.equals("elixir")) {
@@ -1257,7 +1271,7 @@ public class UsersManagerBlImpl implements UsersManagerBl {
 
 				try {
 					getPerunBl().getUsersManagerBl().addUserExtSource(sess, user, ues);
-				} catch(UserExtSourceExistsException ex) {
+				} catch (UserExtSourceExistsException ex) {
 					//this is OK
 				}
 
@@ -1283,7 +1297,7 @@ public class UsersManagerBlImpl implements UsersManagerBl {
 
 				try {
 					getPerunBl().getUsersManagerBl().addUserExtSource(sess, user, ues);
-				} catch(UserExtSourceExistsException ex) {
+				} catch (UserExtSourceExistsException ex) {
 					//this is OK
 				}
 
@@ -1307,18 +1321,18 @@ public class UsersManagerBlImpl implements UsersManagerBl {
 				try {
 					extSource = getPerunBl().getExtSourcesManagerBl().getExtSourceByName(sess, "https://dummy");
 				} catch (ExtSourceNotExistsException e) {
-					extSource =  new ExtSource("https://dummy",ExtSourcesManager.EXTSOURCE_IDP);
+					extSource = new ExtSource("https://dummy", ExtSourcesManager.EXTSOURCE_IDP);
 					try {
 						extSource = getPerunBl().getExtSourcesManagerBl().createExtSource(sess, extSource, null);
 					} catch (ExtSourceExistsException e1) {
-						log.error("impossible or race condition",e1);
+						log.error("impossible or race condition", e1);
 					}
 				}
 				UserExtSource ues = new UserExtSource(extSource, userLogin + "@dummy");
 				ues.setLoa(2);
 				try {
 					getPerunBl().getUsersManagerBl().addUserExtSource(sess, user, ues);
-				} catch(UserExtSourceExistsException ex) {
+				} catch (UserExtSourceExistsException ex) {
 					//this is OK
 				}
 			}
@@ -1405,7 +1419,7 @@ public class UsersManagerBlImpl implements UsersManagerBl {
 			throw new PasswordDeletionFailedException(e);
 		} catch (LoginNotExistsRuntimeException e) {
 			throw new LoginNotExistsException(e);
-		}  catch (PasswordOperationTimeoutRuntimeException e) {
+		} catch (PasswordOperationTimeoutRuntimeException e) {
 			throw new PasswordOperationTimeoutException(e);
 		}
 	}
@@ -1452,18 +1466,18 @@ public class UsersManagerBlImpl implements UsersManagerBl {
 		//validate and set user ext sources
 		try {
 			this.validatePasswordAndSetExtSources(sess, user, (String) userLogin.getValue(), loginNamespace);
-		} catch(PasswordCreationFailedException ex) {
+		} catch (PasswordCreationFailedException ex) {
 			throw new PasswordChangeFailedException(ex);
-		} catch(ExtSourceNotExistsException ex) {
+		} catch (ExtSourceNotExistsException ex) {
 			throw new InternalErrorException(ex);
-		} catch(AttributeValueException ex) {
+		} catch (AttributeValueException ex) {
 			throw new InternalErrorException(ex);
 		}
 	}
 
 	/**
 	 * Calls external program which do the job with the password.
-	 *
+	 * <p>
 	 * Return codes of the external program
 	 * If password check fails then return 1
 	 * If there is no handler for loginNamespace return 2
@@ -1551,7 +1565,7 @@ public class UsersManagerBlImpl implements UsersManagerBl {
 
 		InputStream es = process.getErrorStream();
 
-		if (operation.equals(PASSWORD_CHANGE) || operation.equals(PASSWORD_CHECK)  || operation.equals(PASSWORD_RESERVE)) {
+		if (operation.equals(PASSWORD_CHANGE) || operation.equals(PASSWORD_CHECK) || operation.equals(PASSWORD_RESERVE)) {
 			OutputStream os = process.getOutputStream();
 			if (password == null || password.isEmpty()) {
 				throw new EmptyPasswordRuntimeException("Password for " + loginNamespace + ":" + userLogin + " cannot be empty.");
@@ -1603,11 +1617,11 @@ public class UsersManagerBlImpl implements UsersManagerBl {
 	public void createAlternativePassword(PerunSession sess, User user, String description, String loginNamespace, String password) throws InternalErrorException, PasswordCreationFailedException, LoginNotExistsException {
 		try {
 			manageAlternativePassword(sess, user, PASSWORD_CREATE, loginNamespace, null, description, password);
-		} catch(PasswordCreationFailedRuntimeException ex) {
+		} catch (PasswordCreationFailedRuntimeException ex) {
 			throw new PasswordCreationFailedException(ex);
-		} catch(LoginNotExistsRuntimeException ex) {
+		} catch (LoginNotExistsRuntimeException ex) {
 			throw new LoginNotExistsException(ex);
-		} catch(PasswordDeletionFailedException ex) {
+		} catch (PasswordDeletionFailedException ex) {
 			//This probably never happend, if yes, its some error in code of manageAlternativePassword method
 			throw new InternalErrorException(ex);
 		}
@@ -1616,16 +1630,16 @@ public class UsersManagerBlImpl implements UsersManagerBl {
 	public void deleteAlternativePassword(PerunSession sess, User user, String loginNamespace, String passwordId) throws InternalErrorException, PasswordDeletionFailedException, LoginNotExistsException {
 		try {
 			manageAlternativePassword(sess, user, PASSWORD_DELETE, loginNamespace, passwordId, null, null);
-		} catch(PasswordDeletionFailedRuntimeException ex) {
+		} catch (PasswordDeletionFailedRuntimeException ex) {
 			throw new PasswordDeletionFailedException(ex);
-		} catch(LoginNotExistsRuntimeException ex) {
+		} catch (LoginNotExistsRuntimeException ex) {
 			throw new LoginNotExistsException(ex);
 		}
 	}
 
 	/**
 	 * Calls external program which do the job with the alternative passwords.
-	 *
+	 * <p>
 	 * Return codes of the external program
 	 * If password check fails then return 1
 	 * If there is no handler for loginNamespace return 2
@@ -1639,7 +1653,7 @@ public class UsersManagerBlImpl implements UsersManagerBl {
 	 */
 	protected void manageAlternativePassword(PerunSession sess, User user, String operation, String loginNamespace, String passwordId, String description, String password) throws InternalErrorException, PasswordDeletionFailedException {
 		//if password id == null
-		if(passwordId == null) passwordId = Long.toString(System.currentTimeMillis());
+		if (passwordId == null) passwordId = Long.toString(System.currentTimeMillis());
 
 		//Prepare process builder
 		ProcessBuilder pb = new ProcessBuilder(BeansUtils.getCoreConfig().getAlternativePasswordManagerProgram(), operation, loginNamespace, Integer.toString(user.getId()), passwordId);
@@ -1648,11 +1662,13 @@ public class UsersManagerBlImpl implements UsersManagerBl {
 		if (operation.equals(PASSWORD_CREATE)) {
 			try {
 				Attribute userAlternativePassword = getPerunBl().getAttributesManagerBl().getAttribute(sess, user, A_USER_DEF_ALT_PASSWORD_NAMESPACE + loginNamespace);
-				Map<String,String> altPassValue = new LinkedHashMap<>();
+				Map<String, String> altPassValue = new LinkedHashMap<>();
 				//Set not null value from altPassword attribute of this user
-				if (userAlternativePassword.getValue() != null) altPassValue = (LinkedHashMap<String,String>) userAlternativePassword.getValue();
+				if (userAlternativePassword.getValue() != null)
+					altPassValue = (LinkedHashMap<String, String>) userAlternativePassword.getValue();
 				//If password already exists, throw an exception
-				if (altPassValue.containsKey(description)) throw new ConsistencyErrorException("Password with this description already exists. Description: " + description);
+				if (altPassValue.containsKey(description))
+					throw new ConsistencyErrorException("Password with this description already exists. Description: " + description);
 				//set new value to attribute
 				altPassValue.put(description, passwordId);
 				userAlternativePassword.setValue(altPassValue);
@@ -1666,22 +1682,25 @@ public class UsersManagerBlImpl implements UsersManagerBl {
 		} else if (operation.equals(PASSWORD_DELETE)) {
 			try {
 				Attribute userAlternativePassword = getPerunBl().getAttributesManagerBl().getAttribute(sess, user, A_USER_DEF_ALT_PASSWORD_NAMESPACE + loginNamespace);
-				Map<String,String> altPassValue = new LinkedHashMap<>();
+				Map<String, String> altPassValue = new LinkedHashMap<>();
 				//Set not null value from altPassword attribute of this user
-				if (userAlternativePassword.getValue() != null) altPassValue = (LinkedHashMap<String,String>) userAlternativePassword.getValue();
+				if (userAlternativePassword.getValue() != null)
+					altPassValue = (LinkedHashMap<String, String>) userAlternativePassword.getValue();
 				//If password already exists, throw an exception
-				if (!altPassValue.containsValue(passwordId)) throw new PasswordDeletionFailedException("Password not found by ID.");
+				if (!altPassValue.containsValue(passwordId))
+					throw new PasswordDeletionFailedException("Password not found by ID.");
 				//remove key with this value from map
 				Set<String> keys = altPassValue.keySet();
 				description = null;
-				for(String key: keys) {
+				for (String key : keys) {
 					String valueOfKey = altPassValue.get(key);
-					if(valueOfKey.equals(passwordId)) {
-						if(description != null) throw new ConsistencyErrorException("There is more than 1 password with same ID in value for user " + user);
+					if (valueOfKey.equals(passwordId)) {
+						if (description != null)
+							throw new ConsistencyErrorException("There is more than 1 password with same ID in value for user " + user);
 						description = key;
 					}
 				}
-				if(description == null) throw new InternalErrorException("Password not found by ID.");
+				if (description == null) throw new InternalErrorException("Password not found by ID.");
 				altPassValue.remove(description);
 				//set new value for altPassword attribute for this user
 				userAlternativePassword.setValue(altPassValue);
@@ -1759,7 +1778,6 @@ public class UsersManagerBlImpl implements UsersManagerBl {
 	}
 
 
-
 	public List<RichUser> convertUsersToRichUsersWithAttributesByNames(PerunSession sess, List<User> users, List<String> attrNames) throws InternalErrorException {
 
 		// TODO - optimzization needed - at least there should be single select on RichUser object in impl !!
@@ -1786,7 +1804,7 @@ public class UsersManagerBlImpl implements UsersManagerBl {
 
 	public List<RichUser> findRichUsersWithAttributes(PerunSession sess, String searchString, List<String> attrsName) throws InternalErrorException, UserNotExistsException {
 
-		if(attrsName == null || attrsName.isEmpty()) {
+		if (attrsName == null || attrsName.isEmpty()) {
 			return convertRichUsersToRichUsersWithAttributes(sess, findRichUsers(sess, searchString));
 		} else {
 			return convertUsersToRichUsersWithAttributesByNames(sess, findUsers(sess, searchString), attrsName);
@@ -1796,7 +1814,7 @@ public class UsersManagerBlImpl implements UsersManagerBl {
 
 	public List<RichUser> findRichUsersWithAttributesByExactMatch(PerunSession sess, String searchString, List<String> attrsName) throws InternalErrorException, UserNotExistsException {
 
-		if(attrsName == null || attrsName.isEmpty()) {
+		if (attrsName == null || attrsName.isEmpty()) {
 			return convertRichUsersToRichUsersWithAttributes(sess, findRichUsersByExactMatch(sess, searchString));
 		} else {
 			return convertUsersToRichUsersWithAttributesByNames(sess, findUsersByExactMatch(sess, searchString), attrsName);
@@ -1804,18 +1822,18 @@ public class UsersManagerBlImpl implements UsersManagerBl {
 
 	}
 
-	public List<RichUser> findRichUsersWithoutSpecificVoWithAttributes(PerunSession sess, Vo vo, String searchString, List<String> attrsName) throws InternalErrorException, UserNotExistsException, VoNotExistsException{
+	public List<RichUser> findRichUsersWithoutSpecificVoWithAttributes(PerunSession sess, Vo vo, String searchString, List<String> attrsName) throws InternalErrorException, UserNotExistsException, VoNotExistsException {
 
-		if(attrsName == null || attrsName.isEmpty()) {
+		if (attrsName == null || attrsName.isEmpty()) {
 			return convertRichUsersToRichUsersWithAttributes(sess, convertUsersToRichUsers(sess, getUsersWithoutSpecificVo(sess, vo, searchString)));
 		} else {
 			return convertUsersToRichUsersWithAttributesByNames(sess, getUsersWithoutSpecificVo(sess, vo, searchString), attrsName);
 		}
 	}
 
-	public List<RichUser> getRichUsersWithoutVoWithAttributes(PerunSession sess, List<String> attrsName) throws InternalErrorException, VoNotExistsException, UserNotExistsException{
+	public List<RichUser> getRichUsersWithoutVoWithAttributes(PerunSession sess, List<String> attrsName) throws InternalErrorException, VoNotExistsException, UserNotExistsException {
 
-		if(attrsName == null || attrsName.isEmpty()) {
+		if (attrsName == null || attrsName.isEmpty()) {
 			return convertRichUsersToRichUsersWithAttributes(sess, convertUsersToRichUsers(sess, getUsersWithoutVoAssigned(sess)));
 		} else {
 			return convertUsersToRichUsersWithAttributesByNames(sess, getUsersWithoutVoAssigned(sess), attrsName);
@@ -1836,7 +1854,7 @@ public class UsersManagerBlImpl implements UsersManagerBl {
 			}
 		}
 
-		if(attrsName == null || attrsName.isEmpty()) {
+		if (attrsName == null || attrsName.isEmpty()) {
 			return convertRichUsersToRichUsersWithAttributes(sess, convertUsersToRichUsers(sess, users));
 		} else {
 			return convertUsersToRichUsersWithAttributesByNames(sess, users, attrsName);
@@ -1846,11 +1864,11 @@ public class UsersManagerBlImpl implements UsersManagerBl {
 
 	public List<RichUser> getAllRichUsersWithAllNonVirutalAttributes(PerunSession sess) throws InternalErrorException {
 		List<Pair<User, Attribute>> usersWithNonVirtAttrs = usersManagerImpl.getAllRichUsersWithAllNonVirutalAttributes(sess);
-		Map<User,List<Attribute>> sortingMap = new HashMap<User, List<Attribute>>();
+		Map<User, List<Attribute>> sortingMap = new HashMap<User, List<Attribute>>();
 
 		//User map for sorting users with all their attributes
-		for(Pair<User, Attribute> p: usersWithNonVirtAttrs) {
-			if(sortingMap.containsKey(p.getLeft())) {
+		for (Pair<User, Attribute> p : usersWithNonVirtAttrs) {
+			if (sortingMap.containsKey(p.getLeft())) {
 				sortingMap.get(p.getLeft()).add(p.getRight());
 			} else {
 				List<Attribute> attributes = new ArrayList<Attribute>();
@@ -1862,7 +1880,7 @@ public class UsersManagerBlImpl implements UsersManagerBl {
 		//Add extSources and VirtualAttributes
 		List<RichUser> richUsersWithAttributes = new ArrayList<RichUser>();
 		Set<User> usersSet = sortingMap.keySet();
-		for(User u: usersSet) {
+		for (User u : usersSet) {
 			//Without UserExtSources and VirtualAttributes
 			//List<UserExtSource> ues = getPerunBl().getUsersManagerBl().getUserExtSources(sess, u);
 			List<Attribute> allAttrsOfUser = sortingMap.get(u);
@@ -1889,7 +1907,7 @@ public class UsersManagerBlImpl implements UsersManagerBl {
 			}
 			// if user already has login
 			if (checked.get(0).getValue() != null) {
-				throw new InternalErrorException("Can't set new login. User already has login in namespace: "+loginNamespace);
+				throw new InternalErrorException("Can't set new login. User already has login in namespace: " + loginNamespace);
 			}
 
 			checked.get(0).setValue(login);
@@ -1917,7 +1935,7 @@ public class UsersManagerBlImpl implements UsersManagerBl {
 
 		String email = getUsersManagerImpl().getPreferredEmailChangeRequest(sess, user, i, m);
 
-		AttributeDefinition def = getPerunBl().getAttributesManagerBl().getAttributeDefinition(sess, AttributesManager.NS_USER_ATTR_DEF+":preferredMail");
+		AttributeDefinition def = getPerunBl().getAttributesManagerBl().getAttributeDefinition(sess, AttributesManager.NS_USER_ATTR_DEF + ":preferredMail");
 		Attribute a = new Attribute(def);
 		a.setValue(email);
 
@@ -1934,7 +1952,7 @@ public class UsersManagerBlImpl implements UsersManagerBl {
 
 		List<String> list = getUsersManagerImpl().getPendingPreferredEmailChanges(sess, user);
 
-		Attribute a = getPerunBl().getAttributesManagerBl().getAttribute(sess, user, AttributesManager.NS_USER_ATTR_DEF+":preferredMail");
+		Attribute a = getPerunBl().getAttributesManagerBl().getAttribute(sess, user, AttributesManager.NS_USER_ATTR_DEF + ":preferredMail");
 		if (a != null && a.getValue() != null) {
 			Iterator<String> it = list.iterator();
 			while (it.hasNext()) {
@@ -1952,15 +1970,15 @@ public class UsersManagerBlImpl implements UsersManagerBl {
 
 	public User convertUserEmptyStringsInObjectAttributesIntoNull(User user) {
 		//if user is null, return it back without change
-		if(user == null) return user;
+		if (user == null) return user;
 
 		//convert all empty strings to null
-		if(user.getFirstName() != null && user.getFirstName().isEmpty()) user.setFirstName(null);
-		if(user.getMiddleName() != null && user.getMiddleName().isEmpty()) user.setMiddleName(null);
-		if(user.getLastName() != null && user.getLastName().isEmpty()) user.setLastName(null);
+		if (user.getFirstName() != null && user.getFirstName().isEmpty()) user.setFirstName(null);
+		if (user.getMiddleName() != null && user.getMiddleName().isEmpty()) user.setMiddleName(null);
+		if (user.getLastName() != null && user.getLastName().isEmpty()) user.setLastName(null);
 
-		if(user.getTitleBefore() != null && user.getTitleBefore().isEmpty()) user.setTitleBefore(null);
-		if(user.getTitleAfter() != null && user.getTitleAfter().isEmpty()) user.setTitleAfter(null);
+		if (user.getTitleBefore() != null && user.getTitleBefore().isEmpty()) user.setTitleBefore(null);
+		if (user.getTitleAfter() != null && user.getTitleAfter().isEmpty()) user.setTitleAfter(null);
 
 		return user;
 	}
@@ -1971,14 +1989,16 @@ public class UsersManagerBlImpl implements UsersManagerBl {
 		String requestId = Utils.cipherInput(m, true);
 		String namespace = getUsersManagerImpl().loadPasswordResetRequest(user, Integer.parseInt(requestId));
 
-		if (namespace.isEmpty()) throw new InternalErrorException("Password reset request is not valid anymore or doesn't existed at all for User: "+user);
+		if (namespace.isEmpty())
+			throw new InternalErrorException("Password reset request is not valid anymore or doesn't existed at all for User: " + user);
 
 		List<Attribute> logins = perunBl.getAttributesManagerBl().getLogins(sess, user);
 		boolean found = false;
 		for (Attribute a : logins) {
 			if (a.getFriendlyNameParameter().equals(namespace)) found = true;
 		}
-		if (!found) throw new InternalErrorException(user.toString()+" doesn't have login in namespace: "+namespace);
+		if (!found)
+			throw new InternalErrorException(user.toString() + " doesn't have login in namespace: " + namespace);
 
 		// reset password without checking old
 		try {
@@ -1992,9 +2012,9 @@ public class UsersManagerBlImpl implements UsersManagerBl {
 		Set<String> emails = new HashSet<String>();
 
 		try {
-			Attribute a = perunBl.getAttributesManagerBl().getAttribute(sess, user, AttributesManager.NS_USER_ATTR_DEF+":preferredMail");
+			Attribute a = perunBl.getAttributesManagerBl().getAttribute(sess, user, AttributesManager.NS_USER_ATTR_DEF + ":preferredMail");
 			if (a != null && a.getValue() != null) {
-				emails.add((String)a.getValue());
+				emails.add((String) a.getValue());
 			}
 		} catch (WrongAttributeAssignmentException ex) {
 			throw new InternalErrorException(ex);
@@ -2006,9 +2026,9 @@ public class UsersManagerBlImpl implements UsersManagerBl {
 		for (Member member : members) {
 
 			try {
-				Attribute a = perunBl.getAttributesManagerBl().getAttribute(sess, member, AttributesManager.NS_MEMBER_ATTR_DEF+":mail");
+				Attribute a = perunBl.getAttributesManagerBl().getAttribute(sess, member, AttributesManager.NS_MEMBER_ATTR_DEF + ":mail");
 				if (a != null && a.getValue() != null) {
-					emails.add((String)a.getValue());
+					emails.add((String) a.getValue());
 				}
 			} catch (WrongAttributeAssignmentException ex) {
 				throw new InternalErrorException(ex);
@@ -2029,14 +2049,14 @@ public class UsersManagerBlImpl implements UsersManagerBl {
 	}
 
 	@Override
-	public Map<String,String> generateAccount(PerunSession session, String namespace, Map<String, String> parameters) throws InternalErrorException {
+	public Map<String, String> generateAccount(PerunSession session, String namespace, Map<String, String> parameters) throws InternalErrorException {
 		return getUsersManagerImpl().generateAccount(session, namespace, parameters);
 	}
 
 	@Override
 	public List<User> getSponsors(PerunSession sess, Member sponsoredMember) throws InternalErrorException {
-		if(!sponsoredMember.isSponsored()) {
-			throw new IllegalArgumentException("member "+sponsoredMember.getId()+" is not marked as sponsored");
+		if (!sponsoredMember.isSponsored()) {
+			throw new IllegalArgumentException("member " + sponsoredMember.getId() + " is not marked as sponsored");
 		}
 		return getUsersManagerImpl().getSponsors(sess, sponsoredMember);
 	}
@@ -2047,7 +2067,7 @@ public class UsersManagerBlImpl implements UsersManagerBl {
 
 	@Override
 	public void removeAllUserExtSources(PerunSession sess, User user) throws InternalErrorException {
-		for(UserExtSource userExtSource : getUserExtSources(sess, user)) {
+		for (UserExtSource userExtSource : getUserExtSources(sess, user)) {
 			try {
 				removeUserExtSource(sess, user, userExtSource);
 			} catch (UserExtSourceAlreadyRemovedException ex) {
@@ -2059,10 +2079,10 @@ public class UsersManagerBlImpl implements UsersManagerBl {
 	@Override
 	public List<User> findUsersWithExtSourceAttributeValueEnding(PerunSessionImpl sess, String attributeName, String valueEnd, List<String> excludeValueEnds) throws AttributeNotExistsException, InternalErrorException {
 		AttributeDefinition adef = sess.getPerunBl().getAttributesManagerBl().getAttributeDefinition(sess, attributeName);
-		if((!adef.getType().equals("java.lang.String")) || (!adef.getNamespace().equals(AttributesManager.NS_UES_ATTR_DEF))) {
+		if ((!adef.getType().equals("java.lang.String")) || (!adef.getNamespace().equals(AttributesManager.NS_UES_ATTR_DEF))) {
 			throw new InternalErrorException("only ues attributes of type String can be used in findUsersWithExtSourceAttributeValueEnding()");
 		}
-		return usersManagerImpl.findUsersWithExtSourceAttributeValueEnding(sess,attributeName,valueEnd,excludeValueEnds);
+		return usersManagerImpl.findUsersWithExtSourceAttributeValueEnding(sess, attributeName, valueEnd, excludeValueEnds);
 	}
 
 	public int removeInteruptedUsers() {
@@ -2073,18 +2093,18 @@ public class UsersManagerBlImpl implements UsersManagerBl {
 
 		Iterator<UserSynchronizerThread> threadIterator = userSynchronizerThreads.iterator();
 
-		while(threadIterator.hasNext()) {
+		while (threadIterator.hasNext()) {
 			UserSynchronizerThread thread = threadIterator.next();
 			long threadStart = thread.getStartTime();
 			//If thread start time is 0, this thread is waiting for another job, skip it
-			if(threadStart == 0) continue;
+			if (threadStart == 0) continue;
 
 			long timeDiff = System.currentTimeMillis() - threadStart;
 			//If thread was interrupted by anything, remove it from the pool of active threads
 			if (thread.isInterrupted()) {
 				numberOfNewlyRemovedThreads++;
 				threadIterator.remove();
-			} else if(timeDiff/1000/60 > timeout) {
+			} else if (timeDiff / 1000 / 60 > timeout) {
 				// If the time is greater than timeout set in the configuration file (in minutes), interrupt and remove this thread from pool
 				log.error("One of threads was interrupted because of timeout!");
 				thread.interrupt();
@@ -2104,7 +2124,7 @@ public class UsersManagerBlImpl implements UsersManagerBl {
 		int numberOfNewlyCreatedThreads = 0;
 
 		// Start new threads if there is place for them
-		while(userSynchronizerThreads.size() < maxConcurentUsersToSynchronize) {
+		while (userSynchronizerThreads.size() < maxConcurentUsersToSynchronize) {
 			UserSynchronizerThread thread = new UserSynchronizerThread(sess);
 			thread.start();
 			userSynchronizerThreads.add(thread);
@@ -2153,8 +2173,6 @@ public class UsersManagerBlImpl implements UsersManagerBl {
 			user.setSponsoredUser(candidate.isSponsoredUser());
 			// Store the user, this must be done in separate transaction
 			user = getPerunBl().getUsersManagerBl().createUser(sess, user);
-		} else {
-			updateUserCoreAttributes(sess, user, candidate, overwriteUserAttributeList);
 		}
 
 		// Assign missing userExtSource and update LoA
@@ -2182,7 +2200,7 @@ public class UsersManagerBlImpl implements UsersManagerBl {
 						UserExtSource createdUserExtSource = getPerunBl().getUsersManagerBl().addUserExtSource(sess, user, userExtSource);
 
 						// Store priority for UserExtSource
-						Attribute priorityAttribute = getPerunBl().getAttributesManagerBl().getAttribute(sess,createdUserExtSource, UsersManager.USEREXTSOURCEPRIORITY_ATTRNAME);
+						Attribute priorityAttribute = getPerunBl().getAttributesManagerBl().getAttribute(sess, createdUserExtSource, UsersManager.USEREXTSOURCEPRIORITY_ATTRNAME);
 						priorityAttribute.setValue(getLowestPriority(sess, user) + 1);
 						getPerunBl().getAttributesManagerBl().setAttribute(sess, createdUserExtSource, priorityAttribute);
 
@@ -2213,7 +2231,118 @@ public class UsersManagerBlImpl implements UsersManagerBl {
 		}
 
 		// Update user attributes
-		updateUserAttributes(sess, user, candidate, overwriteUserAttributeList);
+		boolean hasHighestPriority = hasHighestPriority(sess, user, ues);
+		if (hasHighestPriority) {
+			updateUserCoreAttributes(sess, user, candidate, overwriteUserAttributeList);
+			updateUserAttributes(sess, user, candidate, overwriteUserAttributeList);
+		} else {
+
+			updateUserAttributes(sess, user, candidate, getOverWriteUserAttributeListForActualUserExtSource(sess, user, ues));
+
+		}
+
+	}
+
+	private List<String> getOverWriteUserAttributeListForActualUserExtSource(PerunSession sess, User user, UserExtSource userExtSource) {
+		int actualPriority;
+
+		List<String> actualOverwriteUserAttributeList;
+		try {
+			Attribute actualPriorityAttribute = getPerunBl().getAttributesManagerBl().getAttribute(sess, userExtSource, UsersManager.USEREXTSOURCEPRIORITY_ATTRNAME);
+			if (actualPriorityAttribute == null || actualPriorityAttribute.getValue() == null) {
+				//Set lowest priority
+				actualPriority = 0;
+			} else {
+				actualPriority = actualPriorityAttribute.valueAsInteger();
+			}
+			Attribute actualOverwriteUserAttributeList_attr = getPerunBl().getAttributesManagerBl().getAttribute(sess, userExtSource, UsersManager.USEREXTSOURCEOVERWRITEUSERATTRIBUTELIST_ATTRNAME);
+			if (actualOverwriteUserAttributeList_attr != null && actualOverwriteUserAttributeList_attr.getValue() != null) {
+				actualOverwriteUserAttributeList = actualOverwriteUserAttributeList_attr.valueAsList();
+				if (actualOverwriteUserAttributeList.isEmpty()) {
+					return actualOverwriteUserAttributeList;
+				}
+			} else {
+				return new ArrayList<>();
+			}
+
+			List<UserExtSource> userExtSourceList = getPerunBl().getUsersManagerBl().getUserExtSources(sess, user);
+			for (UserExtSource ues : userExtSourceList) {
+				int priority = 0;
+				try {
+					Attribute priorityAttribute = getPerunBl().getAttributesManagerBl().getAttribute(sess, ues, UsersManager.USEREXTSOURCEPRIORITY_ATTRNAME);
+					if (priorityAttribute == null || priorityAttribute.getValue() == null) {
+						//Set lowest priority
+					} else {
+						priority = priorityAttribute.valueAsInteger();
+					}
+
+					if (priority < actualPriority) {
+						Attribute overwriteUserAttributeList_attr = getPerunBl().getAttributesManagerBl().getAttribute(sess, ues, UsersManager.USEREXTSOURCEOVERWRITEUSERATTRIBUTELIST_ATTRNAME);
+						if (actualOverwriteUserAttributeList_attr != null && actualOverwriteUserAttributeList_attr.getValue() != null) {
+							List<String> overwriteUserAttributeList = actualOverwriteUserAttributeList_attr.valueAsList();
+							if (!overwriteUserAttributeList.isEmpty()) {
+								for (String attrName: actualOverwriteUserAttributeList) {
+									if (overwriteUserAttributeList.contains(attrName)) {
+										actualOverwriteUserAttributeList.remove(attrName);
+									}
+								}
+							}
+						}
+					}
+				} catch (WrongAttributeAssignmentException e) {
+					e.printStackTrace();
+				} catch (AttributeNotExistsException e) {
+					e.printStackTrace();
+				}
+
+			}
+			return actualOverwriteUserAttributeList;
+		} catch (Exception ex) {
+
+		}
+		return new ArrayList<>();
+	}
+
+	private boolean hasHighestPriority(PerunSession sess, User user, UserExtSource userExtSource) {
+		int actualPriority;
+		try {
+			Attribute actualPriorityAttribute = getPerunBl().getAttributesManagerBl().getAttribute(sess, userExtSource, UsersManager.USEREXTSOURCEPRIORITY_ATTRNAME);
+			if (actualPriorityAttribute == null || actualPriorityAttribute.getValue() == null ) {
+				//Set lowest priority
+				actualPriority = 0;
+			} else {
+				actualPriority = actualPriorityAttribute.valueAsInteger();
+			}
+
+			List<UserExtSource> userExtSourceList = getPerunBl().getUsersManagerBl().getUserExtSources(sess,user);
+			for (UserExtSource ues : userExtSourceList) {
+				int priority = 0;
+				try {
+					Attribute priorityAttribute = getPerunBl().getAttributesManagerBl().getAttribute(sess, ues, UsersManager.USEREXTSOURCEPRIORITY_ATTRNAME);
+					if (priorityAttribute == null || priorityAttribute.getValue() == null ) {
+						//Set lowest priority
+					} else {
+						priority = priorityAttribute.valueAsInteger();
+					}
+
+					if (priority < actualPriority) {
+						return false;
+					}
+				} catch (WrongAttributeAssignmentException e) {
+					e.printStackTrace();
+				} catch (AttributeNotExistsException e) {
+					e.printStackTrace();
+				}
+			}
+
+		} catch (WrongAttributeAssignmentException e) {
+			e.printStackTrace();
+		} catch (InternalErrorException e) {
+			e.printStackTrace();
+		} catch (AttributeNotExistsException e) {
+			e.printStackTrace();
+		}
+		return true;
 	}
 
 	private int getLowestPriority(PerunSession sess, User user) throws InternalErrorException {
@@ -2375,19 +2504,12 @@ public class UsersManagerBlImpl implements UsersManagerBl {
 	private void updateUserAttributes(PerunSession sess, User user, Candidate candidate, List<String> overwriteUserAttributesList) throws InternalErrorException, AttributeNotExistsException, WrongAttributeAssignmentException {
 		for (String attributeName : candidate.getAttributes().keySet()) {
 			if(attributeName.startsWith(AttributesManager.NS_USER_ATTR)) {
-				boolean overwriteAttribute = false;
 				RichUser richUser;
 
 				try {
 					richUser = getRichUserWithAttributes(sess, user);
 					for (Attribute userAttribute: richUser.getUserAttributes()) {
 						if(userAttribute.getName().equals(attributeName)) {
-							if (userAttribute.getValue().equals(null)) {
-								//First set of attribute
-								overwriteAttribute = true;
-							} else {
-
-							}
 							Object subjectAttributeValue = getPerunBl().getAttributesManagerBl().stringToAttributeValue(candidate.getAttributes().get(attributeName), userAttribute.getType());
 							if (!Objects.equals(userAttribute.getValue(), subjectAttributeValue)) {
 								log.trace("User synchronization: value of the attribute {} for userId {} changed. Original value {}, new value {}.",
