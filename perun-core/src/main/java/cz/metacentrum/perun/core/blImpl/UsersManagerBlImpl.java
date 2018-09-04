@@ -6,6 +6,7 @@ import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.io.OutputStream;
 import java.io.PrintWriter;
+import java.lang.reflect.Array;
 import java.util.*;
 
 import cz.metacentrum.perun.core.api.*;
@@ -2191,7 +2192,7 @@ public class UsersManagerBlImpl implements UsersManagerBl {
 
 					//Store or updated overwriteAttributeList
 					Attribute overwriteAttributeListAttr = getPerunBl().getAttributesManagerBl().getAttribute(sess, currentUserExtSource, UsersManager.USEREXTSOURCEOVERWRITEUSERATTRIBUTELIST_ATTRNAME);
-					overwriteAttributeListAttr.setValue(overwriteUserAttributeList);
+					overwriteAttributeListAttr.setValue(overwriteUserAttributeList.toArray());
 					getPerunBl().getAttributesManagerBl().setAttribute(sess, currentUserExtSource, overwriteAttributeListAttr);
 
 				} catch (UserExtSourceNotExistsException e) {
@@ -2211,7 +2212,7 @@ public class UsersManagerBlImpl implements UsersManagerBl {
 
 						//Store or updated overwriteAttributeList
 						Attribute overwriteAttributeListAttr = getPerunBl().getAttributesManagerBl().getAttribute(sess, createdUserExtSource, UsersManager.USEREXTSOURCEOVERWRITEUSERATTRIBUTELIST_ATTRNAME);
-						overwriteAttributeListAttr.setValue(overwriteUserAttributeList);
+						overwriteAttributeListAttr.setValue(overwriteUserAttributeList.toArray());
 						getPerunBl().getAttributesManagerBl().setAttribute(sess, createdUserExtSource, overwriteAttributeListAttr);
 					} catch (UserExtSourceExistsException e1) {
 						throw new ConsistencyErrorException("Adding userExtSource which already exists: " + userExtSource);
