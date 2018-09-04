@@ -15,6 +15,8 @@ import cz.metacentrum.perun.core.api.exceptions.*;
  */
 public interface UsersManager {
 
+	String USEREXTSOURCEPRIORITY_ATTRNAME = AttributesManager.NS_UES_ATTR_DEF + ":priority";
+
 	/**
 	 * Returns user by his login in external source and external source.
 	 *

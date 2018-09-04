@@ -11,6 +11,9 @@ import java.util.Map;
 import java.util.Set;
 
 import cz.metacentrum.perun.core.api.BeansUtils;
+import org.codehaus.jackson.JsonNode;
+import org.codehaus.jackson.map.util.JSONPObject;
+import org.json.JSONObject;
 
 /**
  * Candidate member of a Virtual Organization.
@@ -170,6 +173,12 @@ public class Candidate extends User {
 		}
 		return str.append(getClass().getSimpleName()+":[userExtSource='").append(userExtSource).append("', attributes='"
 			+ attrNew).append("', additionalUserExtSources='").append(additionalUserExtSources).append("']").toString();
+	}
+
+	public JSONObject convertAttributesToJSON() {
+		JSONObject candidateAttributes = new JSONObject();
+
+		return candidateAttributes;
 	}
 
 }

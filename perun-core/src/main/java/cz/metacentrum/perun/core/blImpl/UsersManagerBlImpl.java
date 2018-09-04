@@ -2168,18 +2168,46 @@ public class UsersManagerBlImpl implements UsersManagerBl {
 					// Update LoA
 					currentUserExtSource.setLoa(userExtSource.getLoa());
 					getPerunBl().getUsersManagerBl().updateUserExtSource(sess, currentUserExtSource);
+
 				} catch (UserExtSourceNotExistsException e) {
 					// Create userExtSource
 					try {
-						getPerunBl().getUsersManagerBl().addUserExtSource(sess, user, userExtSource);
+						UserExtSource createdUserExtSource = getPerunBl().getUsersManagerBl().addUserExtSource(sess, user, userExtSource);
+						Attribute priorityAttribute = getPerunBl().getAttributesManagerBl().getAttribute(sess,createdUserExtSource, UsersManager.USEREXTSOURCEPRIORITY_ATTRNAME);
+						priorityAttribute.setValue(getHighestPriority(sess, user) + 1);
+						getPerunBl().getAttributesManagerBl().setAttribute(sess, createdUserExtSource, priorityAttribute);
 					} catch (UserExtSourceExistsException e1) {
 						throw new ConsistencyErrorException("Adding userExtSource which already exists: " + userExtSource);
+					} catch (WrongAttributeValueException e1) {
+						e1.printStackTrace();
+					} catch (WrongReferenceAttributeValueException e1) {
+						e1.printStackTrace();
 					}
 				} catch (UserExtSourceExistsException e1) {
 					throw new ConsistencyErrorException("Updating login of userExtSource to value which already exists: " + userExtSource);
 				}
 			}
 		}
+	}
+
+	private int getHighestPriority(PerunSession sess, User user) throws InternalErrorException {
+		int highestPriority = 0;
+		List<UserExtSource> userExtSourceList = getPerunBl().getUsersManagerBl().getUserExtSources(sess,user);
+
+		for (UserExtSource userExtSource : userExtSourceList) {
+			int priority = 0;
+			try {
+				Attribute priorityAttribute = getPerunBl().getAttributesManagerBl().getAttribute(sess, userExtSource, UsersManager.USEREXTSOURCEPRIORITY_ATTRNAME);
+				if (priorityAttribute != null && priorityAttribute.getValue() != null && (priority = priorityAttribute.valueAsInteger()) > highestPriority) {
+					highestPriority = priority;
+				}
+			} catch (WrongAttributeAssignmentException e) {
+				e.printStackTrace();
+			} catch (AttributeNotExistsException e) {
+				e.printStackTrace();
+			}
+		}
+		return highestPriority;
 	}
 
 	public void addCandidateToPool(Candidate candidate) throws InternalErrorException {
@@ -2331,8 +2359,8 @@ public class UsersManagerBlImpl implements UsersManagerBl {
 							attributeFound = true;
 							Object subjectAttributeValue = getPerunBl().getAttributesManagerBl().stringToAttributeValue(candidate.getAttributes().get(attributeName), userAttribute.getType());
 							if (!Objects.equals(userAttribute.getValue(), subjectAttributeValue)) {
-							log.trace("User synchronization: value of the attribute {} for userId {} changed. Original value {}, new value {}.",
-								userAttribute, richUser.getId(), userAttribute.getValue(), subjectAttributeValue);
+								log.trace("User synchronization: value of the attribute {} for userId {} changed. Original value {}, new value {}.",
+									userAttribute, richUser.getId(), userAttribute.getValue(), subjectAttributeValue);
 								userAttribute.setValue(subjectAttributeValue);
 								try {
 									//Choose set or merge by extSource attribute overwriteUserAttributes (if contains this one)
