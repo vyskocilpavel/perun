@@ -2233,6 +2233,7 @@ public class UsersManagerBlImpl implements UsersManagerBl {
 					throw new ConsistencyErrorException("Updating login of userExtSource to value which already exists: " + userExtSource);
 				}
 				try {
+					log.error("SynchronizeUSer - UserExtSource: {}", uesFromPerun);
 					// Store priority for UserExtSource
 					getAndSetLowestPriority(sess, user, uesFromPerun);
 
