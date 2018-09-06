@@ -2362,6 +2362,8 @@ public class UsersManagerBlImpl implements UsersManagerBl {
 		Attribute priorityAttribute = getPerunBl().getAttributesManagerBl().getAttribute(sess, userExtSource, UsersManager.USEREXTSOURCEPRIORITY_ATTRNAME);
 		if (priorityAttribute.getValue() == null ) {
 			priority = getNewLowestPriority(sess, user);
+			log.debug("Attribute {}", priorityAttribute);
+			log.debug("OldPriority {}", priorityAttribute.getValue());
 			log.debug("Priority {}", priority);
 			priorityAttribute.setValue(priority);
 			getPerunBl().getAttributesManagerBl().setAttribute(sess, userExtSource, priorityAttribute);
