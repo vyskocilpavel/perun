@@ -174,7 +174,7 @@ public interface UsersManagerBl {
 	RichUser getRichUser(PerunSession sess, User user) throws InternalErrorException, UserNotExistsException;
 
 	/**
-	 * Get User to RichUser with attributes.
+	 * Get User to RichUser with <b>non-empty</b> attributes.
 	 *
 	 * @param sess
 	 * @param user
@@ -183,6 +183,17 @@ public interface UsersManagerBl {
 	 * @throws UserNotExistsException
 	 */
 	RichUser getRichUserWithAttributes(PerunSession sess, User user) throws InternalErrorException, UserNotExistsException;
+
+	/**
+	 * Get User to RichUser with all attributes.
+	 *
+	 * @param sess
+	 * @param user
+	 * @return
+	 * @throws InternalErrorException
+	 * @throws UserNotExistsException
+	 */
+	RichUser getRichUserWithAllAttributes(PerunSession sess, User user) throws InternalErrorException, UserNotExistsException;
 
 	/**
 	 * Get All richUsers with or without specificUsers.
@@ -896,7 +907,7 @@ public interface UsersManagerBl {
 	List<RichUser> convertUsersToRichUsers(PerunSession sess, List<User> users) throws InternalErrorException;
 
 	/**
-	 * From List of Rich Users without attribute make list of Rich Users with attributes
+	 * From List of Rich Users without attribute make list of Rich Users with <b>non-empty</b> attributes
 	 *
 	 * @param sess
 	 * @param richUsers
@@ -905,6 +916,17 @@ public interface UsersManagerBl {
 	 * @throws UserNotExistsException
 	 */
 	List<RichUser> convertRichUsersToRichUsersWithAttributes(PerunSession sess, List<RichUser> richUsers) throws InternalErrorException, UserNotExistsException;
+
+	/**
+	 * From List of Rich Users without attribute make list of Rich Users with all attributes
+	 *
+	 * @param sess
+	 * @param richUsers
+	 * @return list of Rich Users with attributes
+	 * @throws InternalErrorException
+	 * @throws UserNotExistsException
+	 */
+	List<RichUser> convertRichUsersToRichUsersWithAllAttributes(PerunSession sess, List<RichUser> richUsers) throws InternalErrorException, UserNotExistsException;
 
 	/**
 	 * From List of Users make list of RichUsers (with attributes by names)

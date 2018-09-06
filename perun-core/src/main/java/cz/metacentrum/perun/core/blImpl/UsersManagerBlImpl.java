@@ -225,6 +225,14 @@ public class UsersManagerBlImpl implements UsersManagerBl {
 		return richUsersWithAttributes.get(0);
 	}
 
+	public RichUser getRichUserWithAllAttributes(PerunSession sess, User user) throws InternalErrorException, UserNotExistsException {
+		List<User> users = new ArrayList<User>();
+		users.add(user);
+		List<RichUser> richUsers = this.convertUsersToRichUsers(sess, users);
+		List<RichUser> richUsersWithAttributes = this.convertRichUsersToRichUsersWithAllAttributes(sess, richUsers);
+		return richUsersWithAttributes.get(0);
+	}
+
 	public List<RichUser> convertUsersToRichUsers(PerunSession sess, List<User> users) throws InternalErrorException {
 		List<RichUser> richUsers = new ArrayList<RichUser>();
 
@@ -240,6 +248,17 @@ public class UsersManagerBlImpl implements UsersManagerBl {
 		for (RichUser richUser : richUsers) {
 			User user = getPerunBl().getUsersManagerBl().getUserById(sess, richUser.getId());
 			List<Attribute> userAttributes = getPerunBl().getAttributesManagerBl().getAttributes(sess, user);
+
+			richUser.setUserAttributes(userAttributes);
+		}
+
+		return richUsers;
+	}
+
+	public List<RichUser> convertRichUsersToRichUsersWithAllAttributes(PerunSession sess, List<RichUser> richUsers) throws InternalErrorException, UserNotExistsException {
+		for (RichUser richUser : richUsers) {
+			User user = getPerunBl().getUsersManagerBl().getUserById(sess, richUser.getId());
+			List<Attribute> userAttributes = getPerunBl().getAttributesManagerBl().getAllAttributes(sess, user);
 
 			richUser.setUserAttributes(userAttributes);
 		}
@@ -2529,15 +2548,13 @@ public class UsersManagerBlImpl implements UsersManagerBl {
 	}
 
 	private void updateUserAttributesAfterUserExtSourceChanged(PerunSession sess, User user) throws WrongAttributeAssignmentException, WrongAttributeValueException, WrongReferenceAttributeValueException, InternalErrorException, AttributeNotExistsException, UserNotExistsException {
-		RichUser richUser = getRichUserWithAttributes(sess, user);
+		RichUser richUser = getRichUserWithAllAttributes(sess, user);
 		for (Attribute userAttribute : richUser.getUserAttributes()) {
 			Attribute attribute = getUserAttributeValueFromExtSourceWithHighestPriority(sess, user, userAttribute.getName());
 			if (userAttribute.getValue() != attribute.getValue()) {
 				getPerunBl().getAttributesManagerBl().setAttribute(sess, user, attribute);
 			}
 		}
-
-
 	}
 
 //Dokončit
