@@ -15,7 +15,6 @@ import cz.metacentrum.perun.core.api.exceptions.IllegalArgumentException;
 import cz.metacentrum.perun.core.api.exceptions.rt.*;
 import cz.metacentrum.perun.core.bl.AttributesManagerBl;
 import cz.metacentrum.perun.core.implApi.modules.pwdmgr.PasswordManagerModule;
-import org.json.JSONArray;
 import org.json.JSONObject;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -26,7 +25,6 @@ import cz.metacentrum.perun.core.impl.PerunSessionImpl;
 import cz.metacentrum.perun.core.impl.Utils;
 import cz.metacentrum.perun.core.implApi.UsersManagerImplApi;
 import cz.metacentrum.perun.core.implApi.modules.attributes.UserVirtualAttributesModuleImplApi;
-import org.w3c.dom.Attr;
 
 /**
  * UsersManager business logic
@@ -2237,13 +2235,13 @@ public class UsersManagerBlImpl implements UsersManagerBl {
 				try {
 					log.error("SynchronizeUSer - UserExtSourceFromPerun: {}", uesFromPerun);
 
-					// Store priority for UserExtSource
-					getAndSetLowestPriority(sess, user, uesFromPerun);
-
 					//Store or update Stored attributes
 					Attribute userExtSourceStoredAttributesAttr = getPerunBl().getAttributesManagerBl().getAttribute(sess, uesFromPerun, UsersManager.USEREXTSOURCESTOREDATTRIBUTES_ATTRNAME);
 					userExtSourceStoredAttributesAttr.setValue(candidate.convertAttributesToJSON().toString());
 					getPerunBl().getAttributesManagerBl().setAttribute(sess, uesFromPerun, userExtSourceStoredAttributesAttr);
+
+					// Store priority for UserExtSource
+					setLowestPriority(sess, user, uesFromPerun);
 
 					//Store or updated overwriteAttributeList
 					Attribute overwriteAttributeListAttr = getPerunBl().getAttributesManagerBl().getAttribute(sess, uesFromPerun, UsersManager.USEREXTSOURCEOVERWRITEUSERATTRIBUTELIST_ATTRNAME);
@@ -2256,29 +2254,33 @@ public class UsersManagerBlImpl implements UsersManagerBl {
 				}
 			}
 		}
-
-		// Update user attributes
-		boolean hasHighestPriority = hasHighestPriority(sess, user, ues);
-		if (hasHighestPriority) {
-			updateUserCoreAttributes(sess, user, candidate, overwriteUserAttributeList);
-			updateUserAttributes(sess, user, candidate, overwriteUserAttributeList);
-		} else {
-			updateUserAttributes(sess, user, candidate, getOverWriteUserAttributeListForActualUserExtSource(sess, user, ues));
+		if (ues != null) {
+			UserExtSource userExtSourceFromPerun = getPerunBl().getUsersManagerBl().getUserExtSourceByExtLogin(sess, ues.getExtSource(), ues.getLogin());
+			// Update user attributes
+			boolean hasHighestPriority = hasHighestPriority(sess, user, userExtSourceFromPerun);
+			if (hasHighestPriority) {
+				updateUserCoreAttributes(sess, user, candidate, overwriteUserAttributeList);
+				updateUserAttributes(sess, user, candidate, overwriteUserAttributeList);
+			} else {
+				updateUserAttributes(sess, user, candidate, getOverWriteUserAttributeListForActualUserExtSource(sess, user, userExtSourceFromPerun));
+			}
 		}
+
 
 	}
 
 	private List<String> getOverWriteUserAttributeListForActualUserExtSource(PerunSession sess, User user, UserExtSource userExtSource) {
 		try {
-			int actualPriority = getAndSetLowestPriority(sess, user, userExtSource);
+			log.debug("getOverWriteUserAttributeListForActualUserExtSource1");
+			int actualPriority = setLowestPriority(sess, user, userExtSource);
 			List<String> actualOverwriteUserAttributeList = getOverwriteAttributeList(sess, userExtSource);
 
 			List<UserExtSource> userExtSourceList = getPerunBl().getUsersManagerBl().getUserExtSources(sess, user);
 			for (UserExtSource ues : userExtSourceList) {
-				int priority = 0;
 				try {
-					priority = getAndSetLowestPriority(sess, user, ues);
-					if (priority < actualPriority) {
+					log.debug("getOverWriteUserAttributeListForActualUserExtSource1");
+					int priority = setLowestPriority(sess, user, ues);
+					if (priority > 0 && priority < actualPriority) {
 						List<String> overwriteUserAttributeList = getOverwriteAttributeList(sess, ues);
 						for (String attrName: overwriteUserAttributeList) {
 							if (overwriteUserAttributeList.contains(attrName)) {
@@ -2302,11 +2304,15 @@ public class UsersManagerBlImpl implements UsersManagerBl {
 
 	private boolean hasHighestPriority(PerunSession sess, User user, UserExtSource userExtSource) {
 		try {
-			int actualPriority = getAndSetLowestPriority(sess, user, userExtSource);
+			log.debug("hasHighestPriority1- userExtSource {}", userExtSource);
+
+			int actualPriority = setLowestPriority(sess, user, userExtSource);
 
 			List<UserExtSource> userExtSourceList = getPerunBl().getUsersManagerBl().getUserExtSources(sess,user);
 			for (UserExtSource ues : userExtSourceList) {
-				if (getAndSetLowestPriority(sess, user, ues) < actualPriority) {
+				log.debug("hasHighestPriority2- UES {}", ues);
+				int priority = setLowestPriority(sess, user, ues);
+				if ( priority > 0 && priority < actualPriority) {
 					return false;
 				}
 			}
@@ -2361,19 +2367,19 @@ public class UsersManagerBlImpl implements UsersManagerBl {
 		return 0;
 	}
 
-	private int getAndSetLowestPriority(PerunSession sess, User user, UserExtSource userExtSource) throws WrongAttributeAssignmentException, WrongAttributeValueException, WrongReferenceAttributeValueException, InternalErrorException, AttributeNotExistsException {
-		int priority;
-		log.error("User {}", user);
-		log.debug("UserExtsource {}", userExtSource);
+	private int setLowestPriority(PerunSession sess, User user, UserExtSource userExtSource) throws WrongAttributeAssignmentException, WrongAttributeValueException, WrongReferenceAttributeValueException, InternalErrorException, AttributeNotExistsException {
+		int priority = 0;
+		log.error("setLowestPriority - User {}", user);
+		log.debug("setLowestPriority - UserExtsource {}", userExtSource);
 
 		Attribute priorityAttribute = getPerunBl().getAttributesManagerBl().getAttribute(sess, userExtSource, UsersManager.USEREXTSOURCEPRIORITY_ATTRNAME);
 		if (priorityAttribute.getValue() == null ) {
-			priority = getNewLowestPriority(sess, user);
-			log.debug("Attribute {}", priorityAttribute);
-			log.debug("OldPriority {}", priorityAttribute.getValue());
-			log.debug("Priority {}", priority);
-			priorityAttribute.setValue(priority);
-			getPerunBl().getAttributesManagerBl().setAttribute(sess, userExtSource, priorityAttribute);
+			Attribute userExtSourceStoredAttributesAttr = getPerunBl().getAttributesManagerBl().getAttribute(sess, userExtSource, UsersManager.USEREXTSOURCESTOREDATTRIBUTES_ATTRNAME);
+			if (userExtSourceStoredAttributesAttr.getValue() != null) {
+				priority = getNewLowestPriority(sess, user);
+				priorityAttribute.setValue(priority);
+				getPerunBl().getAttributesManagerBl().setAttribute(sess, userExtSource, priorityAttribute);
+			}
 		} else {
 			priority = priorityAttribute.valueAsInteger();
 		}
@@ -2534,7 +2540,7 @@ public class UsersManagerBlImpl implements UsersManagerBl {
 
 		for (UserExtSource userExtSource: getPerunBl().getUsersManagerBl().getUserExtSources(sess, user)) {
 			int priority = getUserExtSourcePriority(sess, userExtSource);
-			if ( priority < highestPriority) {
+			if ( priority > 0 && priority < highestPriority) {
 				String storeAttributesString = getUserExtSourceStoredAttributesAttr(sess, userExtSource);
 				if (storeAttributesString != null) {
 					JSONObject storedAttributes = new JSONObject(storeAttributesString);
