@@ -2525,10 +2525,12 @@ public class UsersManagerBlImpl implements UsersManagerBl {
 		for (UserExtSource userExtSource: getPerunBl().getUsersManagerBl().getUserExtSources(sess, user)) {
 			int priority = getUserExtSourcePriority(sess, userExtSource);
 			if ( priority < highestPriority) {
-				JSONObject storedAttributes = new JSONObject(getUserExtSourceStoredAttributesAttr(sess, userExtSource));
-				if (storedAttributes.get(attrName) != null) {
-					highestPriority = priority;
-					attribute.setValue(storedAttributes.get(attrName));
+				String storeAttributesString = getUserExtSourceStoredAttributesAttr(sess, userExtSource);
+				if (storeAttributesString != null) {
+					JSONObject storedAttributes = new JSONObject(storeAttributesString);
+					if (storedAttributes.get(attrName) != null) {
+						highestPriority = priority;
+						attribute.setValue(storedAttributes.get(attrName));
 					/*
 					if (attribute.getType().equals("java.lang.Integer")) {
 						attribute.setValue(storedAttributes.getInt(attrName));
@@ -2541,6 +2543,7 @@ public class UsersManagerBlImpl implements UsersManagerBl {
 					} else if (attribute.getType().equals("java.util.LinkedHashMap")) {
 						attribute.setValue(storedAttributes.get(attrName));
 					}*/
+					}
 				}
 			}
 		}
