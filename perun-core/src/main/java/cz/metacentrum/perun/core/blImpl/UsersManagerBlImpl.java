@@ -483,7 +483,7 @@ public class UsersManagerBlImpl implements UsersManagerBl {
 		return afterUpdatingUser;
 	}
 
-	public UserExtSource updateUserExtSource(PerunSession sess, UserExtSource userExtSource) throws InternalErrorException, UserExtSourceExistsException, UserNotExistsException {
+	public UserExtSource updateUserExtSource(PerunSession sess, UserExtSource userExtSource) throws InternalErrorException, UserExtSourceExistsException {
 		getPerunBl().getAuditer().log(sess, "{} updated.", userExtSource);
 		UserExtSource updatedUserExtSource = getUsersManagerImpl().updateUserExtSource(sess, userExtSource);
 		try {
@@ -495,6 +495,8 @@ public class UsersManagerBlImpl implements UsersManagerBl {
 		} catch (AttributeNotExistsException e) {
 			e.printStackTrace();
 		} catch (WrongReferenceAttributeValueException e) {
+			e.printStackTrace();
+		} catch (UserNotExistsException e) {
 			e.printStackTrace();
 		}
 		return updatedUserExtSource;
