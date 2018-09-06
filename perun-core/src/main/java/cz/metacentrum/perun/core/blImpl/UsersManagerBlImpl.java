@@ -2214,6 +2214,8 @@ public class UsersManagerBlImpl implements UsersManagerBl {
 		// Assign missing userExtSource and update LoA
 		if (candidate.getUserExtSources() != null) {
 			for (UserExtSource userExtSource : candidate.getUserExtSources()) {
+				log.error("SynchronizeUSer - UserExtSource: {}", userExtSource);
+
 				UserExtSource uesFromPerun;
 				try {
 					uesFromPerun = getPerunBl().getUsersManagerBl().getUserExtSourceByExtLogin(sess, userExtSource.getExtSource(), userExtSource.getLogin());
@@ -2233,7 +2235,8 @@ public class UsersManagerBlImpl implements UsersManagerBl {
 					throw new ConsistencyErrorException("Updating login of userExtSource to value which already exists: " + userExtSource);
 				}
 				try {
-					log.error("SynchronizeUSer - UserExtSource: {}", uesFromPerun);
+					log.error("SynchronizeUSer - UserExtSourceFromPerun: {}", uesFromPerun);
+
 					// Store priority for UserExtSource
 					getAndSetLowestPriority(sess, user, uesFromPerun);
 
