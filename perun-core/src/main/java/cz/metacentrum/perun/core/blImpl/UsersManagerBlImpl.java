@@ -2359,6 +2359,9 @@ public class UsersManagerBlImpl implements UsersManagerBl {
 
 	private int getAndSetLowestPriority(PerunSession sess, User user, UserExtSource userExtSource) throws WrongAttributeAssignmentException, WrongAttributeValueException, WrongReferenceAttributeValueException, InternalErrorException, AttributeNotExistsException {
 		int priority;
+		log.error("User {}", user);
+		log.debug("UserExtsource {}", userExtSource);
+
 		Attribute priorityAttribute = getPerunBl().getAttributesManagerBl().getAttribute(sess, userExtSource, UsersManager.USEREXTSOURCEPRIORITY_ATTRNAME);
 		if (priorityAttribute.getValue() == null ) {
 			priority = getNewLowestPriority(sess, user);
