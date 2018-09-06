@@ -2360,8 +2360,9 @@ public class UsersManagerBlImpl implements UsersManagerBl {
 	private int getAndSetLowestPriority(PerunSession sess, User user, UserExtSource userExtSource) throws WrongAttributeAssignmentException, WrongAttributeValueException, WrongReferenceAttributeValueException, InternalErrorException, AttributeNotExistsException {
 		int priority;
 		Attribute priorityAttribute = getPerunBl().getAttributesManagerBl().getAttribute(sess, userExtSource, UsersManager.USEREXTSOURCEPRIORITY_ATTRNAME);
-		if (priorityAttribute == null || priorityAttribute.getValue() == null ) {
+		if (priorityAttribute.getValue() == null ) {
 			priority = getNewLowestPriority(sess, user);
+			log.debug("Priority {}", priority);
 			priorityAttribute.setValue(priority);
 			getPerunBl().getAttributesManagerBl().setAttribute(sess, userExtSource, priorityAttribute);
 		} else {
@@ -2554,20 +2555,20 @@ public class UsersManagerBlImpl implements UsersManagerBl {
 		RichUser richUser = getRichUserWithAllAttributes(sess, user);
 		for (Attribute userAttribute : richUser.getUserAttributes()) {
 			Attribute attribute = getUserAttributeValueFromExtSourceWithHighestPriority(sess, user, userAttribute.getName());
-			if (userAttribute.getValue() != attribute.getValue()) {
+			if (!getPerunBl().getAttributesManagerBl().isCoreAttribute(sess, attribute) && userAttribute.getValue() != attribute.getValue()) {
 				getPerunBl().getAttributesManagerBl().setAttribute(sess, user, attribute);
 			}
 		}
 	}
 
-//Dokončit
+	//Dokončit
 	private void updateUserAttributes(PerunSession sess, User user, Candidate candidate, List<String> overwriteUserAttributesList) throws InternalErrorException, AttributeNotExistsException, WrongAttributeAssignmentException {
 		for (String attributeName : candidate.getAttributes().keySet()) {
 			if(attributeName.startsWith(AttributesManager.NS_USER_ATTR)) {
 				RichUser richUser;
 
 				try {
-					richUser = getRichUserWithAttributes(sess, user);
+					richUser = getRichUserWithAllAttributes(sess, user);
 					for (Attribute userAttribute: richUser.getUserAttributes()) {
 						if(userAttribute.getName().equals(attributeName)) {
 							Object subjectAttributeValue = getPerunBl().getAttributesManagerBl().stringToAttributeValue(candidate.getAttributes().get(attributeName), userAttribute.getType());
@@ -2589,7 +2590,7 @@ public class UsersManagerBlImpl implements UsersManagerBl {
 								}
 							}
 							//we found it, but there is no change
-							break;
+							//break;
 						}
 					}
 					/*
