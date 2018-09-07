@@ -2556,7 +2556,7 @@ public class UsersManagerBlImpl implements UsersManagerBl {
 		for (Attribute userAttribute : richUser.getUserAttributes()) {
 			Attribute attribute = getUserAttributeValueFromExtSourceWithHighestPriority(sess, user, userAttribute.getName());
 			if (userAttribute.getValue() != attribute.getValue()) {
-				log.debug("Try to set attribute {}.", attribute);
+				log.debug("Try to set attribute {} instead of userAttribute{}.", attribute, userAttribute);
 				getPerunBl().getAttributesManagerBl().setAttribute(sess, user, attribute);
 			}
 		}
