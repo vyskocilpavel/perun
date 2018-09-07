@@ -2274,26 +2274,22 @@ public class UsersManagerBlImpl implements UsersManagerBl {
 			log.debug("getOverWriteUserAttributeListForActualUserExtSource1");
 			int actualPriority = getUserExtSourcePriority(sess, userExtSource);
 			List<String> actualOverwriteUserAttributeList = getOverwriteAttributeList(sess, userExtSource);
-
 			List<UserExtSource> userExtSourceList = getPerunBl().getUsersManagerBl().getUserExtSources(sess, user);
 			for (UserExtSource ues : userExtSourceList) {
-				try {
-					log.debug("getOverWriteUserAttributeListForActualUserExtSource1");
-					int priority = setLowestPriority(sess, user, ues);
-					if (priority > 0 && priority < actualPriority) {
-						List<String> overwriteUserAttributeList = getOverwriteAttributeList(sess, ues);
-						for (String attrName: overwriteUserAttributeList) {
-							if (overwriteUserAttributeList.contains(attrName)) {
-								actualOverwriteUserAttributeList.remove(attrName);
-							}
+				if (!ues.equals(userExtSource)) {
+					try {
+						log.debug("getOverWriteUserAttributeListForActualUserExtSource1");
+						int priority = getUserExtSourcePriority(sess, ues);
+						if (priority > 0 && priority < actualPriority) {
+							List<String> overwriteUserAttributeList = getOverwriteAttributeList(sess, ues);
+							actualOverwriteUserAttributeList.removeAll(overwriteUserAttributeList);
 						}
+					} catch (WrongAttributeAssignmentException e) {
+						e.printStackTrace();
+					} catch (AttributeNotExistsException e) {
+						e.printStackTrace();
 					}
-				} catch (WrongAttributeAssignmentException e) {
-					e.printStackTrace();
-				} catch (AttributeNotExistsException e) {
-					e.printStackTrace();
 				}
-
 			}
 			return actualOverwriteUserAttributeList;
 		} catch (Exception ex) {
