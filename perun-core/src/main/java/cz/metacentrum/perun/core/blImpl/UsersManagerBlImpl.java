@@ -2272,7 +2272,7 @@ public class UsersManagerBlImpl implements UsersManagerBl {
 	private List<String> getOverWriteUserAttributeListForActualUserExtSource(PerunSession sess, User user, UserExtSource userExtSource) {
 		try {
 			log.debug("getOverWriteUserAttributeListForActualUserExtSource1");
-			int actualPriority = setLowestPriority(sess, user, userExtSource);
+			int actualPriority = getUserExtSourcePriority(sess, userExtSource);
 			List<String> actualOverwriteUserAttributeList = getOverwriteAttributeList(sess, userExtSource);
 
 			List<UserExtSource> userExtSourceList = getPerunBl().getUsersManagerBl().getUserExtSources(sess, user);
@@ -2576,7 +2576,17 @@ public class UsersManagerBlImpl implements UsersManagerBl {
 		}
 	}
 
-	//Dokončit
+	/**
+	 *
+	 * @param sess PerunSession
+	 * @param user User
+	 * @param candidate Candidate
+	 * @param overwriteUserAttributesList List<String> List of attributeNames which can be overwitten during synchronization
+	 *
+	 * @throws InternalErrorException
+	 * @throws AttributeNotExistsException
+	 * @throws WrongAttributeAssignmentException
+	 */
 	private void updateUserAttributes(PerunSession sess, User user, Candidate candidate, List<String> overwriteUserAttributesList) throws InternalErrorException, AttributeNotExistsException, WrongAttributeAssignmentException {
 		for (String attributeName : candidate.getAttributes().keySet()) {
 			if(attributeName.startsWith(AttributesManager.NS_USER_ATTR)) {
@@ -2605,27 +2615,8 @@ public class UsersManagerBlImpl implements UsersManagerBl {
 								}
 							}
 							//we found it, but there is no change
-							//break;
 						}
 					}
-					/*
-					//user has not set this attribute so set it now if
-					if(!attributeFound) {
-						// FIXME - this whole section probably can be removed. Previously null attributes were not retrieved with member
-						// FIXME - they are now always present, if not the same, then they are set in a code above.
-						Attribute newAttribute = new Attribute(getPerunBl().getAttributesManagerBl().getAttributeDefinition(sess, attributeName));
-						Object subjectAttributeValue = getPerunBl().getAttributesManagerBl().stringToAttributeValue(candidate.getAttributes().get(attributeName), newAttribute.getType());
-						newAttribute.setValue(subjectAttributeValue);
-						try {
-							// Try to set user's attributes
-							getPerunBl().getAttributesManagerBl().setAttributeInNestedTransaction(sess, user, newAttribute);
-							log.trace("Setting the {} value {}", newAttribute, candidate.getAttributes().get(attributeName));
-						} catch (AttributeValueException e) {
-							// There is a problem with attribute value, so set INVALID status for the member
-//					getPerunBl().getMembersManagerBl().invalidateMember(sess, richMember);
-						}
-					}
-					*/
 				} catch (UserNotExistsException e) {
 					e.printStackTrace();
 				}
