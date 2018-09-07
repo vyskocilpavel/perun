@@ -2266,8 +2266,6 @@ public class UsersManagerBlImpl implements UsersManagerBl {
 				updateUserAttributes(sess, user, candidate, getOverWriteUserAttributeListForActualUserExtSource(sess, user, userExtSourceFromPerun));
 			}
 		}
-
-
 	}
 
 	private List<String> getOverWriteUserAttributeListForActualUserExtSource(PerunSession sess, User user, UserExtSource userExtSource) {
@@ -2301,26 +2299,25 @@ public class UsersManagerBlImpl implements UsersManagerBl {
 
 	private boolean hasHighestPriority(PerunSession sess, User user, UserExtSource userExtSource) {
 		try {
-			log.debug("hasHighestPriority1- userExtSource {}", userExtSource);
-
-			int actualPriority = setLowestPriority(sess, user, userExtSource);
-
+			int actualPriority = getUserExtSourcePriority(sess, userExtSource);
+			if (actualPriority == 0) {
+				actualPriority = setLowestPriority(sess, user, userExtSource);
+			}
 			List<UserExtSource> userExtSourceList = getPerunBl().getUsersManagerBl().getUserExtSources(sess,user);
 			for (UserExtSource ues : userExtSourceList) {
-				log.debug("hasHighestPriority2- UES {}", ues);
-				int priority = setLowestPriority(sess, user, ues);
+				int priority = getUserExtSourcePriority(sess, ues);
 				if ( priority > 0 && priority < actualPriority) {
 					return false;
 				}
 			}
 
-		} catch (WrongAttributeAssignmentException e) {
-			e.printStackTrace();
 		} catch (InternalErrorException e) {
 			e.printStackTrace();
-		} catch (AttributeNotExistsException e) {
-			e.printStackTrace();
 		} catch (WrongAttributeValueException e) {
+			e.printStackTrace();
+		} catch (WrongAttributeAssignmentException e) {
+			e.printStackTrace();
+		} catch (AttributeNotExistsException e) {
 			e.printStackTrace();
 		} catch (WrongReferenceAttributeValueException e) {
 			e.printStackTrace();
@@ -2502,6 +2499,7 @@ public class UsersManagerBlImpl implements UsersManagerBl {
 	}
 
 	private void updateUserCoreAttributes(PerunSession sess, User user, Candidate candidate) throws ConsistencyErrorException {
+		log.trace("Update user core attributes method starder.");
 		// try to find user core attributes and update user -> update name and titles
 		user.setFirstName(candidate.getFirstName());
 		user.setMiddleName(candidate.getMiddleName());
@@ -2511,6 +2509,7 @@ public class UsersManagerBlImpl implements UsersManagerBl {
 
 		try {
 			perunBl.getUsersManagerBl().updateUser(sess, user);
+			log.trace("User: {} was successfully updated.", user);
 		} catch (UserNotExistsException e) {
 			throw new ConsistencyErrorException("User from perun not exists when should - removed during sync.", e);
 		} catch (InternalErrorException e) {
