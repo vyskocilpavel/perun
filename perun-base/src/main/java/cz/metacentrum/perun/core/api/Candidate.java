@@ -23,6 +23,8 @@ import org.json.JSONObject;
  */
 public class Candidate extends User {
 
+	private String NS_USER_ATTR_CORE = "urn:perun:user:attribute-def:core:";
+
 	private UserExtSource userExtSource;
 	private List<UserExtSource> additionalUserExtSources;
 	private Map<String, String> attributes;
@@ -178,6 +180,13 @@ public class Candidate extends User {
 
 	public JSONObject convertAttributesToJSON() {
 		JSONObject candidateAttributes = new JSONObject();
+		candidateAttributes.append(NS_USER_ATTR_CORE + "firstName", firstName);
+		candidateAttributes.append(NS_USER_ATTR_CORE + "lastName", lastName );
+		candidateAttributes.append(NS_USER_ATTR_CORE + "middleName", middleName);
+		candidateAttributes.append(NS_USER_ATTR_CORE + "tittleAfter", titleAfter);
+		candidateAttributes.append(NS_USER_ATTR_CORE + "tittleBefore", titleBefore);
+		candidateAttributes.append(NS_USER_ATTR_CORE + "serviceUser", isServiceUser());
+		candidateAttributes.append(NS_USER_ATTR_CORE + "sponsoredUser", isSponsoredUser());
 		for (Map.Entry<String, String> attribute : attributes.entrySet()) {
 			candidateAttributes.append(attribute.getKey(), attribute.getValue());
 		}
