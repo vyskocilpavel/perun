@@ -2527,9 +2527,11 @@ public class UsersManagerBlImpl implements UsersManagerBl {
 				String storeAttributesString = getUserExtSourceStoredAttributesAttr(sess, userExtSource);
 				if (storeAttributesString != null) {
 					JSONObject storedAttributes = new JSONObject(storeAttributesString);
+
 					if (storedAttributes.get(attrName) != null) {
 						highestPriority = priority;
 						attribute.setValue(storedAttributes.get(attrName));
+					}
 					/*
 					if (attribute.getType().equals("java.lang.Integer")) {
 						attribute.setValue(storedAttributes.getInt(attrName));
@@ -2541,8 +2543,8 @@ public class UsersManagerBlImpl implements UsersManagerBl {
 						attribute.setValue(storedAttributes.get(attrName));
 					} else if (attribute.getType().equals("java.util.LinkedHashMap")) {
 						attribute.setValue(storedAttributes.get(attrName));
-					}*/
 					}
+*/
 				}
 			}
 		}
@@ -2554,6 +2556,7 @@ public class UsersManagerBlImpl implements UsersManagerBl {
 		for (Attribute userAttribute : richUser.getUserAttributes()) {
 			Attribute attribute = getUserAttributeValueFromExtSourceWithHighestPriority(sess, user, userAttribute.getName());
 			if (userAttribute.getValue() != attribute.getValue()) {
+				log.debug("Try to set attribute {}.", attribute);
 				getPerunBl().getAttributesManagerBl().setAttribute(sess, user, attribute);
 			}
 		}
