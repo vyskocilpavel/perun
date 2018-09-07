@@ -2554,7 +2554,7 @@ public class UsersManagerBlImpl implements UsersManagerBl {
 		RichUser richUser = getRichUserWithAllAttributes(sess, user);
 		for (Attribute userAttribute : richUser.getUserAttributes()) {
 			Attribute attribute = getUserAttributeValueFromExtSourceWithHighestPriority(sess, user, userAttribute.getName());
-			if (!getPerunBl().getAttributesManagerBl().isCoreAttribute(sess, attribute) && userAttribute.getValue() != attribute.getValue()) {
+			if (userAttribute.getValue() != attribute.getValue()) {
 				getPerunBl().getAttributesManagerBl().setAttribute(sess, user, attribute);
 			}
 		}
