@@ -2641,9 +2641,10 @@ public class UsersManagerBlImpl implements UsersManagerBl {
 					richUser = getRichUserWithAllAttributes(sess, user);
 					for (Attribute userAttribute: richUser.getUserAttributes()) {
 						if(userAttribute.getName().equals(attributeName)) {
+							log.debug("Synchronize attr with name {}", userAttribute.getName());
 							Object subjectAttributeValue = getPerunBl().getAttributesManagerBl().stringToAttributeValue(candidate.getAttributes().get(attributeName), userAttribute.getType());
 							if (!Objects.equals(userAttribute.getValue(), subjectAttributeValue)) {
-								log.trace("User synchronization: value of the attribute {} for userId {} changed. Original value {}, new value {}.",
+								log.debug("User synchronization: value of the attribute {} for userId {} changed. Original value {}, new value {}.",
 									userAttribute, richUser.getId(), userAttribute.getValue(), subjectAttributeValue);
 								userAttribute.setValue(subjectAttributeValue);
 								try {
