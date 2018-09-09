@@ -25,6 +25,7 @@ import cz.metacentrum.perun.core.impl.PerunSessionImpl;
 import cz.metacentrum.perun.core.impl.Utils;
 import cz.metacentrum.perun.core.implApi.UsersManagerImplApi;
 import cz.metacentrum.perun.core.implApi.modules.attributes.UserVirtualAttributesModuleImplApi;
+import org.w3c.dom.Attr;
 
 /**
  * UsersManager business logic
@@ -2259,6 +2260,7 @@ public class UsersManagerBlImpl implements UsersManagerBl {
 			UserExtSource userExtSourceFromPerun = getPerunBl().getUsersManagerBl().getUserExtSourceByExtLogin(sess, ues.getExtSource(), ues.getLogin());
 			// Update user attributes
 			boolean hasHighestPriority = hasHighestPriority(sess, user, userExtSourceFromPerun);
+			log.debug("HasHighestPriority: {}", hasHighestPriority);
 			if (hasHighestPriority) {
 				updateUserCoreAttributes(sess, user, candidate);
 				updateUserAttributes(sess, user, candidate, overwriteUserAttributeList);
@@ -2551,11 +2553,48 @@ public class UsersManagerBlImpl implements UsersManagerBl {
 		return attribute;
 	}
 
+	private UserExtSource getUserExtSourceWithHighestPriority(PerunSession sess, User user) {
+		int priority = Integer.MAX_VALUE;
+		UserExtSource userExtSource = null;
+		try {
+			for (UserExtSource ues : getPerunBl().getUsersManagerBl().getUserExtSources(sess, user)) {
+				int uesPriority = getUserExtSourcePriority(sess, ues);
+				if (uesPriority > 0 && uesPriority < priority) {
+					priority = uesPriority;
+					userExtSource = ues;
+				}
+			}
+		} catch (InternalErrorException e) {
+			e.printStackTrace();
+		}
+		return userExtSource;
+	}
+
 	private void updateUserAttributesAfterUserExtSourceChanged(PerunSession sess, User user) throws WrongAttributeAssignmentException, WrongAttributeValueException, WrongReferenceAttributeValueException, InternalErrorException, AttributeNotExistsException, UserNotExistsException {
+		//Update userCoreAttributes
+		UserExtSource uesWithHighestPriority = getUserExtSourceWithHighestPriority(sess, user);
+		String storeAttributesString = getUserExtSourceStoredAttributesAttr(sess, uesWithHighestPriority);
+		if (storeAttributesString != null) {
+			JSONObject storedAttributes = new JSONObject(storeAttributesString);
+
+			user.setFirstName((String) storedAttributes.get(AttributesManager.NS_USER_ATTR_CORE + "firstName"));
+			user.setLastName((String) storedAttributes.get(AttributesManager.NS_USER_ATTR_CORE + "lastName"));
+			user.setMiddleName((String) storedAttributes.get(AttributesManager.NS_USER_ATTR_CORE + "middleName"));
+			user.setTitleBefore((String) storedAttributes.get(AttributesManager.NS_USER_ATTR_CORE + "tittleBefore"));
+			user.setTitleAfter((String) storedAttributes.get(AttributesManager.NS_USER_ATTR_CORE + "tittleAfter"));
+			user.setServiceUser((Boolean) storedAttributes.get(AttributesManager.NS_USER_ATTR_CORE + "serviceUser"));
+			user.setSponsoredUser((Boolean) storedAttributes.get(AttributesManager.NS_USER_ATTR_CORE + "sponsoredUser"));
+
+			perunBl.getUsersManagerBl().updateUser(sess, user);
+		}
+
+
 		RichUser richUser = getRichUserWithAllAttributes(sess, user);
+
+		//Update UserAttributes
 		for (Attribute userAttribute : richUser.getUserAttributes()) {
 			Attribute attribute = getUserAttributeValueFromExtSourceWithHighestPriority(sess, user, userAttribute.getName());
-			if (userAttribute.getValue() != attribute.getValue()) {
+			if (userAttribute.getNamespace() == AttributesManager.NS_USER_ATTR_DEF && userAttribute.getValue() != attribute.getValue()) {
 				log.debug("Try to set attribute {} instead of userAttribute{}.", attribute, userAttribute);
 				getPerunBl().getAttributesManagerBl().setAttribute(sess, user, attribute);
 			}
