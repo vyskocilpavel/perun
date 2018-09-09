@@ -2312,6 +2312,7 @@ public class UsersManagerBlImpl implements UsersManagerBl {
 					return false;
 				}
 			}
+			return true;
 
 		} catch (InternalErrorException e) {
 			e.printStackTrace();
@@ -2324,7 +2325,7 @@ public class UsersManagerBlImpl implements UsersManagerBl {
 		} catch (WrongReferenceAttributeValueException e) {
 			e.printStackTrace();
 		}
-		return true;
+		return false;
 	}
 
 
@@ -2501,7 +2502,7 @@ public class UsersManagerBlImpl implements UsersManagerBl {
 	}
 
 	private void updateUserCoreAttributes(PerunSession sess, User user, Candidate candidate) throws ConsistencyErrorException {
-		log.trace("Update user core attributes method starder.");
+		log.debug("Update user core attributes method starder.");
 		// try to find user core attributes and update user -> update name and titles
 		user.setFirstName(candidate.getFirstName());
 		user.setMiddleName(candidate.getMiddleName());
@@ -2511,7 +2512,7 @@ public class UsersManagerBlImpl implements UsersManagerBl {
 
 		try {
 			perunBl.getUsersManagerBl().updateUser(sess, user);
-			log.trace("User: {} was successfully updated.", user);
+			log.debug("User: {} was successfully updated.", user);
 		} catch (UserNotExistsException e) {
 			throw new ConsistencyErrorException("User from perun not exists when should - removed during sync.", e);
 		} catch (InternalErrorException e) {
