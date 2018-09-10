@@ -2671,9 +2671,10 @@ public class UsersManagerBlImpl implements UsersManagerBl {
 								} catch (WrongAttributeAssignmentException e) {
 									throw new ConsistencyErrorException(e);
 								}
+							} else {
+								log.debug("User synchronization: Attribute value wasn't changed because the new value of the attribute {} is the same as the original value.", userAttribute);
+								//we found it, but there is no change
 							}
-							log.debug("User synchronization: Attribute value wasn't changed because the new value of the attribute {} is the same as the original value.", userAttribute);
-							//we found it, but there is no change
 						}
 					}
 				} catch (UserNotExistsException e) {
