@@ -2291,30 +2291,19 @@ public class UsersManagerBlImpl implements UsersManagerBl {
 		try {
 			int actualPriority = getUserExtSourcePriority(sess, userExtSource);
 			List<String> userAttributeListForSynchronization = new ArrayList<>(candidate.getAttributes().keySet());
-			log.debug("userAttributeList: {}", userAttributeListForSynchronization);
 			List<UserExtSource> userExtSourceList = getPerunBl().getUsersManagerBl().getUserExtSources(sess, user);
 			for (UserExtSource ues : userExtSourceList) {
 				if (!ues.equals(userExtSource)) {
-					try {
-						int priority = getUserExtSourcePriority(sess, ues);
-						if (priority > 0 && priority < actualPriority) {
-							List<String> overwriteUserAttributeListForExtSource = getOverwriteAttributeList(sess, ues);
-							for(String attrName : overwriteUserAttributeListForExtSource) {
-								if (overwriteAttributeList.contains(attrName)) {
-									userAttributeListForSynchronization.remove(attrName);
-								}
-							}
-						}
-					} catch (WrongAttributeAssignmentException e) {
-						e.printStackTrace();
-					} catch (AttributeNotExistsException e) {
-						e.printStackTrace();
+					int priority = getUserExtSourcePriority(sess, ues);
+					if (priority > 0 && priority < actualPriority) {
+						userAttributeListForSynchronization.removeAll(overwriteAttributeList);
 					}
 				}
 			}
+			log.debug("getActualAttributeListForSynchronizationForExtSource return: {}", userAttributeListForSynchronization);
 			return userAttributeListForSynchronization;
-		} catch (Exception ex) {
-
+		} catch (InternalErrorException e) {
+			e.printStackTrace();
 		}
 		return new ArrayList<>();
 	}
@@ -2663,13 +2652,9 @@ public class UsersManagerBlImpl implements UsersManagerBl {
 										log.debug("User synchronization: value of the attribute {} for userId {} was changed. Old value {} was replaced with new value {}.",
 												userAttribute, richUser.getId(), oldValue, subjectAttributeValue);
 									} else {
-										if (userAttribute.getType().equals("java.util.ArrayList") || userAttribute.getType().equals("java.util.LinkedHashMap")) {
-											getPerunBl().getAttributesManagerBl().mergeAttributeValueInNestedTransaction(sess, user, userAttribute);
-											log.debug("User synchronization: value of the attribute {} for userId {} was changed. Old value {} was merged with new value {}.",
-													userAttribute, richUser.getId(), oldValue, subjectAttributeValue);
-										} else {
-											log.debug("User synchronization: Attribute value wasn't changed because the new attribute value cannot be merged with old attribute value.");
-										}
+										getPerunBl().getAttributesManagerBl().mergeAttributeValueInNestedTransaction(sess, user, userAttribute);
+										log.debug("User synchronization: value of the attribute {} for userId {} was changed. Old value {} was merged with new value {}.",
+												userAttribute, richUser.getId(), oldValue, subjectAttributeValue);
 									}
 								} catch (AttributeValueException e) {
 									log.error("Problem with store new attribute value {} of attribute {} for userId {} ." , userAttribute.getValue(), userAttribute.getName(), richUser.getId());
