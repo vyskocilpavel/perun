@@ -2600,15 +2600,17 @@ public class UsersManagerBlImpl implements UsersManagerBl {
 			perunBl.getUsersManagerBl().updateUser(sess, user);
 		}
 
-
 		RichUser richUser = getRichUserWithAllAttributes(sess, user);
 
 		//Update UserAttributes
 		for (Attribute userAttribute : richUser.getUserAttributes()) {
 			Attribute attribute = getUserAttributeValueFromExtSourceWithHighestPriority(sess, user, userAttribute.getName());
-			if (userAttribute.getNamespace() == AttributesManager.NS_USER_ATTR_DEF && !userAttribute.getValue().equals(attribute.getValue())) {
+			log.debug("Attribute {} and userAttribute {}.", attribute, userAttribute);
+
+			if (userAttribute.getNamespace().equals(AttributesManager.NS_USER_ATTR_DEF) && !userAttribute.getValue().equals(attribute.getValue())) {
 				log.debug("Try to set attribute {} instead of userAttribute{}.", attribute, userAttribute);
-				getPerunBl().getAttributesManagerBl().setAttributeInNestedTransaction(sess, user, attribute);
+				userAttribute.setValue(attribute.getValue());
+				getPerunBl().getAttributesManagerBl().setAttributeInNestedTransaction(sess, user, userAttribute);
 			}
 		}
 	}
@@ -2638,9 +2640,7 @@ public class UsersManagerBlImpl implements UsersManagerBl {
 				try {
 					richUser = getRichUserWithAllAttributes(sess, user);
 					for (Attribute userAttribute: richUser.getUserAttributes()) {
-						log.debug("Old value is {}", userAttribute.getValue());
 						if(userAttribute.getName().equals(attributeName)) {
-							log.debug("Synchronize attr with name {}", userAttribute.getName());
 							Object subjectAttributeValue = getPerunBl().getAttributesManagerBl().stringToAttributeValue(candidate.getAttributes().get(attributeName), userAttribute.getType());
 							if (!Objects.equals(userAttribute.getValue(), subjectAttributeValue)) {
 								Object oldValue = userAttribute.getValue();
