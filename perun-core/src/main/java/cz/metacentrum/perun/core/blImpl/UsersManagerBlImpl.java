@@ -2591,7 +2591,7 @@ public class UsersManagerBlImpl implements UsersManagerBl {
 		return userExtSource;
 	}
 
-	private void updateUserAttributesAfterUserExtSourceChanged(PerunSession sess, User user) throws WrongAttributeAssignmentException, WrongAttributeValueException, WrongReferenceAttributeValueException, InternalErrorException, AttributeNotExistsException, UserNotExistsException {
+	public void updateUserAttributesAfterUserExtSourceChanged(PerunSession sess, User user) throws WrongAttributeAssignmentException, WrongAttributeValueException, WrongReferenceAttributeValueException, InternalErrorException, AttributeNotExistsException, UserNotExistsException {
 		//Update userCoreAttributes
 		UserExtSource uesWithHighestPriority = getUserExtSourceWithHighestPriority(sess, user);
 		String storeAttributesString = getUserExtSourceStoredAttributesAttr(sess, uesWithHighestPriority);
@@ -2615,9 +2615,9 @@ public class UsersManagerBlImpl implements UsersManagerBl {
 		//Update UserAttributes
 		for (Attribute userAttribute : richUser.getUserAttributes()) {
 			Attribute attribute = getUserAttributeValueFromExtSourceWithHighestPriority(sess, user, userAttribute.getName());
-			if (userAttribute.getNamespace() == AttributesManager.NS_USER_ATTR_DEF && userAttribute.getValue() != attribute.getValue()) {
+			if (userAttribute.getNamespace() == AttributesManager.NS_USER_ATTR_DEF && !userAttribute.getValue().equals(attribute.getValue())) {
 				log.debug("Try to set attribute {} instead of userAttribute{}.", attribute, userAttribute);
-				getPerunBl().getAttributesManagerBl().setAttribute(sess, user, attribute);
+				getPerunBl().getAttributesManagerBl().setAttributeInNestedTransaction(sess, user, attribute);
 			}
 		}
 	}
