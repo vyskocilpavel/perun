@@ -25,7 +25,6 @@ import cz.metacentrum.perun.core.impl.PerunSessionImpl;
 import cz.metacentrum.perun.core.impl.Utils;
 import cz.metacentrum.perun.core.implApi.UsersManagerImplApi;
 import cz.metacentrum.perun.core.implApi.modules.attributes.UserVirtualAttributesModuleImplApi;
-import org.w3c.dom.Attr;
 
 /**
  * UsersManager business logic
@@ -2288,9 +2287,8 @@ public class UsersManagerBlImpl implements UsersManagerBl {
 		}
 	}
 
-	private List<String> getActualAttributeListForForSynchronizationForExtSource(PerunSession sess, Candidate candidate, User user, UserExtSource userExtSource, List<String> overwriteAttributeList) {
+	private List<String> getActualAttributeListForSynchronizationForExtSource(PerunSession sess, Candidate candidate, User user, UserExtSource userExtSource, List<String> overwriteAttributeList) {
 		try {
-			log.debug("getActualAttributeListForForSynchronizationForExtSource");
 			int actualPriority = getUserExtSourcePriority(sess, userExtSource);
 			List<String> userAttributeListForSynchronization = new ArrayList<>(candidate.getAttributes().keySet());
 			log.debug("userAttributeList: {}", userAttributeListForSynchronization);
@@ -2298,7 +2296,6 @@ public class UsersManagerBlImpl implements UsersManagerBl {
 			for (UserExtSource ues : userExtSourceList) {
 				if (!ues.equals(userExtSource)) {
 					try {
-						log.debug("getActualAttributeListForForSynchronizationForExtSource2");
 						int priority = getUserExtSourcePriority(sess, ues);
 						if (priority > 0 && priority < actualPriority) {
 							List<String> overwriteUserAttributeListForExtSource = getOverwriteAttributeList(sess, ues);
@@ -2315,8 +2312,6 @@ public class UsersManagerBlImpl implements UsersManagerBl {
 					}
 				}
 			}
-			log.debug("New userAttributeListForForSynchronizationForExtSource: {}", userAttributeListForSynchronization );
-
 			return userAttributeListForSynchronization;
 		} catch (Exception ex) {
 
@@ -2373,7 +2368,7 @@ public class UsersManagerBlImpl implements UsersManagerBl {
 		return new ArrayList<>();
 	}
 
-	private int getUserExtSourcePriority(PerunSession sess, UserExtSource userExtSource) {
+	public int getUserExtSourcePriority(PerunSession sess, UserExtSource userExtSource) {
 		try {
 			Attribute priorityAttribute = getPerunBl().getAttributesManagerBl().getAttribute(sess, userExtSource, UsersManager.USEREXTSOURCEPRIORITY_ATTRNAME);
 			if (priorityAttribute != null && priorityAttribute.getValue() != null ) {
@@ -2639,8 +2634,12 @@ public class UsersManagerBlImpl implements UsersManagerBl {
 	 * @throws WrongAttributeAssignmentException
 	 */
 	private void updateUserAttributes(PerunSession sess, User user, Candidate candidate, UserExtSource userExtSource, List<String> overwriteUserAttributesList) throws InternalErrorException, AttributeNotExistsException, WrongAttributeAssignmentException {
-		List<String> attributeListForSynchronization = getActualAttributeListForForSynchronizationForExtSource(sess, candidate, user, userExtSource, overwriteUserAttributesList);
-		log.debug("Update user attributes method started with overwriteUserAttributeList {}.", overwriteUserAttributesList);
+		List<String> attributeListForSynchronization = getActualAttributeListForSynchronizationForExtSource(sess, candidate, user, userExtSource, overwriteUserAttributesList);
+		log.debug("Update user attributes method started synchronization attributes: {} with overwriteUserAttributeList {}.",attributeListForSynchronization, overwriteUserAttributesList);
+		if (attributeListForSynchronization.isEmpty()) {
+			log.debug("Update user attributes method ended.");
+			return;
+		}
 		for (String attributeName : candidate.getAttributes().keySet()) {
 			if(attributeName.startsWith(AttributesManager.NS_USER_ATTR) && attributeListForSynchronization.contains(attributeName)) {
 				RichUser richUser;
@@ -2652,15 +2651,20 @@ public class UsersManagerBlImpl implements UsersManagerBl {
 							log.debug("Synchronize attr with name {}", userAttribute.getName());
 							Object subjectAttributeValue = getPerunBl().getAttributesManagerBl().stringToAttributeValue(candidate.getAttributes().get(attributeName), userAttribute.getType());
 							if (!Objects.equals(userAttribute.getValue(), subjectAttributeValue)) {
-								log.debug("User synchronization: value of the attribute {} for userId {} changed. Original value {}, new value {}.",
-									userAttribute, richUser.getId(), userAttribute.getValue(), subjectAttributeValue);
 								userAttribute.setValue(subjectAttributeValue);
 								try {
 									//Choose set or merge by extSource attribute overwriteUserAttributes (if contains this one)
 									if(overwriteUserAttributesList.contains(userAttribute.getName())) {
-										getPerunBl().getAttributesManagerBl().setAttributeInNestedTransaction(sess, user, userAttribute);
+										log.debug("User synchronization: value of the attribute {} for userId {} was changed. Old value {} was replaced with new value {}.",
+												userAttribute, richUser.getId(), userAttribute.getValue(), subjectAttributeValue);
 									} else {
-										getPerunBl().getAttributesManagerBl().mergeAttributeValueInNestedTransaction(sess, user, userAttribute);
+										if (userAttribute.getType().equals("java.util.ArrayList") || userAttribute.getType().equals("java.util.LinkedHashMap")) {
+											getPerunBl().getAttributesManagerBl().mergeAttributeValueInNestedTransaction(sess, user, userAttribute);
+											log.debug("User synchronization: value of the attribute {} for userId {} was changed. Old value {} was merged with new value {}.",
+													userAttribute, richUser.getId(), userAttribute.getValue(), subjectAttributeValue);
+										} else {
+											log.debug("User synchronization: Attribute value wasn't changed because the new attribute value cannot be merged with old attribute value.");
+										}
 									}
 								} catch (AttributeValueException e) {
 									log.error("Problem with store new attribute value {} of attribute {} for userId {} ." , userAttribute.getValue(), userAttribute.getName(), richUser.getId());
@@ -2668,6 +2672,7 @@ public class UsersManagerBlImpl implements UsersManagerBl {
 									throw new ConsistencyErrorException(e);
 								}
 							}
+							log.debug("User synchronization: Attribute value wasn't changed because the new value of the attribute {} is the same as the original value.", userAttribute);
 							//we found it, but there is no change
 						}
 					}
@@ -2677,7 +2682,5 @@ public class UsersManagerBlImpl implements UsersManagerBl {
 			}
 		}
 		log.debug("Update user attributes method ended.");
-
-
 	}
 }

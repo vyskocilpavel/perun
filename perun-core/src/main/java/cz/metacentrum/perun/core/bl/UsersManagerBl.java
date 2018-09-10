@@ -1204,4 +1204,6 @@ public interface UsersManagerBl {
 
 
 	void synchronizeUser(PerunSession sess,Candidate candidate ) throws InternalErrorException, UserNotExistsException, UserExtSourceNotExistsException, ExtSourceNotExistsException, AttributeNotExistsException, WrongAttributeAssignmentException;
+
+	int getUserExtSourcePriority(PerunSession sess, UserExtSource userExtSource);
 }
