@@ -2592,6 +2592,8 @@ public class UsersManagerBlImpl implements UsersManagerBl {
 	}
 
 	public void updateUserAttributesAfterUserExtSourceChanged(PerunSession sess, User user) throws WrongAttributeAssignmentException, WrongAttributeValueException, WrongReferenceAttributeValueException, InternalErrorException, AttributeNotExistsException, UserNotExistsException {
+		log.debug("updateUserAttributesAfterUserExtSourceChanged");
+
 		//Update userCoreAttributes
 		UserExtSource uesWithHighestPriority = getUserExtSourceWithHighestPriority(sess, user);
 		String storeAttributesString = getUserExtSourceStoredAttributesAttr(sess, uesWithHighestPriority);
