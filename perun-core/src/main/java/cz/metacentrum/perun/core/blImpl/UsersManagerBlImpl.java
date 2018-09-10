@@ -2192,9 +2192,13 @@ public class UsersManagerBlImpl implements UsersManagerBl {
 
 	public synchronized void synchronizeUser(PerunSession sess, Candidate candidate) throws InternalErrorException, UserNotExistsException, UserExtSourceNotExistsException, ExtSourceNotExistsException, AttributeNotExistsException, WrongAttributeAssignmentException {
 		log.info("User synchronization started for candidate: {}", candidate);
-		Map<String, String> attributes = getPerunBl().getExtSourcesManagerBl().getAttributes(candidate.getUserExtSource().getExtSource());
-		String[] overwriteUserAttributes = attributes.get(ExtSourcesManager.USEROVERWRITEATTRIBUTES_ATTRNAME).split(",");
+
+		List<String> synchronizedAttributes = new ArrayList<>(candidate.getAttributes().keySet());
+
+		Map<String, String> extSourceAttributes = getPerunBl().getExtSourcesManagerBl().getAttributes(candidate.getUserExtSource().getExtSource());
+		String[] overwriteUserAttributes = extSourceAttributes.get(ExtSourcesManager.USEROVERWRITEATTRIBUTES_ATTRNAME).split(",");
 		List<String> overwriteUserAttributeList = Arrays.asList(overwriteUserAttributes);
+
 		User user = null;
 		UserExtSource ues;
 		if ((ues = candidate.getUserExtSource()) != null) {
@@ -2278,28 +2282,31 @@ public class UsersManagerBlImpl implements UsersManagerBl {
 			log.debug("HasHighestPriority: {}", hasHighestPriority);
 			if (hasHighestPriority) {
 				updateUserCoreAttributes(sess, user, candidate);
-				updateUserAttributes(sess, user, candidate, overwriteUserAttributeList);
-			} else {
-				updateUserAttributes(sess, user, candidate, getOverWriteUserAttributeListForActualUserExtSource(sess, user, userExtSourceFromPerun));
 			}
+			updateUserAttributes(sess, user, candidate, userExtSourceFromPerun, overwriteUserAttributeList);
+
 		}
 	}
 
-	private List<String> getOverWriteUserAttributeListForActualUserExtSource(PerunSession sess, User user, UserExtSource userExtSource) {
+	private List<String> getActualAttributeListForForSynchronizationForExtSource(PerunSession sess, Candidate candidate, User user, UserExtSource userExtSource, List<String> overwriteAttributeList) {
 		try {
-			log.debug("getOverWriteUserAttributeListForActualUserExtSource1");
+			log.debug("getActualAttributeListForForSynchronizationForExtSource");
 			int actualPriority = getUserExtSourcePriority(sess, userExtSource);
-			List<String> actualOverwriteUserAttributeList = getOverwriteAttributeList(sess, userExtSource);
-			log.debug("ActualOverWriteUserAttributeList: {}", actualOverwriteUserAttributeList );
+			List<String> userAttributeListForSynchronization = new ArrayList<>(candidate.getAttributes().keySet());
+			log.debug("userAttributeList: {}", userAttributeListForSynchronization);
 			List<UserExtSource> userExtSourceList = getPerunBl().getUsersManagerBl().getUserExtSources(sess, user);
 			for (UserExtSource ues : userExtSourceList) {
 				if (!ues.equals(userExtSource)) {
 					try {
-						log.debug("getOverWriteUserAttributeListForActualUserExtSource2");
+						log.debug("getActualAttributeListForForSynchronizationForExtSource2");
 						int priority = getUserExtSourcePriority(sess, ues);
 						if (priority > 0 && priority < actualPriority) {
-							List<String> overwriteUserAttributeList = getOverwriteAttributeList(sess, ues);
-							actualOverwriteUserAttributeList.removeAll(overwriteUserAttributeList);
+							List<String> overwriteUserAttributeListForExtSource = getOverwriteAttributeList(sess, ues);
+							for(String attrName : overwriteUserAttributeListForExtSource) {
+								if (overwriteAttributeList.contains(attrName)) {
+									userAttributeListForSynchronization.remove(attrName);
+								}
+							}
 						}
 					} catch (WrongAttributeAssignmentException e) {
 						e.printStackTrace();
@@ -2308,9 +2315,9 @@ public class UsersManagerBlImpl implements UsersManagerBl {
 					}
 				}
 			}
-			log.debug("New ActualOverWriteUserAttributeList: {}", actualOverwriteUserAttributeList );
+			log.debug("New userAttributeListForForSynchronizationForExtSource: {}", userAttributeListForSynchronization );
 
-			return actualOverwriteUserAttributeList;
+			return userAttributeListForSynchronization;
 		} catch (Exception ex) {
 
 		}
@@ -2631,10 +2638,11 @@ public class UsersManagerBlImpl implements UsersManagerBl {
 	 * @throws AttributeNotExistsException
 	 * @throws WrongAttributeAssignmentException
 	 */
-	private void updateUserAttributes(PerunSession sess, User user, Candidate candidate, List<String> overwriteUserAttributesList) throws InternalErrorException, AttributeNotExistsException, WrongAttributeAssignmentException {
-		log.debug("Update user attributes method starder with overwriteUserAttributeList {}.", overwriteUserAttributesList);
+	private void updateUserAttributes(PerunSession sess, User user, Candidate candidate, UserExtSource userExtSource, List<String> overwriteUserAttributesList) throws InternalErrorException, AttributeNotExistsException, WrongAttributeAssignmentException {
+		List<String> attributeListForSynchronization = getActualAttributeListForForSynchronizationForExtSource(sess, candidate, user, userExtSource, overwriteUserAttributesList);
+		log.debug("Update user attributes method started with overwriteUserAttributeList {}.", overwriteUserAttributesList);
 		for (String attributeName : candidate.getAttributes().keySet()) {
-			if(attributeName.startsWith(AttributesManager.NS_USER_ATTR)) {
+			if(attributeName.startsWith(AttributesManager.NS_USER_ATTR) && attributeListForSynchronization.contains(attributeName)) {
 				RichUser richUser;
 
 				try {
