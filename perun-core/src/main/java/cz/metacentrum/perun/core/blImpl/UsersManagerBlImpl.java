@@ -2649,21 +2649,24 @@ public class UsersManagerBlImpl implements UsersManagerBl {
 				try {
 					richUser = getRichUserWithAllAttributes(sess, user);
 					for (Attribute userAttribute: richUser.getUserAttributes()) {
+						log.debug("Old value is {}", userAttribute.getValue());
 						if(userAttribute.getName().equals(attributeName)) {
 							log.debug("Synchronize attr with name {}", userAttribute.getName());
 							Object subjectAttributeValue = getPerunBl().getAttributesManagerBl().stringToAttributeValue(candidate.getAttributes().get(attributeName), userAttribute.getType());
 							if (!Objects.equals(userAttribute.getValue(), subjectAttributeValue)) {
+								Object oldValue = userAttribute.getValue();
 								userAttribute.setValue(subjectAttributeValue);
 								try {
 									//Choose set or merge by extSource attribute overwriteUserAttributes (if contains this one)
 									if(overwriteUserAttributesList.contains(userAttribute.getName())) {
+										getPerunBl().getAttributesManagerBl().setAttributeInNestedTransaction(sess, user, userAttribute);
 										log.debug("User synchronization: value of the attribute {} for userId {} was changed. Old value {} was replaced with new value {}.",
-												userAttribute, richUser.getId(), userAttribute.getValue(), subjectAttributeValue);
+												userAttribute, richUser.getId(), oldValue, subjectAttributeValue);
 									} else {
 										if (userAttribute.getType().equals("java.util.ArrayList") || userAttribute.getType().equals("java.util.LinkedHashMap")) {
 											getPerunBl().getAttributesManagerBl().mergeAttributeValueInNestedTransaction(sess, user, userAttribute);
 											log.debug("User synchronization: value of the attribute {} for userId {} was changed. Old value {} was merged with new value {}.",
-													userAttribute, richUser.getId(), userAttribute.getValue(), subjectAttributeValue);
+													userAttribute, richUser.getId(), oldValue, subjectAttributeValue);
 										} else {
 											log.debug("User synchronization: Attribute value wasn't changed because the new attribute value cannot be merged with old attribute value.");
 										}
