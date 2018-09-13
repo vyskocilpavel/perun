@@ -2338,10 +2338,10 @@ public class UsersManagerBlImpl implements UsersManagerBl {
 	}
 
 
-	private String getUserExtSourceStoredAttributesAttr (PerunSession sess, UserExtSource userExtSource) throws WrongAttributeAssignmentException, InternalErrorException, AttributeNotExistsException {
-		Attribute UserExtSourceStoredAttributesAttr = getPerunBl().getAttributesManagerBl().getAttribute(sess, userExtSource, UsersManager.USEREXTSOURCESTOREDATTRIBUTES_ATTRNAME);
-		if (UserExtSourceStoredAttributesAttr != null && UserExtSourceStoredAttributesAttr.getValue() != null) {
-			String UserExtSourceStoredAttributes = UserExtSourceStoredAttributesAttr.valueAsString();
+	private Attribute getUserExtSourceStoredAttributesAttr (PerunSession sess, UserExtSource userExtSource) throws WrongAttributeAssignmentException, InternalErrorException, AttributeNotExistsException {
+		Attribute userExtSourceStoredAttributesAttr = getPerunBl().getAttributesManagerBl().getAttribute(sess, userExtSource, UsersManager.USEREXTSOURCESTOREDATTRIBUTES_ATTRNAME);
+		if (userExtSourceStoredAttributesAttr != null && userExtSourceStoredAttributesAttr.getValue() != null) {
+			return userExtSourceStoredAttributesAttr;
 		}
 		return null;
 	}
@@ -2529,20 +2529,34 @@ public class UsersManagerBlImpl implements UsersManagerBl {
 		}
 	}
 
-	private Attribute getUserAttributeValueFromExtSourceWithHighestPriority(PerunSession sess, User user, String attrName) throws WrongAttributeAssignmentException, InternalErrorException, AttributeNotExistsException {
+	private Attribute getUserAttributeFromExtSourceWithHighestPriority(PerunSession sess, User user, String attrName) throws WrongAttributeAssignmentException, InternalErrorException, AttributeNotExistsException {
 		int highestPriority = Integer.MAX_VALUE;
 		Attribute attribute = getPerunBl().getAttributesManagerBl().getAttribute(sess, user, attrName);
 
 		for (UserExtSource userExtSource: getPerunBl().getUsersManagerBl().getUserExtSources(sess, user)) {
 			int priority = getUserExtSourcePriority(sess, userExtSource);
 			if ( priority > 0 && priority < highestPriority) {
-				String storeAttributesString = getUserExtSourceStoredAttributesAttr(sess, userExtSource);
-				if (storeAttributesString != null) {
-					JSONObject storedAttributes = new JSONObject(storeAttributesString);
+				Attribute uesStoredAttributesAttr = getUserExtSourceStoredAttributesAttr(sess, userExtSource);
 
-					if (storedAttributes.get(attrName) != null) {
+				if (uesStoredAttributesAttr != null && uesStoredAttributesAttr.valueAsString() != null) {
+					JSONObject storedAttributes = new JSONObject(uesStoredAttributesAttr.valueAsString());
+
+					if (storedAttributes.opt(attrName) != null) {
 						highestPriority = priority;
-						attribute.setValue(storedAttributes.get(attrName));
+						attribute.setValue(storedAttributes.optJSONArray(attrName).opt(0));
+						/*
+						if (attribute.getType().equals("java.lang.Integer")) {
+							attribute.setValue(storedAttributes.getJSONArray(attrName).getInt(0));
+						} else if (attribute.getType().equals("java.lang.Boolean")) {
+							attribute.setValue(storedAttributes.getJSONArray(attrName).getBoolean(0));
+						} else if (attribute.getType().equals("java.lang.String")) {
+							attribute.setValue(storedAttributes.getJSONArray(attrName).getString(0));
+						} else if (attribute.getType().equals("java.util.ArrayList")) {
+							attribute.setValue(storedAttributes.getJSONArray(attrName).get(0));
+						} else if (attribute.getType().equals("java.util.LinkedHashMap")) {
+							attribute.setValue(storedAttributes.getJSONArray(attrName).get(0));
+						}
+						*/
 					}
 					/*
 					if (attribute.getType().equals("java.lang.Integer")) {
@@ -2586,11 +2600,11 @@ public class UsersManagerBlImpl implements UsersManagerBl {
 		//Update userCoreAttributes
 		UserExtSource uesWithHighestPriority = getUserExtSourceWithHighestPriority(sess, user);
 		log.debug("UserExtSourceWithHighestPriority: {}", uesWithHighestPriority);
-		String storedAttributesString = getUserExtSourceStoredAttributesAttr(sess, uesWithHighestPriority);
+		String storedAttributesString = getUserExtSourceStoredAttributesAttr(sess, uesWithHighestPriority).valueAsString();
 		log.debug("StoredAttributes: {}", storedAttributesString);
 		if (storedAttributesString != null) {
 			JSONObject storedAttributes = new JSONObject(storedAttributesString);
-			Boolean attributeChanged = false;
+			boolean attributeChanged = false;
 
 			if (storedAttributes.has(AttributesManager.NS_USER_ATTR_CORE + "firstName")) {
 				user.setFirstName(storedAttributes.getString(AttributesManager.NS_USER_ATTR_CORE + "firstName"));
@@ -2634,13 +2648,15 @@ public class UsersManagerBlImpl implements UsersManagerBl {
 
 		//Update UserAttributes
 		for (Attribute userAttribute : richUser.getUserAttributes()) {
-			Attribute attribute = getUserAttributeValueFromExtSourceWithHighestPriority(sess, user, userAttribute.getName());
-			log.debug("Attribute {} and userAttribute {}.", attribute, userAttribute);
+			if (userAttribute.getNamespace().equals(AttributesManager.NS_USER_ATTR_DEF)) {
+				Attribute attribute = getUserAttributeFromExtSourceWithHighestPriority(sess, user, userAttribute.getName());
+				log.debug("Attribute {} and userAttribute {}.", attribute, userAttribute);
 
-			if (userAttribute.getNamespace().equals(AttributesManager.NS_USER_ATTR_DEF) && !userAttribute.getValue().equals(attribute.getValue())) {
-				log.debug("Try to set attribute {} instead of userAttribute{}.", attribute, userAttribute);
-				userAttribute.setValue(attribute.getValue());
-				getPerunBl().getAttributesManagerBl().setAttributeInNestedTransaction(sess, user, userAttribute);
+				if (userAttribute.getValue() != attribute.getValue()) {
+					log.debug("Try to set attribute {} instead of userAttribute{}.", attribute, userAttribute);
+					userAttribute.setValue(attribute.getValue());
+					getPerunBl().getAttributesManagerBl().setAttributeInNestedTransaction(sess, user, userAttribute);
+				}
 			}
 		}
 	}
