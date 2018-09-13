@@ -2585,19 +2585,49 @@ public class UsersManagerBlImpl implements UsersManagerBl {
 
 		//Update userCoreAttributes
 		UserExtSource uesWithHighestPriority = getUserExtSourceWithHighestPriority(sess, user);
-		String storeAttributesString = getUserExtSourceStoredAttributesAttr(sess, uesWithHighestPriority);
-		if (storeAttributesString != null) {
-			JSONObject storedAttributes = new JSONObject(storeAttributesString);
+		log.debug("UserExtSourceWithHighestPriority: {}", uesWithHighestPriority);
+		String storedAttributesString = getUserExtSourceStoredAttributesAttr(sess, uesWithHighestPriority);
+		log.debug("StoredAttributes: {}", storedAttributesString);
+		if (storedAttributesString != null) {
+			JSONObject storedAttributes = new JSONObject(storedAttributesString);
+			Boolean attributeChanged = false;
 
-			user.setFirstName((String) storedAttributes.get(AttributesManager.NS_USER_ATTR_CORE + "firstName"));
-			user.setLastName((String) storedAttributes.get(AttributesManager.NS_USER_ATTR_CORE + "lastName"));
-			user.setMiddleName((String) storedAttributes.get(AttributesManager.NS_USER_ATTR_CORE + "middleName"));
-			user.setTitleBefore((String) storedAttributes.get(AttributesManager.NS_USER_ATTR_CORE + "tittleBefore"));
-			user.setTitleAfter((String) storedAttributes.get(AttributesManager.NS_USER_ATTR_CORE + "tittleAfter"));
-			user.setServiceUser((Boolean) storedAttributes.get(AttributesManager.NS_USER_ATTR_CORE + "serviceUser"));
-			user.setSponsoredUser((Boolean) storedAttributes.get(AttributesManager.NS_USER_ATTR_CORE + "sponsoredUser"));
+			if (storedAttributes.has(AttributesManager.NS_USER_ATTR_CORE + "firstName")) {
+				user.setFirstName(storedAttributes.getString(AttributesManager.NS_USER_ATTR_CORE + "firstName"));
+				attributeChanged = true;
+			}
+			if (storedAttributes.has(AttributesManager.NS_USER_ATTR_CORE + "lastName")) {
+				user.setLastName(storedAttributes.getString(AttributesManager.NS_USER_ATTR_CORE + "lastName"));
+				attributeChanged = true;
+			}
+			if (storedAttributes.has(AttributesManager.NS_USER_ATTR_CORE + "middleName")) {
+				user.setMiddleName(storedAttributes.getString(AttributesManager.NS_USER_ATTR_CORE + "middleName"));
+				attributeChanged = true;
+			}
+			if (storedAttributes.has(AttributesManager.NS_USER_ATTR_CORE + "tittleBefore")) {
+				user.setTitleBefore(storedAttributes.getString(AttributesManager.NS_USER_ATTR_CORE + "tittleBefore"));
+				attributeChanged = true;
+			}
+			if (storedAttributes.has(AttributesManager.NS_USER_ATTR_CORE + "tittleAfter")) {
+				user.setTitleAfter(storedAttributes.getString(AttributesManager.NS_USER_ATTR_CORE + "tittleAfter"));
+				attributeChanged = true;
+			}
+			if (storedAttributes.has(AttributesManager.NS_USER_ATTR_CORE + "serviceUser")) {
+				user.setServiceUser(storedAttributes.getBoolean(AttributesManager.NS_USER_ATTR_CORE + "serviceUser"));
+				attributeChanged = true;
+			}
+			if (storedAttributes.has(AttributesManager.NS_USER_ATTR_CORE + "sponsoredUser")) {
+				user.setSponsoredUser(storedAttributes.getBoolean(AttributesManager.NS_USER_ATTR_CORE + "sponsoredUser"));
+				attributeChanged = true;
+			}
 
-			perunBl.getUsersManagerBl().updateUser(sess, user);
+			if (attributeChanged) {
+				perunBl.getUsersManagerBl().updateUser(sess, user);
+				log.debug("Update User core Attributes for user {} was successfull.", user);
+			} else {
+				log.debug("User was't updated.");
+			}
+
 		}
 
 		RichUser richUser = getRichUserWithAllAttributes(sess, user);
