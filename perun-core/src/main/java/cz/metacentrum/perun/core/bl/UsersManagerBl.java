@@ -1207,5 +1207,5 @@ public interface UsersManagerBl {
 
 	int getUserExtSourcePriority(PerunSession sess, UserExtSource userExtSource);
 
-	void updateUserAttributesAfterUserExtSourceChanged(PerunSession sess, User user) throws WrongAttributeAssignmentException, WrongAttributeValueException, WrongReferenceAttributeValueException, InternalErrorException, AttributeNotExistsException, UserNotExistsException;
+	void updateUserAttributesAfterUesPriorityChanged(PerunSession sess, User user) throws WrongAttributeAssignmentException, WrongAttributeValueException, WrongReferenceAttributeValueException, InternalErrorException, AttributeNotExistsException, UserNotExistsException;
 }

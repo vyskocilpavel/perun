@@ -505,7 +505,7 @@ public class UsersManagerBlImpl implements UsersManagerBl {
 		getPerunBl().getAuditer().log(sess, "{} updated.", userExtSource);
 		UserExtSource updatedUserExtSource = getUsersManagerImpl().updateUserExtSource(sess, userExtSource);
 		try {
-			updateUserAttributesAfterUserExtSourceChanged(sess, getPerunBl().getUsersManagerBl().getUserByUserExtSource(sess,userExtSource));
+			updateUserAttributesAfterUesPriorityChanged(sess, getPerunBl().getUsersManagerBl().getUserByUserExtSource(sess,userExtSource));
 		} catch (WrongAttributeValueException e) {
 			e.printStackTrace();
 		} catch (WrongAttributeAssignmentException e) {
@@ -581,23 +581,13 @@ public class UsersManagerBlImpl implements UsersManagerBl {
 		} catch (WrongReferenceAttributeValueException | WrongAttributeValueException ex) {
 			throw new InternalErrorException("Can't remove userExtSource because there is problem with removing all it's attributes.", ex);
 		}
+		Attribute storedAttributesAttr = getUserExtSourceStoredAttributesAttr(sess, userExtSource);
+
 		getUsersManagerImpl().removeUserExtSource(sess, user, userExtSource);
 		getPerunBl().getAuditer().log(sess, "{} removed from {}.", userExtSource, user);
 
 		//UpdateUserAttributes
-		try {
-			updateUserAttributesAfterUserExtSourceChanged(sess, user);
-		} catch (UserNotExistsException e) {
-			e.printStackTrace();
-		} catch (AttributeNotExistsException e) {
-			e.printStackTrace();
-		} catch (WrongReferenceAttributeValueException e) {
-			e.printStackTrace();
-		} catch (WrongAttributeAssignmentException e) {
-			e.printStackTrace();
-		} catch (WrongAttributeValueException e) {
-			e.printStackTrace();
-		}
+		updateUserAttributesAfterRemoveUes(sess, user, storedAttributesAttr);
 	}
 
 	public void moveUserExtSource(PerunSession sess, User sourceUser, User targetUser, UserExtSource userExtSource) throws InternalErrorException {
@@ -2280,11 +2270,11 @@ public class UsersManagerBlImpl implements UsersManagerBl {
 					overwriteAttributeListAttr.setValue(new ArrayList<>(overwriteUserAttributeList));
 					getPerunBl().getAttributesManagerBl().setAttribute(sess, uesFromPerun, overwriteAttributeListAttr);
 
-					//Store or updated synchronizetAttributeList
+					//Store or updated synchronizedAttributeList
 					Attribute synchronizedAttributeListAttr = getPerunBl().getAttributesManagerBl().getAttribute(sess, uesFromPerun, UsersManager.USEREXTSOURCESYNCHRONIZEDATTRIBUTELIST_ATTRNAME);
 					List<String> sychronizedAttributeList = new ArrayList<>(candidate.getAttributes().keySet());
 					synchronizedAttributeListAttr.setValue(sychronizedAttributeList);
-					getPerunBl().getAttributesManagerBl().setAttribute(sess, uesFromPerun, overwriteAttributeListAttr);
+					getPerunBl().getAttributesManagerBl().setAttribute(sess, uesFromPerun, synchronizedAttributeListAttr);
 				} catch (WrongAttributeValueException e) {
 					e.printStackTrace();
 				} catch (WrongReferenceAttributeValueException e) {
@@ -2314,8 +2304,12 @@ public class UsersManagerBlImpl implements UsersManagerBl {
 				if (!ues.equals(userExtSource)) {
 					int priority = getUserExtSourcePriority(sess, ues);
 					if (priority > 0 && priority < actualPriority) {
-						List<String> uesSynchronizedAttrList = getSynchronizeAttributeList(sess, userExtSource) ;
-						userAttributeListForSynchronization.removeAll(overwriteAttributeList);
+						List<String> uesSynchronizedAttrList = getSynchronizeAttributeList(sess, userExtSource);
+						for (String attrName : uesSynchronizedAttrList) {
+							if (overwriteAttributeList.contains(attrName)) {
+								userAttributeListForSynchronization.remove(attrName);
+							}
+						}
 					}
 				}
 			}
@@ -2359,11 +2353,20 @@ public class UsersManagerBlImpl implements UsersManagerBl {
 	}
 
 
-	private Attribute getUserExtSourceStoredAttributesAttr (PerunSession sess, UserExtSource userExtSource) throws WrongAttributeAssignmentException, InternalErrorException, AttributeNotExistsException {
-		Attribute userExtSourceStoredAttributesAttr = getPerunBl().getAttributesManagerBl().getAttribute(sess, userExtSource, UsersManager.USEREXTSOURCESTOREDATTRIBUTES_ATTRNAME);
-		if (userExtSourceStoredAttributesAttr != null && userExtSourceStoredAttributesAttr.getValue() != null) {
-			return userExtSourceStoredAttributesAttr;
+	private Attribute getUserExtSourceStoredAttributesAttr (PerunSession sess, UserExtSource userExtSource)  {
+		try {
+			Attribute userExtSourceStoredAttributesAttr = getPerunBl().getAttributesManagerBl().getAttribute(sess, userExtSource, UsersManager.USEREXTSOURCESTOREDATTRIBUTES_ATTRNAME);
+			if (userExtSourceStoredAttributesAttr != null && userExtSourceStoredAttributesAttr.getValue() != null) {
+				return userExtSourceStoredAttributesAttr;
+			}
+		} catch (WrongAttributeAssignmentException e) {
+			e.printStackTrace();
+		} catch (InternalErrorException e) {
+			e.printStackTrace();
+		} catch (AttributeNotExistsException e) {
+			e.printStackTrace();
 		}
+
 		return null;
 	}
 
@@ -2619,8 +2622,12 @@ public class UsersManagerBlImpl implements UsersManagerBl {
 		return userExtSource;
 	}
 
-	public void updateUserAttributesAfterUserExtSourceChanged(PerunSession sess, User user) throws WrongAttributeAssignmentException, WrongAttributeValueException, WrongReferenceAttributeValueException, InternalErrorException, AttributeNotExistsException, UserNotExistsException {
-		log.debug("updateUserAttributesAfterUserExtSourceChanged");
+	public void updateUserAttributesAfterRemoveUes(PerunSession sess, User user, Attribute storedAttributesAttr) {
+
+	}
+
+	public void updateUserAttributesAfterUesPriorityChanged(PerunSession sess, User user) throws WrongAttributeAssignmentException, WrongAttributeValueException, WrongReferenceAttributeValueException, InternalErrorException, AttributeNotExistsException, UserNotExistsException {
+		log.debug("updateUserAttributesAfterUesPriorityChanged");
 
 		//Update userCoreAttributes
 		UserExtSource uesWithHighestPriority = getUserExtSourceWithHighestPriority(sess, user);
