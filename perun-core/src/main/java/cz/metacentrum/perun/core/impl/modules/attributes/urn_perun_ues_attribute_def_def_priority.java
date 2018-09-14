@@ -56,7 +56,7 @@ public class urn_perun_ues_attribute_def_def_priority extends UserExtSourceAttri
 	public void changedAttributeHook(PerunSessionImpl sess, UserExtSource userExtSource, Attribute attribute) throws InternalErrorException, WrongReferenceAttributeValueException {
 		try {
 			User user = sess.getPerunBl().getUsersManagerBl().getUserById(sess, userExtSource.getUserId());
-			sess.getPerunBl().getUsersManagerBl().updateUserAttributesAfterUesPriorityChanged(sess, user);
+			sess.getPerunBl().getUsersManagerBl().updateUserAttributesAfterUesChanged(sess, user);
 		} catch (UserNotExistsException e) {
 			e.printStackTrace();
 		} catch (WrongAttributeValueException e) {

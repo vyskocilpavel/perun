@@ -25,7 +25,6 @@ import cz.metacentrum.perun.core.impl.PerunSessionImpl;
 import cz.metacentrum.perun.core.impl.Utils;
 import cz.metacentrum.perun.core.implApi.UsersManagerImplApi;
 import cz.metacentrum.perun.core.implApi.modules.attributes.UserVirtualAttributesModuleImplApi;
-import org.w3c.dom.Attr;
 
 /**
  * UsersManager business logic
@@ -505,7 +504,7 @@ public class UsersManagerBlImpl implements UsersManagerBl {
 		getPerunBl().getAuditer().log(sess, "{} updated.", userExtSource);
 		UserExtSource updatedUserExtSource = getUsersManagerImpl().updateUserExtSource(sess, userExtSource);
 		try {
-			updateUserAttributesAfterUesPriorityChanged(sess, getPerunBl().getUsersManagerBl().getUserByUserExtSource(sess,userExtSource));
+			updateUserAttributesAfterUesChanged(sess, getPerunBl().getUsersManagerBl().getUserByUserExtSource(sess,userExtSource));
 		} catch (WrongAttributeValueException e) {
 			e.printStackTrace();
 		} catch (WrongAttributeAssignmentException e) {
@@ -582,12 +581,26 @@ public class UsersManagerBlImpl implements UsersManagerBl {
 			throw new InternalErrorException("Can't remove userExtSource because there is problem with removing all it's attributes.", ex);
 		}
 		Attribute storedAttributesAttr = getUserExtSourceStoredAttributesAttr(sess, userExtSource);
+		List<String> synchronizedAttributesList = getSynchronizeAttributeList(sess, userExtSource);
+		List<String> overwriteAttributesList = getOverwriteAttributeList(sess, userExtSource);
 
 		getUsersManagerImpl().removeUserExtSource(sess, user, userExtSource);
 		getPerunBl().getAuditer().log(sess, "{} removed from {}.", userExtSource, user);
 
 		//UpdateUserAttributes
-		updateUserAttributesAfterRemoveUes(sess, user, storedAttributesAttr);
+		try {
+			updateUserAttributesAfterUesChanged(sess, user);
+		} catch (UserNotExistsException e) {
+			e.printStackTrace();
+		} catch (WrongAttributeValueException e) {
+			e.printStackTrace();
+		} catch (WrongAttributeAssignmentException e) {
+			e.printStackTrace();
+		} catch (AttributeNotExistsException e) {
+			e.printStackTrace();
+		} catch (WrongReferenceAttributeValueException e) {
+			e.printStackTrace();
+		}
 	}
 
 	public void moveUserExtSource(PerunSession sess, User sourceUser, User targetUser, UserExtSource userExtSource) throws InternalErrorException {
@@ -2194,8 +2207,6 @@ public class UsersManagerBlImpl implements UsersManagerBl {
 	public synchronized void synchronizeUser(PerunSession sess, Candidate candidate) throws InternalErrorException, UserNotExistsException, UserExtSourceNotExistsException, ExtSourceNotExistsException, AttributeNotExistsException, WrongAttributeAssignmentException {
 		log.info("User synchronization started for candidate: {}", candidate);
 
-		List<String> synchronizedAttributes = new ArrayList<>(candidate.getAttributes().keySet());
-
 		Map<String, String> extSourceAttributes = getPerunBl().getExtSourcesManagerBl().getAttributes(candidate.getUserExtSource().getExtSource());
 		String[] overwriteUserAttributes = extSourceAttributes.get(ExtSourcesManager.USEROVERWRITEATTRIBUTES_ATTRNAME).split(",");
 		List<String> overwriteUserAttributeList = Arrays.asList(overwriteUserAttributes);
@@ -2370,14 +2381,23 @@ public class UsersManagerBlImpl implements UsersManagerBl {
 		return null;
 	}
 
-	private List<String> getOverwriteAttributeList(PerunSession sess, UserExtSource userExtSource) throws WrongAttributeAssignmentException, InternalErrorException, AttributeNotExistsException {
-		Attribute overwriteUserAttributeList_attr = getPerunBl().getAttributesManagerBl().getAttribute(sess, userExtSource, UsersManager.USEREXTSOURCEOVERWRITEUSERATTRIBUTELIST_ATTRNAME);
-		if (overwriteUserAttributeList_attr != null && overwriteUserAttributeList_attr.getValue() != null) {
-			List<String> overwriteUserAttributeList = overwriteUserAttributeList_attr.valueAsList();
-			if (!overwriteUserAttributeList.isEmpty()) {
-				return overwriteUserAttributeList;
+	private List<String> getOverwriteAttributeList(PerunSession sess, UserExtSource userExtSource){
+		try {
+			Attribute overwriteUserAttributeList_attr = getPerunBl().getAttributesManagerBl().getAttribute(sess, userExtSource, UsersManager.USEREXTSOURCEOVERWRITEUSERATTRIBUTELIST_ATTRNAME);
+			if (overwriteUserAttributeList_attr != null && overwriteUserAttributeList_attr.getValue() != null) {
+				List<String> overwriteUserAttributeList = overwriteUserAttributeList_attr.valueAsList();
+				if (!overwriteUserAttributeList.isEmpty()) {
+					return overwriteUserAttributeList;
+				}
 			}
+		} catch (WrongAttributeAssignmentException e) {
+			e.printStackTrace();
+		} catch (InternalErrorException e) {
+			e.printStackTrace();
+		} catch (AttributeNotExistsException e) {
+			e.printStackTrace();
 		}
+
 		return new ArrayList<>();
 	}
 
@@ -2573,6 +2593,7 @@ public class UsersManagerBlImpl implements UsersManagerBl {
 	private Attribute getUserAttributeFromExtSourceWithHighestPriority(PerunSession sess, User user, String attrName) throws WrongAttributeAssignmentException, InternalErrorException, AttributeNotExistsException {
 		int highestPriority = Integer.MAX_VALUE;
 		Attribute attribute = getPerunBl().getAttributesManagerBl().getAttribute(sess, user, attrName);
+		UserExtSource userExtSourceWithHighestPriority = null;
 
 		for (UserExtSource userExtSource: getPerunBl().getUsersManagerBl().getUserExtSources(sess, user)) {
 			int priority = getUserExtSourcePriority(sess, userExtSource);
@@ -2585,7 +2606,8 @@ public class UsersManagerBlImpl implements UsersManagerBl {
 					if (storedAttributes.opt(attrName) != null) {
 						highestPriority = priority;
 						attribute.setValue(storedAttributes.optJSONArray(attrName).opt(0));
-						/*
+						userExtSourceWithHighestPriority = userExtSource;
+					/*
 						if (attribute.getType().equals("java.lang.Integer")) {
 							attribute.setValue(storedAttributes.getJSONArray(attrName).getInt(0));
 						} else if (attribute.getType().equals("java.lang.Boolean")) {
@@ -2602,7 +2624,35 @@ public class UsersManagerBlImpl implements UsersManagerBl {
 				}
 			}
 		}
+
+		if ((attribute.getType().equals("java.util.ArrayList") || attribute.getType().equals("java.util.LinkedHashMap")
+				&& userExtSourceWithHighestPriority != null && !getOverwriteAttributeList(sess, userExtSourceWithHighestPriority).contains(attrName))) {
+			for (UserExtSource ues : getPerunBl().getUsersManagerBl().getUserExtSources(sess, user)) {
+				Attribute uesStoredAttributesAttr = getUserExtSourceStoredAttributesAttr(sess, ues);
+
+				if (uesStoredAttributesAttr != null && uesStoredAttributesAttr.valueAsString() != null) {
+					JSONObject storedAttributes = new JSONObject(uesStoredAttributesAttr.valueAsString());
+					if (storedAttributes.opt(attrName) != null) {
+						attribute.setValue(mergeValues(attribute.getValue(),storedAttributes.optJSONArray(attrName).opt(0)));
+					}
+				}
+			}
+		}
+
 		return attribute;
+	}
+
+	private Object mergeValues(Object value1, Object value2) throws InternalErrorException {
+		if (value1.getClass().equals(value2.getClass())) {
+			if (value1 instanceof ArrayList) {
+				((ArrayList) value1).addAll((ArrayList)value2);
+				return value1;
+			} else if (value1 instanceof LinkedHashMap) {
+				((LinkedHashMap) value1).putAll((LinkedHashMap)value2);
+				return value1;
+			}
+		}
+		throw new InternalErrorException("Problem with merging values");
 	}
 
 	private UserExtSource getUserExtSourceWithHighestPriority(PerunSession sess, User user) {
@@ -2622,81 +2672,86 @@ public class UsersManagerBlImpl implements UsersManagerBl {
 		return userExtSource;
 	}
 
-	public void updateUserAttributesAfterRemoveUes(PerunSession sess, User user, Attribute storedAttributesAttr) {
-
-	}
-
-	public void updateUserAttributesAfterUesPriorityChanged(PerunSession sess, User user) throws WrongAttributeAssignmentException, WrongAttributeValueException, WrongReferenceAttributeValueException, InternalErrorException, AttributeNotExistsException, UserNotExistsException {
-		log.debug("updateUserAttributesAfterUesPriorityChanged");
-
-		//Update userCoreAttributes
+	private void updateUserCoreAttributes(PerunSession sess, User user) {
 		UserExtSource uesWithHighestPriority = getUserExtSourceWithHighestPriority(sess, user);
-		log.debug("UserExtSourceWithHighestPriority: {}", uesWithHighestPriority);
 		String storedAttributesString = getUserExtSourceStoredAttributesAttr(sess, uesWithHighestPriority).valueAsString();
-		log.debug("StoredAttributes: {}", storedAttributesString);
 		if (storedAttributesString != null) {
 			JSONObject storedAttributes = new JSONObject(storedAttributesString);
 			boolean attributeChanged = false;
-			/*
-			user.setFirstName(storedAttributes.optJSONArray(AttributesManager.NS_USER_ATTR_CORE + "firstName").optString(0));
-			user.setLastName(storedAttributes.optJSONArray(AttributesManager.NS_USER_ATTR_CORE + "lastName").optString(0));
-			user.setMiddleName(storedAttributes.optJSONArray(AttributesManager.NS_USER_ATTR_CORE + "middleName").optString(0));
-			user.setTitleAfter(storedAttributes.optJSONArray(AttributesManager.NS_USER_ATTR_CORE + "tittleBefore").optString(0));
-			user.setTitleBefore(storedAttributes.optJSONArray(AttributesManager.NS_USER_ATTR_CORE + "tittleAfter").optString(0));
-			user.setServiceUser(storedAttributes.optJSONArray(AttributesManager.NS_USER_ATTR_CORE + "serviceUser").optBoolean(0, false));
-			user.setSponsoredUser(storedAttributes.optJSONArray(AttributesManager.NS_USER_ATTR_CORE + "sponsoredUser").optBoolean(0,false));
-*/
 
 			if (storedAttributes.has(AttributesManager.NS_USER_ATTR_CORE + "firstName")) {
 				user.setFirstName(storedAttributes.optJSONArray(AttributesManager.NS_USER_ATTR_CORE + "firstName").optString(0));
-//				user.setFirstName(storedAttributes.getString(AttributesManager.NS_USER_ATTR_CORE + "firstName"));
 				attributeChanged = true;
 			}
 			if (storedAttributes.has(AttributesManager.NS_USER_ATTR_CORE + "lastName")) {
 				user.setLastName(storedAttributes.optJSONArray(AttributesManager.NS_USER_ATTR_CORE + "lastName").optString(0));
-
-//				user.setLastName(storedAttributes.getString(AttributesManager.NS_USER_ATTR_CORE + "lastName"));
 				attributeChanged = true;
 			}
 			if (storedAttributes.has(AttributesManager.NS_USER_ATTR_CORE + "middleName")) {
 				user.setMiddleName(storedAttributes.optJSONArray(AttributesManager.NS_USER_ATTR_CORE + "middleName").optString(0));
-
-//				user.setMiddleName(storedAttributes.getString(AttributesManager.NS_USER_ATTR_CORE + "middleName"));
 				attributeChanged = true;
 			}
 			if (storedAttributes.has(AttributesManager.NS_USER_ATTR_CORE + "tittleBefore")) {
 				user.setTitleAfter(storedAttributes.optJSONArray(AttributesManager.NS_USER_ATTR_CORE + "tittleBefore").optString(0));
-
-//				user.setTitleBefore(storedAttributes.getString(AttributesManager.NS_USER_ATTR_CORE + "tittleBefore"));
 				attributeChanged = true;
 			}
 			if (storedAttributes.has(AttributesManager.NS_USER_ATTR_CORE + "tittleAfter")) {
 				user.setTitleBefore(storedAttributes.optJSONArray(AttributesManager.NS_USER_ATTR_CORE + "tittleAfter").optString(0));
-
-//				user.setTitleAfter(storedAttributes.getString(AttributesManager.NS_USER_ATTR_CORE + "tittleAfter"));
 				attributeChanged = true;
 			}
 			if (storedAttributes.has(AttributesManager.NS_USER_ATTR_CORE + "serviceUser")) {
 				user.setServiceUser(storedAttributes.optJSONArray(AttributesManager.NS_USER_ATTR_CORE + "serviceUser").optBoolean(0, false));
-
-//				user.setServiceUser(storedAttributes.getBoolean(AttributesManager.NS_USER_ATTR_CORE + "serviceUser"));
 				attributeChanged = true;
 			}
 			if (storedAttributes.has(AttributesManager.NS_USER_ATTR_CORE + "sponsoredUser")) {
 				user.setSponsoredUser(storedAttributes.optJSONArray(AttributesManager.NS_USER_ATTR_CORE + "sponsoredUser").optBoolean(0,false));
-
-//				user.setSponsoredUser(storedAttributes.getBoolean(AttributesManager.NS_USER_ATTR_CORE + "sponsoredUser"));
 				attributeChanged = true;
 			}
 
 			if (attributeChanged) {
-				perunBl.getUsersManagerBl().updateUser(sess, user);
-				log.debug("Update User core Attributes for user {} was successfull.", user);
+				try {
+					perunBl.getUsersManagerBl().updateUser(sess, user);
+					log.debug("Update User core Attributes for user {} was successfull.", user);
+				} catch (UserNotExistsException e) {
+					e.printStackTrace();
+				} catch (InternalErrorException e) {
+					e.printStackTrace();
+				}
 			} else {
 				log.debug("User core attributes wasn't updated.");
 			}
 
 		}
+	}
+/*
+	public void updateUserAttributesAfterRemoveUes(PerunSession sess, User user, Attribute storedAttributesAttr, List<String> synchronizedAttributesList, List<String> overwriteAttributesList) throws UserNotExistsException, InternalErrorException, AttributeNotExistsException, WrongAttributeAssignmentException {
+		log.debug("updateUserAttributesAfterRemoveUes");
+
+		updateUserCoreAttributes(sess, user);
+		RichUser richUser = getRichUserWithAllAttributes(sess, user);
+
+		//Update UserAttributes
+		for (Attribute userAttribute : richUser.getUserAttributes()) {
+			if (userAttribute.getNamespace().equals(AttributesManager.NS_USER_ATTR_DEF)) {
+				Attribute attribute = getUserAttributeFromExtSourceWithHighestPriority(sess, user, userAttribute.getName());
+				if ((userAttribute.getValue() != null && !userAttribute.getValue().equals(attribute.getValue()))
+						|| (userAttribute.getValue() == null && attribute.getValue() != null)) {
+					if ((attribute.getType().equals("java.util.ArrayList") || attribute.getType().equals("java.util.LinkedHashMap") && synchronizedAttributesList.contains(userAttribute.getName())) && ) {
+
+					}
+					userAttribute.setValue(attribute.getValue());
+					getPerunBl().getAttributesManagerBl().setAttributeInNestedTransaction(sess, user, userAttribute);
+				}
+			}
+		}
+
+	}
+*/
+	public void updateUserAttributesAfterUesChanged(PerunSession sess, User user) throws WrongAttributeAssignmentException, WrongAttributeValueException, WrongReferenceAttributeValueException, InternalErrorException, AttributeNotExistsException, UserNotExistsException {
+		log.debug("updateUserAttributesAfterUesChanged");
+
+		updateUserCoreAttributes(sess, user);
+
 		RichUser richUser = getRichUserWithAllAttributes(sess, user);
 
 		//Update UserAttributes
