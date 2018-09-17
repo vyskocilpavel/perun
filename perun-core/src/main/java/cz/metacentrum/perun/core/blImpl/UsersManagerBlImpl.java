@@ -580,9 +580,6 @@ public class UsersManagerBlImpl implements UsersManagerBl {
 		} catch (WrongReferenceAttributeValueException | WrongAttributeValueException ex) {
 			throw new InternalErrorException("Can't remove userExtSource because there is problem with removing all it's attributes.", ex);
 		}
-		Attribute storedAttributesAttr = getUserExtSourceStoredAttributesAttr(sess, userExtSource);
-		List<String> synchronizedAttributesList = getSynchronizeAttributeList(sess, userExtSource);
-		List<String> overwriteAttributesList = getOverwriteAttributeList(sess, userExtSource);
 
 		getUsersManagerImpl().removeUserExtSource(sess, user, userExtSource);
 		getPerunBl().getAuditer().log(sess, "{} removed from {}.", userExtSource, user);
@@ -2605,7 +2602,7 @@ public class UsersManagerBlImpl implements UsersManagerBl {
 
 					if (storedAttributes.opt(attrName) != null) {
 						highestPriority = priority;
-						attribute.setValue(storedAttributes.optJSONArray(attrName).opt(0));
+						attribute.setValue(getPerunBl().getAttributesManagerBl().stringToAttributeValue(storedAttributes.optJSONArray(attrName).optString(0),attribute.getType()));
 						userExtSourceWithHighestPriority = userExtSource;
 					/*
 						if (attribute.getType().equals("java.lang.Integer")) {
@@ -2633,7 +2630,12 @@ public class UsersManagerBlImpl implements UsersManagerBl {
 				if (uesStoredAttributesAttr != null && uesStoredAttributesAttr.valueAsString() != null) {
 					JSONObject storedAttributes = new JSONObject(uesStoredAttributesAttr.valueAsString());
 					if (storedAttributes.opt(attrName) != null) {
-						attribute.setValue(mergeValues(attribute.getValue(),storedAttributes.optJSONArray(attrName).opt(0)));
+						if (attribute.getType().equals("java.util.ArrayList")) {
+							attribute.setValue(mergeValues(attribute.valueAsList(),getPerunBl().getAttributesManagerBl().stringToAttributeValue(storedAttributes.optJSONArray(attrName).optString(0), attribute.getType())));
+						} else if (attribute.getType().equals("java.util.LinkedHashMap")) {
+							attribute.setValue(mergeValues(attribute.valueAsMap(),getPerunBl().getAttributesManagerBl().stringToAttributeValue(storedAttributes.optJSONArray(attrName).optString(0), attribute.getType())));
+						}
+
 					}
 				}
 			}
@@ -2652,7 +2654,7 @@ public class UsersManagerBlImpl implements UsersManagerBl {
 				return value1;
 			}
 		}
-		throw new InternalErrorException("Problem with merging values");
+		throw new InternalErrorException("Problem with merging values: " + value1 + " and " + value2);
 	}
 
 	private UserExtSource getUserExtSourceWithHighestPriority(PerunSession sess, User user) {

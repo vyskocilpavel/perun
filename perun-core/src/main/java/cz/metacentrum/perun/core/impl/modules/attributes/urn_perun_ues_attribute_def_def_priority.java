@@ -23,6 +23,9 @@ import java.util.List;
 public class urn_perun_ues_attribute_def_def_priority extends UserExtSourceAttributesModuleAbstract implements UserExtSourceAttributesModuleImplApi {
 
 	public void checkAttributeValue(PerunSessionImpl sess, UserExtSource userExtSource, Attribute attribute) throws InternalErrorException, WrongAttributeValueException, WrongReferenceAttributeValueException, WrongAttributeAssignmentException {
+		if (attribute.getValue() == null) {
+			return;
+		}
 		if ((Integer)attribute.getValue() < 1 ) {
 			throw new WrongAttributeValueException("Value must be bigger than 0.");
 		}
