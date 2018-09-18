@@ -36,7 +36,7 @@ public class urn_perun_ues_attribute_def_def_priority extends UserExtSourceAttri
 				if (!ues.equals(userExtSource)) {
 					int priority = sess.getPerunBl().getUsersManagerBl().getUserExtSourcePriority(sess, ues);
 					if (priority > 0 && (Integer) attribute.getValue() == priority) {
-						throw new WrongAttributeValueException("This value " +  (Integer) attribute.getValue() + "for user ext source:" + ues + " is already used and you cannot used it again.");
+						throw new WrongAttributeValueException("This value " +  (Integer) attribute.getValue() + " for user ext source: " + ues + " is already used and you cannot used it again.");
 					}
 				}
 			}

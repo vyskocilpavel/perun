@@ -2183,6 +2183,10 @@ public class UsersManagerBlImpl implements UsersManagerBl {
 		return usersManagerImpl.findUsersWithExtSourceAttributeValueEnding(sess, attributeName, valueEnd, excludeValueEnds);
 	}
 
+	public void addCandidateToPool(Candidate candidate) throws InternalErrorException {
+		poolOfCandidatesToBeSynchronized.putJobIfAbsent(candidate,false);
+	}
+
 	public synchronized void reinitializeUserSynchronizerThreads(PerunSession sess) throws InternalErrorException {
 		int numberOfNewlyRemovedThreads = removeInteruptedUsers();
 
@@ -2244,7 +2248,6 @@ public class UsersManagerBlImpl implements UsersManagerBl {
 					// Update LoA
 					uesFromPerun.setLoa(userExtSource.getLoa());
 					getPerunBl().getUsersManagerBl().updateUserExtSource(sess, uesFromPerun);
-
 				} catch (UserExtSourceNotExistsException e) {
 					// Create userExtSource
 					try {
@@ -2257,15 +2260,10 @@ public class UsersManagerBlImpl implements UsersManagerBl {
 					throw new ConsistencyErrorException("Updating login of userExtSource to value which already exists: " + userExtSource);
 				}
 				try {
-
 					//Store or update Stored attributes
 					Attribute userExtSourceStoredAttributesAttr = getPerunBl().getAttributesManagerBl().getAttribute(sess, uesFromPerun, UsersManager.USEREXTSOURCESTOREDATTRIBUTES_ATTRNAME);
 					userExtSourceStoredAttributesAttr.setValue(candidate.convertAttributesToJSON().toString());
 					getPerunBl().getAttributesManagerBl().setAttribute(sess, uesFromPerun, userExtSourceStoredAttributesAttr);
-					log.trace("SynchronizeUser - UserExtSourceStoredAttributes: {} was successfully stored", userExtSourceStoredAttributesAttr);
-
-					// Store priority for UserExtSource
-					//setLowestPriority(sess, user, uesFromPerun);
 
 					//Store or updated overwriteAttributeList
 					Attribute overwriteAttributeListAttr = getPerunBl().getAttributesManagerBl().getAttribute(sess, uesFromPerun, UsersManager.USEREXTSOURCEOVERWRITEUSERATTRIBUTELIST_ATTRNAME);
@@ -2288,7 +2286,6 @@ public class UsersManagerBlImpl implements UsersManagerBl {
 			UserExtSource userExtSourceFromPerun = getPerunBl().getUsersManagerBl().getUserExtSourceByExtLogin(sess, ues.getExtSource(), ues.getLogin());
 			// Update user attributes
 			boolean hasHighestPriority = hasHighestPriority(sess, user, userExtSourceFromPerun);
-			log.debug("HasHighestPriority: {}", hasHighestPriority);
 			if (hasHighestPriority) {
 				updateUserCoreAttributes(sess, user, candidate);
 			}
@@ -2297,13 +2294,7 @@ public class UsersManagerBlImpl implements UsersManagerBl {
 		}
 	}
 
-	public void addCandidateToPool(Candidate candidate) throws InternalErrorException {
-		poolOfCandidatesToBeSynchronized.putJobIfAbsent(candidate,false);
-	}
-
 	public void updateUserAttributesAfterUesChanged(PerunSession sess, User user) throws WrongAttributeAssignmentException, WrongAttributeValueException, WrongReferenceAttributeValueException, InternalErrorException, AttributeNotExistsException, UserNotExistsException {
-		log.debug("updateUserAttributesAfterUesChanged");
-
 		updateUserCoreAttributesByHighestPriority(sess, user);
 
 		RichUser richUser = getRichUserWithAllAttributes(sess, user);
@@ -2311,7 +2302,7 @@ public class UsersManagerBlImpl implements UsersManagerBl {
 		//Update UserAttributes
 		for (Attribute userAttribute : richUser.getUserAttributes()) {
 			if (userAttribute.getNamespace().equals(AttributesManager.NS_USER_ATTR_DEF)) {
-				Attribute attribute = getUserAttributeFromExtSourceWithHighestPriority(sess, user, userAttribute.getName());
+				Attribute attribute = getUserAttributeFromUserExtSourcesWithHighestPriority(sess, user, userAttribute.getName());
 				if ((userAttribute.getValue() != null && !userAttribute.getValue().equals(attribute.getValue()))
 						|| (userAttribute.getValue() == null && attribute.getValue() != null)) {
 					userAttribute.setValue(attribute.getValue());
@@ -2405,7 +2396,6 @@ public class UsersManagerBlImpl implements UsersManagerBl {
 					}
 				}
 			}
-			log.debug("getActualAttributeListForSynchronizationForExtSource return: {}", userAttributeListForSynchronization);
 			return userAttributeListForSynchronization;
 		} catch (InternalErrorException e) {
 			e.printStackTrace();
@@ -2413,6 +2403,13 @@ public class UsersManagerBlImpl implements UsersManagerBl {
 		return new ArrayList<>();
 	}
 
+	/**
+	 * Check if the userExtSource for user hasHighestPriority. If the priority for userExtSource was null, the priority will be setted to lowest value.
+	 * @param sess PerunSession
+	 * @param user User
+	 * @param userExtSource UserExtSource
+	 * @return TRUE if the priority of userExtSource is highest for user, FALSE otherwise
+	 */
 	private boolean hasHighestPriority(PerunSession sess, User user, UserExtSource userExtSource) {
 		try {
 			int actualPriority = getUserExtSourcePriority(sess, userExtSource);
@@ -2445,6 +2442,12 @@ public class UsersManagerBlImpl implements UsersManagerBl {
 	}
 
 
+	/**
+	 * Returns attribute with storedAttributes for userExtSource stored during the last successfullz synchronization.
+	 * @param sess PerunSession
+	 * @param userExtSource UserExtSource
+	 * @return Attribute
+	 */
 	private Attribute getUserExtSourceStoredAttributesAttr (PerunSession sess, UserExtSource userExtSource)  {
 		try {
 			Attribute userExtSourceStoredAttributesAttr = getPerunBl().getAttributesManagerBl().getAttribute(sess, userExtSource, UsersManager.USEREXTSOURCESTOREDATTRIBUTES_ATTRNAME);
@@ -2462,6 +2465,12 @@ public class UsersManagerBlImpl implements UsersManagerBl {
 		return null;
 	}
 
+	/**
+	 * Returns list of attributesName which values can be overwriten during synchronization
+	 * @param sess PerunSession
+	 * @param userExtSource UserExtSource
+	 * @return List of attributeNames
+	 */
 	private List<String> getOverwriteAttributeList(PerunSession sess, UserExtSource userExtSource){
 		try {
 			Attribute overwriteUserAttributeList_attr = getPerunBl().getAttributesManagerBl().getAttribute(sess, userExtSource, UsersManager.USEREXTSOURCEOVERWRITEUSERATTRIBUTELIST_ATTRNAME);
@@ -2482,6 +2491,12 @@ public class UsersManagerBlImpl implements UsersManagerBl {
 		return new ArrayList<>();
 	}
 
+	/**
+	 * Returns list of attributesName which was synchronized from userExtSource
+	 * @param sess PerunSession
+	 * @param userExtSource UserExtSource
+	 * @return List of attributeNames
+	 */
 	private List<String> getSynchronizeAttributeList(PerunSession sess, UserExtSource userExtSource) {
 		try {
 			Attribute synchronizedAttributeList_attr = getPerunBl().getAttributesManagerBl().getAttribute(sess, userExtSource, UsersManager.USEREXTSOURCESYNCHRONIZEDATTRIBUTELIST_ATTRNAME);
@@ -2501,6 +2516,18 @@ public class UsersManagerBlImpl implements UsersManagerBl {
 		return new ArrayList<>();
 	}
 
+	/**
+	 * This method set the lowest priority for userExtSource or return the priority if the priority was already setted
+	 * @param sess PerunSession
+	 * @param user User
+	 * @param userExtSource UserExtSource
+	 * @return Priority
+	 * @throws WrongAttributeAssignmentException
+	 * @throws WrongAttributeValueException
+	 * @throws WrongReferenceAttributeValueException
+	 * @throws InternalErrorException
+	 * @throws AttributeNotExistsException
+	 */
 	private int setLowestPriority(PerunSession sess, User user, UserExtSource userExtSource) throws WrongAttributeAssignmentException, WrongAttributeValueException, WrongReferenceAttributeValueException, InternalErrorException, AttributeNotExistsException {
 		int priority = 0;
 
@@ -2520,6 +2547,13 @@ public class UsersManagerBlImpl implements UsersManagerBl {
 		return priority;
 	}
 
+	/**
+	 * Returns the new lowest priority for user
+	 * @param sess PerunSession
+	 * @param user User
+	 * @return New lowest priority
+	 * @throws InternalErrorException
+	 */
 	private int getNewLowestPriority(PerunSession sess, User user) throws InternalErrorException {
 		int lowestPriority = 0;
 		List<UserExtSource> userExtSourceList = getPerunBl().getUsersManagerBl().getUserExtSources(sess,user);
@@ -2533,6 +2567,14 @@ public class UsersManagerBlImpl implements UsersManagerBl {
 		return lowestPriority + 1;
 	}
 
+	/**
+	 * Updates all user core attributes
+	 *
+	 * @param sess PerunSession
+	 * @param user User
+	 * @param candidate Candidate
+	 * @throws ConsistencyErrorException
+	 */
 	private void updateUserCoreAttributes(PerunSession sess, User user, Candidate candidate) throws ConsistencyErrorException {
 		// try to find user core attributes and update user -> update name and titles
 		user.setFirstName(candidate.getFirstName());
@@ -2551,6 +2593,13 @@ public class UsersManagerBlImpl implements UsersManagerBl {
 		}
 	}
 
+	/**
+	 * Updates all user core attributes with userCoreAttributes from userExtSource with highest priority
+	 *
+	 * @param sess PerunSession
+	 * @param user User
+	 * @throws ConsistencyErrorException
+	 */
 	private void updateUserCoreAttributesByHighestPriority(PerunSession sess, User user) throws ConsistencyErrorException{
 		UserExtSource uesWithHighestPriority = getUserExtSourceWithHighestPriority(sess, user);
 		String storedAttributesString = getUserExtSourceStoredAttributesAttr(sess, uesWithHighestPriority).valueAsString();
@@ -2601,7 +2650,20 @@ public class UsersManagerBlImpl implements UsersManagerBl {
 		}
 	}
 
-	private Attribute getUserAttributeFromExtSourceWithHighestPriority(PerunSession sess, User user, String attrName) throws WrongAttributeAssignmentException, InternalErrorException, AttributeNotExistsException {
+	/**
+	 * Returns the attribute from userExtSources with highest priority for user. If the attribute's type is ArrayList
+	 * or LinkedHashMap and the overwriteAttributeList does't contains attributeName, the attribute value is merged
+	 * from all userExtSources.
+	 *
+	 * @param sess PerunSession
+	 * @param user User
+	 * @param attrName Attribute name
+ 	 * @return Attribute
+	 * @throws WrongAttributeAssignmentException
+	 * @throws InternalErrorException
+	 * @throws AttributeNotExistsException
+	 */
+	private Attribute getUserAttributeFromUserExtSourcesWithHighestPriority(PerunSession sess, User user, String attrName) throws WrongAttributeAssignmentException, InternalErrorException, AttributeNotExistsException {
 		int highestPriority = Integer.MAX_VALUE;
 		Attribute attribute = getPerunBl().getAttributesManagerBl().getAttribute(sess, user, attrName);
 		UserExtSource userExtSourceWithHighestPriority = null;
@@ -2633,9 +2695,15 @@ public class UsersManagerBlImpl implements UsersManagerBl {
 					if (uesStoredAttributesAttr != null && uesStoredAttributesAttr.valueAsString() != null) {
 						JSONObject storedAttributes = new JSONObject(uesStoredAttributesAttr.valueAsString());
 						if (storedAttributes.opt(attrName) != null && attribute.getType().equals("java.util.ArrayList")) {
-							attribute.setValue(mergeValues(attribute.valueAsList(),getPerunBl().getAttributesManagerBl().stringToAttributeValue(storedAttributes.optJSONArray(attrName).optString(0), attribute.getType())));
+							ArrayList<String> attributeValue = attribute.valueAsList();
+							ArrayList<String> valueFromUes = (ArrayList<String>) getPerunBl().getAttributesManagerBl().stringToAttributeValue(storedAttributes.optJSONArray(attrName).optString(0), attribute.getType());
+							attributeValue.addAll(valueFromUes);
+							attribute.setValue(attributeValue);
 						} else if (storedAttributes.opt(attrName) != null &&  attribute.getType().equals("java.util.LinkedHashMap")) {
-							attribute.setValue(mergeValues(attribute.valueAsMap(),getPerunBl().getAttributesManagerBl().stringToAttributeValue(storedAttributes.optJSONArray(attrName).optString(0), attribute.getType())));
+							LinkedHashMap<String, String> attributeValue = attribute.valueAsMap();
+							LinkedHashMap<String, String> valueFromUes = (LinkedHashMap<String, String>) getPerunBl().getAttributesManagerBl().stringToAttributeValue(storedAttributes.optJSONArray(attrName).optString(0), attribute.getType());
+							attributeValue.putAll(valueFromUes);
+							attribute.setValue(attributeValue);
 						}
 					}
 				}
@@ -2645,19 +2713,12 @@ public class UsersManagerBlImpl implements UsersManagerBl {
 		return attribute;
 	}
 
-	private Object mergeValues(Object value1, Object value2) throws InternalErrorException {
-		if (value1.getClass().equals(value2.getClass())) {
-			if (value1 instanceof ArrayList) {
-				((ArrayList) value1).addAll((ArrayList)value2);
-				return value1;
-			} else if (value1 instanceof LinkedHashMap) {
-				((LinkedHashMap) value1).putAll((LinkedHashMap)value2);
-				return value1;
-			}
-		}
-		throw new InternalErrorException("Problem with merging values: " + value1 + " and " + value2);
-	}
-
+	/**
+	 * Returns userExtSource with highest priority for user
+	 * @param sess PerunSession
+	 * @param user User
+	 * @return UserExtSource
+	 */
 	private UserExtSource getUserExtSourceWithHighestPriority(PerunSession sess, User user) {
 		int priority = Integer.MAX_VALUE;
 		UserExtSource userExtSource = null;
@@ -2677,9 +2738,7 @@ public class UsersManagerBlImpl implements UsersManagerBl {
 
 	private void updateUserAttributes(PerunSession sess, User user, Candidate candidate, UserExtSource userExtSource, List<String> overwriteUserAttributesList) throws InternalErrorException, AttributeNotExistsException, WrongAttributeAssignmentException {
 		List<String> attributeListForSynchronization = getActualAttributeListForSynchronizationForExtSource(sess, candidate, user, userExtSource, overwriteUserAttributesList);
-		log.debug("Update user attributes method started synchronization attributes: {} with overwriteUserAttributeList {}.",attributeListForSynchronization, overwriteUserAttributesList);
 		if (attributeListForSynchronization.isEmpty()) {
-			log.debug("Update user attributes method ended.");
 			return;
 		}
 		for (String attributeName : candidate.getAttributes().keySet()) {
@@ -2721,7 +2780,6 @@ public class UsersManagerBlImpl implements UsersManagerBl {
 				}
 			}
 		}
-		log.debug("Update user attributes method ended.");
 	}
 
 
