@@ -95,7 +95,7 @@ public class Synchronizer {
 		if (synchronizeUsersRunning.compareAndSet(false, true)) {
 			try {
 				log.debug("Synchronizer starting synchronizing the users");
-				this.perunBl.getUsersManagerBl().synchronizeUsers(this.sess);
+				this.perunBl.getUsersManagerBl().reinitializeUserSynchronizerThreads(this.sess);
 				if (!synchronizeUsersRunning.compareAndSet(true, false)) {
 					log.error("Synchronizer: user synchronization out of sync, resetting.");
 					synchronizeUsersRunning.set(false);

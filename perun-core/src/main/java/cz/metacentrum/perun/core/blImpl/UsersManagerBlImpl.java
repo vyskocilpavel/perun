@@ -32,6 +32,7 @@ import cz.metacentrum.perun.core.implApi.modules.attributes.UserVirtualAttribute
  * @author Michal Prochazka michalp@ics.muni.cz
  * @author Slavek Licehammer glory@ics.muni.cz
  * @author Sona Mastrakova
+ * @author Pavel Vyskocil vyskocilpavel@muni.cz
  */
 public class UsersManagerBlImpl implements UsersManagerBl {
 
@@ -40,7 +41,7 @@ public class UsersManagerBlImpl implements UsersManagerBl {
 	private UsersManagerImplApi usersManagerImpl;
 	private PerunBl perunBl;
 	private Integer maxConcurentUsersToSynchronize;
-	private final PerunBeanProcessingPool<Candidate> poolOfSubjectsToBeSynchronized;
+	private final PerunBeanProcessingPool<Candidate> poolOfCandidatesToBeSynchronized;
 	private final ArrayList<UserSynchronizerThread> userSynchronizerThreads;
 
 	private static final String A_USER_DEF_ALT_PASSWORD_NAMESPACE = AttributesManager.NS_USER_ATTR_DEF + ":altPasswords:";
@@ -62,7 +63,7 @@ public class UsersManagerBlImpl implements UsersManagerBl {
 	public UsersManagerBlImpl(UsersManagerImplApi usersManagerImpl) {
 		this.usersManagerImpl = usersManagerImpl;
 		this.userSynchronizerThreads = new ArrayList<>();
-		this.poolOfSubjectsToBeSynchronized = new PerunBeanProcessingPool<>();
+		this.poolOfCandidatesToBeSynchronized = new PerunBeanProcessingPool<>();
 		//set maximum concurrent groups to synchronize by property
 		this.maxConcurentUsersToSynchronize = BeansUtils.getCoreConfig().getUserMaxConcurentUsersToSynchronize();
 
@@ -323,6 +324,42 @@ public class UsersManagerBlImpl implements UsersManagerBl {
 		if (user.getMiddleName() != null) user.setMiddleName(user.getMiddleName().trim());
 		if (user.getTitleBefore() != null) user.setTitleBefore(user.getTitleBefore().trim());
 		if (user.getTitleAfter() != null) user.setTitleAfter(user.getTitleAfter().trim());
+
+		//Convert empty strings to null
+		if (user.getFirstName() != null && user.getFirstName().isEmpty()) user.setFirstName(null);
+		if (user.getLastName() != null && user.getLastName().isEmpty()) user.setLastName(null);
+		if (user.getMiddleName() != null && user.getMiddleName().isEmpty()) user.setMiddleName(null);
+		if (user.getTitleBefore() != null && user.getTitleBefore().isEmpty()) user.setTitleBefore(null);
+		if (user.getTitleAfter() != null && user.getTitleAfter().isEmpty()) user.setTitleAfter(null);
+
+		user = getUsersManagerImpl().createUser(sess, user);
+		getPerunBl().getAuditer().log(sess, "{} created.", user);
+
+		// Add default userExtSource
+		ExtSource es;
+		try {
+			es = getPerunBl().getExtSourcesManagerBl().getExtSourceByName(sess, ExtSourcesManager.EXTSOURCE_NAME_PERUN);
+		} catch (ExtSourceNotExistsException e1) {
+			throw new ConsistencyErrorException("Default extSource PERUN must exists! It is created in ExtSourcesManagerImpl.init function.", e1);
+		}
+		UserExtSource ues = new UserExtSource(es, 0, String.valueOf(user.getId()));
+		try {
+			this.addUserExtSource(sess, user, ues);
+		} catch (UserExtSourceExistsException e) {
+			throw new ConsistencyErrorException(e);
+		}
+
+		return user;
+	}
+
+	public User createUser(PerunSession sess, Candidate candidate) throws InternalErrorException {
+		User user = new User();
+		// trim input
+		if (candidate.getFirstName() != null) user.setFirstName(candidate.getFirstName().trim());
+		if (candidate.getLastName() != null) user.setLastName(candidate.getLastName().trim());
+		if (candidate.getMiddleName() != null) user.setMiddleName(candidate.getMiddleName().trim());
+		if (candidate.getTitleBefore() != null) user.setTitleBefore(candidate.getTitleBefore().trim());
+		if (candidate.getTitleAfter() != null) user.setTitleAfter(candidate.getTitleAfter().trim());
 
 		//Convert empty strings to null
 		if (user.getFirstName() != null && user.getFirstName().isEmpty()) user.setFirstName(null);
@@ -2146,40 +2183,7 @@ public class UsersManagerBlImpl implements UsersManagerBl {
 		return usersManagerImpl.findUsersWithExtSourceAttributeValueEnding(sess, attributeName, valueEnd, excludeValueEnds);
 	}
 
-	public int removeInteruptedUsers() {
-		int numberOfNewlyRemovedThreads = 0;
-
-		// Get the default synchronization timeout from the configuration file
-		int timeout = BeansUtils.getCoreConfig().getExtSourceSynchronizationTimeout();
-
-		Iterator<UserSynchronizerThread> threadIterator = userSynchronizerThreads.iterator();
-
-		while (threadIterator.hasNext()) {
-			UserSynchronizerThread thread = threadIterator.next();
-			long threadStart = thread.getStartTime();
-			//If thread start time is 0, this thread is waiting for another job, skip it
-			if (threadStart == 0) continue;
-
-			long timeDiff = System.currentTimeMillis() - threadStart;
-			//If thread was interrupted by anything, remove it from the pool of active threads
-			if (thread.isInterrupted()) {
-				numberOfNewlyRemovedThreads++;
-				threadIterator.remove();
-			} else if (timeDiff / 1000 / 60 > timeout) {
-				// If the time is greater than timeout set in the configuration file (in minutes), interrupt and remove this thread from pool
-				log.error("One of threads was interrupted because of timeout!");
-				thread.interrupt();
-				threadIterator.remove();
-				numberOfNewlyRemovedThreads++;
-			}
-		}
-
-		return numberOfNewlyRemovedThreads;
-	}
-
-	public synchronized void synchronizeUsers(PerunSession sess) throws InternalErrorException {
-		log.info("UserManagerBlImpl:  synchronizeUsers started");
-
+	public synchronized void reinitializeUserSynchronizerThreads(PerunSession sess) throws InternalErrorException {
 		int numberOfNewlyRemovedThreads = removeInteruptedUsers();
 
 		int numberOfNewlyCreatedThreads = 0;
@@ -2194,11 +2198,11 @@ public class UsersManagerBlImpl implements UsersManagerBl {
 		}
 
 		// Save state of synchronization to the info log
-		log.info("SynchronizeUsers method ends with these states: " +
+		log.debug("Reinitialize UserSynchronizerThread method ends with these states: " +
 				"'number of newly removed threads'='" + numberOfNewlyRemovedThreads + "', " +
 				"'number of newly created threads'='" + numberOfNewlyCreatedThreads + "', " +
-				"'right now synchronized users with subjects'='" + poolOfSubjectsToBeSynchronized.getRunningJobs() + "', " +
-				"'right now waiting users with subjects'='" + poolOfSubjectsToBeSynchronized.getWaitingJobs() + "'.");
+				"'right now synchronized users with subjects'='" + poolOfCandidatesToBeSynchronized.getRunningJobs() + "', " +
+				"'right now waiting users with subjects'='" + poolOfCandidatesToBeSynchronized.getWaitingJobs() + "'.");
 	}
 
 	public synchronized void synchronizeUser(PerunSession sess, Candidate candidate) throws InternalErrorException, UserNotExistsException, UserExtSourceNotExistsException, ExtSourceNotExistsException, AttributeNotExistsException, WrongAttributeAssignmentException {
@@ -2226,17 +2230,7 @@ public class UsersManagerBlImpl implements UsersManagerBl {
 		}
 		// If user hasn't been found, then create him
 		if (user == null) {
-			user = new User();
-			user.setFirstName(candidate.getFirstName());
-			user.setLastName(candidate.getLastName());
-			user.setMiddleName(candidate.getMiddleName());
-			user.setTitleAfter(candidate.getTitleAfter());
-			user.setTitleBefore(candidate.getTitleBefore());
-			user.setServiceUser(candidate.isServiceUser());
-			user.setSponsoredUser(candidate.isSponsoredUser());
-			// Store the user, this must be done in separate transaction
-			user = getPerunBl().getUsersManagerBl().createUser(sess, user);
-			log.debug("User: {} was successfully created.", user);
+			user = createUser(sess, candidate);
 		}
 
 		// Assign missing userExtSource and update LoA
@@ -2303,6 +2297,96 @@ public class UsersManagerBlImpl implements UsersManagerBl {
 		}
 	}
 
+	public void addCandidateToPool(Candidate candidate) throws InternalErrorException {
+		poolOfCandidatesToBeSynchronized.putJobIfAbsent(candidate,false);
+	}
+
+	public void updateUserAttributesAfterUesChanged(PerunSession sess, User user) throws WrongAttributeAssignmentException, WrongAttributeValueException, WrongReferenceAttributeValueException, InternalErrorException, AttributeNotExistsException, UserNotExistsException {
+		log.debug("updateUserAttributesAfterUesChanged");
+
+		updateUserCoreAttributesByHighestPriority(sess, user);
+
+		RichUser richUser = getRichUserWithAllAttributes(sess, user);
+
+		//Update UserAttributes
+		for (Attribute userAttribute : richUser.getUserAttributes()) {
+			if (userAttribute.getNamespace().equals(AttributesManager.NS_USER_ATTR_DEF)) {
+				Attribute attribute = getUserAttributeFromExtSourceWithHighestPriority(sess, user, userAttribute.getName());
+				if ((userAttribute.getValue() != null && !userAttribute.getValue().equals(attribute.getValue()))
+						|| (userAttribute.getValue() == null && attribute.getValue() != null)) {
+					userAttribute.setValue(attribute.getValue());
+					getPerunBl().getAttributesManagerBl().setAttributeInNestedTransaction(sess, user, userAttribute);
+				}
+			}
+		}
+	}
+
+	public int getUserExtSourcePriority(PerunSession sess, UserExtSource userExtSource) {
+		try {
+			Attribute priorityAttribute = getPerunBl().getAttributesManagerBl().getAttribute(sess, userExtSource, UsersManager.USEREXTSOURCEPRIORITY_ATTRNAME);
+			if (priorityAttribute != null && priorityAttribute.getValue() != null ) {
+				return priorityAttribute.valueAsInteger();
+			}
+		} catch (WrongAttributeAssignmentException e) {
+			e.printStackTrace();
+		} catch (InternalErrorException e) {
+			e.printStackTrace();
+		} catch (AttributeNotExistsException e) {
+			e.printStackTrace();
+		}
+		return 0;
+	}
+
+
+	/*
+	*  Private methods
+	*/
+
+	/**
+	 * This function removed interupted threads
+	 *
+	 * @return Number of removed threads
+	 */
+	private int removeInteruptedUsers() {
+		int numberOfNewlyRemovedThreads = 0;
+
+		// Get the default synchronization timeout from the configuration file
+		int timeout = BeansUtils.getCoreConfig().getExtSourceSynchronizationTimeout();
+
+		Iterator<UserSynchronizerThread> threadIterator = userSynchronizerThreads.iterator();
+
+		while (threadIterator.hasNext()) {
+			UserSynchronizerThread thread = threadIterator.next();
+			long threadStart = thread.getStartTime();
+			//If thread start time is 0, this thread is waiting for another job, skip it
+			if (threadStart == 0) continue;
+
+			long timeDiff = System.currentTimeMillis() - threadStart;
+			//If thread was interrupted by anything, remove it from the pool of active threads
+			if (thread.isInterrupted()) {
+				numberOfNewlyRemovedThreads++;
+				threadIterator.remove();
+			} else if (timeDiff / 1000 / 60 > timeout) {
+				// If the time is greater than timeout set in the configuration file (in minutes), interrupt and remove this thread from pool
+				log.error("One of threads was interrupted because of timeout!");
+				thread.interrupt();
+				threadIterator.remove();
+				numberOfNewlyRemovedThreads++;
+			}
+		}
+
+		return numberOfNewlyRemovedThreads;
+	}
+
+	/**
+	 *
+	 * @param sess
+	 * @param candidate
+	 * @param user
+	 * @param userExtSource
+	 * @param overwriteAttributeList
+	 * @return
+	 */
 	private List<String> getActualAttributeListForSynchronizationForExtSource(PerunSession sess, Candidate candidate, User user, UserExtSource userExtSource, List<String> overwriteAttributeList) {
 		try {
 			int actualPriority = getUserExtSourcePriority(sess, userExtSource);
@@ -2417,22 +2501,6 @@ public class UsersManagerBlImpl implements UsersManagerBl {
 		return new ArrayList<>();
 	}
 
-	public int getUserExtSourcePriority(PerunSession sess, UserExtSource userExtSource) {
-		try {
-			Attribute priorityAttribute = getPerunBl().getAttributesManagerBl().getAttribute(sess, userExtSource, UsersManager.USEREXTSOURCEPRIORITY_ATTRNAME);
-			if (priorityAttribute != null && priorityAttribute.getValue() != null ) {
-				return priorityAttribute.valueAsInteger();
-			}
-		} catch (WrongAttributeAssignmentException e) {
-			e.printStackTrace();
-		} catch (InternalErrorException e) {
-			e.printStackTrace();
-		} catch (AttributeNotExistsException e) {
-			e.printStackTrace();
-		}
-		return 0;
-	}
-
 	private int setLowestPriority(PerunSession sess, User user, UserExtSource userExtSource) throws WrongAttributeAssignmentException, WrongAttributeValueException, WrongReferenceAttributeValueException, InternalErrorException, AttributeNotExistsException {
 		int priority = 0;
 
@@ -2465,111 +2533,7 @@ public class UsersManagerBlImpl implements UsersManagerBl {
 		return lowestPriority + 1;
 	}
 
-	public void addCandidateToPool(Candidate candidate) throws InternalErrorException {
-		poolOfSubjectsToBeSynchronized.putJobIfAbsent(candidate,false);
-	}
-
-	private class UserSynchronizerThread extends Thread {
-
-		// all synchronization runs under synchronizer identity.
-		private final PerunPrincipal pp = new PerunPrincipal("perunSynchronizer", ExtSourcesManager.EXTSOURCE_NAME_INTERNAL, ExtSourcesManager.EXTSOURCE_INTERNAL);
-		private final PerunBl perunBl;
-		private final PerunSession sess;
-		private volatile long startTime;
-
-		public UserSynchronizerThread(PerunSession sess) throws InternalErrorException {
-			this.perunBl = (PerunBl) sess.getPerun();
-			this.sess = perunBl.getPerunSession(pp, new PerunClient());
-			//Default settings of not running thread (waiting for another User)
-			this.startTime = 0;
-		}
-
-		public void run() {
-			while (true) {
-				//Set thread to default state (waiting for another group to synchronize)
-				this.setThreadToDefaultState();
-
-				//If this thread was interrupted, end it's running
-				if(this.isInterrupted()) return;
-
-				//text of exception if was thrown, null in exceptionMessage means "no exception, it's ok"
-				String exceptionMessage = null;
-				//if exception which produce fail of whole synchronization was thrown
-				boolean failedDueToException = false;
-
-				//Take another user from the pool to synchronize it
-				Candidate candidate = null;
-				try {
-					candidate = poolOfSubjectsToBeSynchronized.takeJob();
-				} catch (InterruptedException ex) {
-					log.error("Thread was interrupted when trying to take another subject to synchronize from pool", ex);
-					//Interrupt this thread
-					this.interrupt();
-					return;
-				}
-
-				try {
-					// Set the start time, so we can check the timeout of the thread
-					startTime = System.currentTimeMillis();
-
-					log.debug("Synchronization thread started synchronization for user with subject {}.", candidate);
-
-					synchronizeUser(sess, candidate);
-					//synchronize Group and get information about skipped Members
-					//List<String> skippedMembers = perunBl.getGroupsManagerBl().synchronizeGroup(sess, group);
-/*
-					if (!skippedMembers.isEmpty()) {
-						skippedMembersMessage = "These members from extSource were skipped: { ";
-
-						for (String skippedMember : skippedMembers) {
-							if (skippedMember == null) continue;
-
-							skippedMembersMessage += skippedMember + ", ";
-						}
-						skippedMembersMessage += " }";
-						exceptionMessage = skippedMembersMessage;
-					}*/
-					log.debug("Synchronization thread for candidate {} has finished in {} ms.", candidate, System.currentTimeMillis() - startTime);
-				} /*catch (WrongAttributeValueException | WrongReferenceAttributeValueException | InternalErrorException |
-						WrongAttributeAssignmentException  | GroupNotExistsException |
-						AttributeNotExistsException  | ExtSourceNotExistsException e) {
-					failedDueToException = true;
-					exceptionMessage = "Cannot synchronize group ";
-					log.error(exceptionMessage + user, e);
-					exceptionMessage += "due to exception: " + e.getName() + " => " + e.getMessage();
-				} */catch (Exception e) {
-					failedDueToException = true;
-					exceptionMessage = "Cannot synchronize user ";
-					log.error(exceptionMessage + candidate, e);
-					exceptionMessage += "due to unexpected exception: " + e.getClass().getName() + " => " + e.getMessage();
-				} finally {
-					//Save information about group synchronization, this method run in new transaction
-					try {
-						//perunBl.getGroupsManagerBl().saveInformationAboutGroupSynchronization(sess, group, failedDueToException, exceptionMessage);
-					} catch (Exception ex) {
-						log.error("When synchronization user with candidate " + candidate + ", exception was thrown.", ex);
-					}
-					//Remove job from running jobs
-					if(!poolOfSubjectsToBeSynchronized.removeJob(candidate)) {
-						log.error("Can't remove running job for object " + candidate + " from pool of running jobs because it is not containing it.");
-					}
-
-					log.debug("UserSynchronizationThread finished for candidate: {}", candidate);
-				}
-			}
-		}
-
-		public long getStartTime() {
-			return startTime;
-		}
-
-		private void setThreadToDefaultState() {
-			this.startTime = 0;
-		}
-	}
-
 	private void updateUserCoreAttributes(PerunSession sess, User user, Candidate candidate) throws ConsistencyErrorException {
-		log.debug("Update user core attributes method starder.");
 		// try to find user core attributes and update user -> update name and titles
 		user.setFirstName(candidate.getFirstName());
 		user.setMiddleName(candidate.getMiddleName());
@@ -2583,7 +2547,57 @@ public class UsersManagerBlImpl implements UsersManagerBl {
 		} catch (UserNotExistsException e) {
 			throw new ConsistencyErrorException("User from perun not exists when should - removed during sync.", e);
 		} catch (InternalErrorException e) {
-			e.printStackTrace();
+			log.error("User core attributes wasn't updated.");
+		}
+	}
+
+	private void updateUserCoreAttributesByHighestPriority(PerunSession sess, User user) throws ConsistencyErrorException{
+		UserExtSource uesWithHighestPriority = getUserExtSourceWithHighestPriority(sess, user);
+		String storedAttributesString = getUserExtSourceStoredAttributesAttr(sess, uesWithHighestPriority).valueAsString();
+		if (storedAttributesString != null) {
+			JSONObject storedAttributes = new JSONObject(storedAttributesString);
+			boolean attributeChanged = false;
+
+			if (storedAttributes.has(AttributesManager.NS_USER_ATTR_CORE + "firstName")) {
+				user.setFirstName(storedAttributes.optJSONArray(AttributesManager.NS_USER_ATTR_CORE + "firstName").optString(0));
+				attributeChanged = true;
+			}
+			if (storedAttributes.has(AttributesManager.NS_USER_ATTR_CORE + "lastName")) {
+				user.setLastName(storedAttributes.optJSONArray(AttributesManager.NS_USER_ATTR_CORE + "lastName").optString(0));
+				attributeChanged = true;
+			}
+			if (storedAttributes.has(AttributesManager.NS_USER_ATTR_CORE + "middleName")) {
+				user.setMiddleName(storedAttributes.optJSONArray(AttributesManager.NS_USER_ATTR_CORE + "middleName").optString(0));
+				attributeChanged = true;
+			}
+			if (storedAttributes.has(AttributesManager.NS_USER_ATTR_CORE + "tittleBefore")) {
+				user.setTitleAfter(storedAttributes.optJSONArray(AttributesManager.NS_USER_ATTR_CORE + "tittleBefore").optString(0));
+				attributeChanged = true;
+			}
+			if (storedAttributes.has(AttributesManager.NS_USER_ATTR_CORE + "tittleAfter")) {
+				user.setTitleBefore(storedAttributes.optJSONArray(AttributesManager.NS_USER_ATTR_CORE + "tittleAfter").optString(0));
+				attributeChanged = true;
+			}
+			if (storedAttributes.has(AttributesManager.NS_USER_ATTR_CORE + "serviceUser")) {
+				user.setServiceUser(storedAttributes.optJSONArray(AttributesManager.NS_USER_ATTR_CORE + "serviceUser").optBoolean(0, false));
+				attributeChanged = true;
+			}
+			if (storedAttributes.has(AttributesManager.NS_USER_ATTR_CORE + "sponsoredUser")) {
+				user.setSponsoredUser(storedAttributes.optJSONArray(AttributesManager.NS_USER_ATTR_CORE + "sponsoredUser").optBoolean(0,false));
+				attributeChanged = true;
+			}
+
+			//Update user if some of user core attribute was changed
+			if (attributeChanged) {
+				try {
+					perunBl.getUsersManagerBl().updateUser(sess, user);
+					log.debug("Update User core Attributes for user {} was successfull.", user);
+				} catch (UserNotExistsException e) {
+					throw new ConsistencyErrorException("User from perun not exists when should - removed during sync.", e);
+				} catch (InternalErrorException e) {
+					log.error("User core attributes wasn't updated.");
+				}
+			}
 		}
 	}
 
@@ -2592,6 +2606,7 @@ public class UsersManagerBlImpl implements UsersManagerBl {
 		Attribute attribute = getPerunBl().getAttributesManagerBl().getAttribute(sess, user, attrName);
 		UserExtSource userExtSourceWithHighestPriority = null;
 
+		//Get userExtSource and attribute with highest priority
 		for (UserExtSource userExtSource: getPerunBl().getUsersManagerBl().getUserExtSources(sess, user)) {
 			int priority = getUserExtSourcePriority(sess, userExtSource);
 			if ( priority > 0 && priority < highestPriority) {
@@ -2609,6 +2624,7 @@ public class UsersManagerBlImpl implements UsersManagerBl {
 			}
 		}
 
+		//Merge attribute value for attribute with type ArrayList and LinkedHashMap if the attribute is not in overwriteAttributeList
 		if ((attribute.getType().equals("java.util.ArrayList") || attribute.getType().equals("java.util.LinkedHashMap")
 				&& userExtSourceWithHighestPriority != null && !getOverwriteAttributeList(sess, userExtSourceWithHighestPriority).contains(attrName))) {
 			for (UserExtSource ues : getPerunBl().getUsersManagerBl().getUserExtSources(sess, user)) {
@@ -2616,12 +2632,10 @@ public class UsersManagerBlImpl implements UsersManagerBl {
 					Attribute uesStoredAttributesAttr = getUserExtSourceStoredAttributesAttr(sess, ues);
 					if (uesStoredAttributesAttr != null && uesStoredAttributesAttr.valueAsString() != null) {
 						JSONObject storedAttributes = new JSONObject(uesStoredAttributesAttr.valueAsString());
-						if (storedAttributes.opt(attrName) != null) {
-							if (attribute.getType().equals("java.util.ArrayList")) {
-								attribute.setValue(mergeValues(attribute.valueAsList(),getPerunBl().getAttributesManagerBl().stringToAttributeValue(storedAttributes.optJSONArray(attrName).optString(0), attribute.getType())));
-							} else if (attribute.getType().equals("java.util.LinkedHashMap")) {
-								attribute.setValue(mergeValues(attribute.valueAsMap(),getPerunBl().getAttributesManagerBl().stringToAttributeValue(storedAttributes.optJSONArray(attrName).optString(0), attribute.getType())));
-							}
+						if (storedAttributes.opt(attrName) != null && attribute.getType().equals("java.util.ArrayList")) {
+							attribute.setValue(mergeValues(attribute.valueAsList(),getPerunBl().getAttributesManagerBl().stringToAttributeValue(storedAttributes.optJSONArray(attrName).optString(0), attribute.getType())));
+						} else if (storedAttributes.opt(attrName) != null &&  attribute.getType().equals("java.util.LinkedHashMap")) {
+							attribute.setValue(mergeValues(attribute.valueAsMap(),getPerunBl().getAttributesManagerBl().stringToAttributeValue(storedAttributes.optJSONArray(attrName).optString(0), attribute.getType())));
 						}
 					}
 				}
@@ -2661,112 +2675,6 @@ public class UsersManagerBlImpl implements UsersManagerBl {
 		return userExtSource;
 	}
 
-	private void updateUserCoreAttributes(PerunSession sess, User user) {
-		UserExtSource uesWithHighestPriority = getUserExtSourceWithHighestPriority(sess, user);
-		String storedAttributesString = getUserExtSourceStoredAttributesAttr(sess, uesWithHighestPriority).valueAsString();
-		if (storedAttributesString != null) {
-			JSONObject storedAttributes = new JSONObject(storedAttributesString);
-			boolean attributeChanged = false;
-
-			if (storedAttributes.has(AttributesManager.NS_USER_ATTR_CORE + "firstName")) {
-				user.setFirstName(storedAttributes.optJSONArray(AttributesManager.NS_USER_ATTR_CORE + "firstName").optString(0));
-				attributeChanged = true;
-			}
-			if (storedAttributes.has(AttributesManager.NS_USER_ATTR_CORE + "lastName")) {
-				user.setLastName(storedAttributes.optJSONArray(AttributesManager.NS_USER_ATTR_CORE + "lastName").optString(0));
-				attributeChanged = true;
-			}
-			if (storedAttributes.has(AttributesManager.NS_USER_ATTR_CORE + "middleName")) {
-				user.setMiddleName(storedAttributes.optJSONArray(AttributesManager.NS_USER_ATTR_CORE + "middleName").optString(0));
-				attributeChanged = true;
-			}
-			if (storedAttributes.has(AttributesManager.NS_USER_ATTR_CORE + "tittleBefore")) {
-				user.setTitleAfter(storedAttributes.optJSONArray(AttributesManager.NS_USER_ATTR_CORE + "tittleBefore").optString(0));
-				attributeChanged = true;
-			}
-			if (storedAttributes.has(AttributesManager.NS_USER_ATTR_CORE + "tittleAfter")) {
-				user.setTitleBefore(storedAttributes.optJSONArray(AttributesManager.NS_USER_ATTR_CORE + "tittleAfter").optString(0));
-				attributeChanged = true;
-			}
-			if (storedAttributes.has(AttributesManager.NS_USER_ATTR_CORE + "serviceUser")) {
-				user.setServiceUser(storedAttributes.optJSONArray(AttributesManager.NS_USER_ATTR_CORE + "serviceUser").optBoolean(0, false));
-				attributeChanged = true;
-			}
-			if (storedAttributes.has(AttributesManager.NS_USER_ATTR_CORE + "sponsoredUser")) {
-				user.setSponsoredUser(storedAttributes.optJSONArray(AttributesManager.NS_USER_ATTR_CORE + "sponsoredUser").optBoolean(0,false));
-				attributeChanged = true;
-			}
-
-			if (attributeChanged) {
-				try {
-					perunBl.getUsersManagerBl().updateUser(sess, user);
-					log.debug("Update User core Attributes for user {} was successfull.", user);
-				} catch (UserNotExistsException e) {
-					e.printStackTrace();
-				} catch (InternalErrorException e) {
-					e.printStackTrace();
-				}
-			} else {
-				log.debug("User core attributes wasn't updated.");
-			}
-
-		}
-	}
-/*
-	public void updateUserAttributesAfterRemoveUes(PerunSession sess, User user, Attribute storedAttributesAttr, List<String> synchronizedAttributesList, List<String> overwriteAttributesList) throws UserNotExistsException, InternalErrorException, AttributeNotExistsException, WrongAttributeAssignmentException {
-		log.debug("updateUserAttributesAfterRemoveUes");
-
-		updateUserCoreAttributes(sess, user);
-		RichUser richUser = getRichUserWithAllAttributes(sess, user);
-
-		//Update UserAttributes
-		for (Attribute userAttribute : richUser.getUserAttributes()) {
-			if (userAttribute.getNamespace().equals(AttributesManager.NS_USER_ATTR_DEF)) {
-				Attribute attribute = getUserAttributeFromExtSourceWithHighestPriority(sess, user, userAttribute.getName());
-				if ((userAttribute.getValue() != null && !userAttribute.getValue().equals(attribute.getValue()))
-						|| (userAttribute.getValue() == null && attribute.getValue() != null)) {
-					if ((attribute.getType().equals("java.util.ArrayList") || attribute.getType().equals("java.util.LinkedHashMap") && synchronizedAttributesList.contains(userAttribute.getName())) && ) {
-
-					}
-					userAttribute.setValue(attribute.getValue());
-					getPerunBl().getAttributesManagerBl().setAttributeInNestedTransaction(sess, user, userAttribute);
-				}
-			}
-		}
-
-	}
-*/
-	public void updateUserAttributesAfterUesChanged(PerunSession sess, User user) throws WrongAttributeAssignmentException, WrongAttributeValueException, WrongReferenceAttributeValueException, InternalErrorException, AttributeNotExistsException, UserNotExistsException {
-		log.debug("updateUserAttributesAfterUesChanged");
-
-		updateUserCoreAttributes(sess, user);
-
-		RichUser richUser = getRichUserWithAllAttributes(sess, user);
-
-		//Update UserAttributes
-		for (Attribute userAttribute : richUser.getUserAttributes()) {
-			if (userAttribute.getNamespace().equals(AttributesManager.NS_USER_ATTR_DEF)) {
-				Attribute attribute = getUserAttributeFromExtSourceWithHighestPriority(sess, user, userAttribute.getName());
-				if ((userAttribute.getValue() != null && !userAttribute.getValue().equals(attribute.getValue()))
-						|| (userAttribute.getValue() == null && attribute.getValue() != null)) {
-					userAttribute.setValue(attribute.getValue());
-					getPerunBl().getAttributesManagerBl().setAttributeInNestedTransaction(sess, user, userAttribute);
-				}
-			}
-		}
-	}
-
-	/**
-	 *
-	 * @param sess PerunSession
-	 * @param user User
-	 * @param candidate Candidate
-	 * @param overwriteUserAttributesList List<String> List of attributeNames which can be overwitten during synchronization
-	 *
-	 * @throws InternalErrorException
-	 * @throws AttributeNotExistsException
-	 * @throws WrongAttributeAssignmentException
-	 */
 	private void updateUserAttributes(PerunSession sess, User user, Candidate candidate, UserExtSource userExtSource, List<String> overwriteUserAttributesList) throws InternalErrorException, AttributeNotExistsException, WrongAttributeAssignmentException {
 		List<String> attributeListForSynchronization = getActualAttributeListForSynchronizationForExtSource(sess, candidate, user, userExtSource, overwriteUserAttributesList);
 		log.debug("Update user attributes method started synchronization attributes: {} with overwriteUserAttributeList {}.",attributeListForSynchronization, overwriteUserAttributesList);
@@ -2814,5 +2722,109 @@ public class UsersManagerBlImpl implements UsersManagerBl {
 			}
 		}
 		log.debug("Update user attributes method ended.");
+	}
+
+
+	/*
+	* Private classes
+	*/
+
+	private class UserSynchronizerThread extends Thread {
+
+		// all synchronization runs under synchronizer identity.
+		private final PerunPrincipal pp = new PerunPrincipal("perunSynchronizer", ExtSourcesManager.EXTSOURCE_NAME_INTERNAL, ExtSourcesManager.EXTSOURCE_INTERNAL);
+		private final PerunBl perunBl;
+		private final PerunSession sess;
+		private volatile long startTime;
+
+		public UserSynchronizerThread(PerunSession sess) throws InternalErrorException {
+			this.perunBl = (PerunBl) sess.getPerun();
+			this.sess = perunBl.getPerunSession(pp, new PerunClient());
+			//Default settings of not running thread (waiting for another User)
+			this.startTime = 0;
+		}
+
+		public void run() {
+			while (true) {
+				//Set thread to default state (waiting for another group to synchronize)
+				this.setThreadToDefaultState();
+
+				//If this thread was interrupted, end it's running
+				if(this.isInterrupted()) return;
+
+				//text of exception if was thrown, null in exceptionMessage means "no exception, it's ok"
+				String exceptionMessage = null;
+				//if exception which produce fail of whole synchronization was thrown
+				boolean failedDueToException = false;
+
+				//Take another user from the pool to synchronize it
+				Candidate candidate = null;
+				try {
+					candidate = poolOfCandidatesToBeSynchronized.takeJob();
+				} catch (InterruptedException ex) {
+					log.error("Thread was interrupted when trying to take another subject to synchronize from pool", ex);
+					//Interrupt this thread
+					this.interrupt();
+					return;
+				}
+
+				try {
+					// Set the start time, so we can check the timeout of the thread
+					startTime = System.currentTimeMillis();
+
+					log.debug("Synchronization thread started synchronization for user with subject {}.", candidate);
+
+					synchronizeUser(sess, candidate);
+					//synchronize Group and get information about skipped Members
+					//List<String> skippedMembers = perunBl.getGroupsManagerBl().synchronizeGroup(sess, group);
+/*
+					if (!skippedMembers.isEmpty()) {
+						skippedMembersMessage = "These members from extSource were skipped: { ";
+
+						for (String skippedMember : skippedMembers) {
+							if (skippedMember == null) continue;
+
+							skippedMembersMessage += skippedMember + ", ";
+						}
+						skippedMembersMessage += " }";
+						exceptionMessage = skippedMembersMessage;
+					}*/
+					log.debug("Synchronization thread for candidate {} has finished in {} ms.", candidate, System.currentTimeMillis() - startTime);
+				} /*catch (WrongAttributeValueException | WrongReferenceAttributeValueException | InternalErrorException |
+						WrongAttributeAssignmentException  | GroupNotExistsException |
+						AttributeNotExistsException  | ExtSourceNotExistsException e) {
+					failedDueToException = true;
+					exceptionMessage = "Cannot synchronize group ";
+					log.error(exceptionMessage + user, e);
+					exceptionMessage += "due to exception: " + e.getName() + " => " + e.getMessage();
+				} */catch (Exception e) {
+					failedDueToException = true;
+					exceptionMessage = "Cannot synchronize user ";
+					log.error(exceptionMessage + candidate, e);
+					exceptionMessage += "due to unexpected exception: " + e.getClass().getName() + " => " + e.getMessage();
+				} finally {
+					//Save information about group synchronization, this method run in new transaction
+					try {
+						//perunBl.getGroupsManagerBl().saveInformationAboutGroupSynchronization(sess, group, failedDueToException, exceptionMessage);
+					} catch (Exception ex) {
+						log.error("When synchronization user with candidate {}, exception was thrown.",candidate, ex);
+					}
+					//Remove job from running jobs
+					if(!poolOfCandidatesToBeSynchronized.removeJob(candidate)) {
+						log.error("Can't remove running job for object {} from pool of running jobs because it is not containing it.", candidate);
+					}
+
+					log.debug("UserSynchronizationThread finished for candidate: {}", candidate);
+				}
+			}
+		}
+
+		public long getStartTime() {
+			return startTime;
+		}
+
+		private void setThreadToDefaultState() {
+			this.startTime = 0;
+		}
 	}
 }

@@ -268,6 +268,15 @@ public interface UsersManagerBl {
 	User createUser(PerunSession perunSession, User user) throws InternalErrorException;
 
 	/**
+	 * Inserts user into DB.
+	 *
+	 * @param perunSession
+	 * @param candidate
+	 * @throws InternalErrorException
+	 */
+	User createUser(PerunSession perunSession, Candidate candidate) throws InternalErrorException;
+
+	/**
 	 * Deletes user.
 	 *
 	 * @param perunSession
@@ -1198,14 +1207,54 @@ public interface UsersManagerBl {
 	 */
 	List<User> findUsersWithExtSourceAttributeValueEnding(PerunSessionImpl sess, String attributeName, String valueEnd, List<String> excludeValueEnds) throws AttributeNotExistsException, InternalErrorException;
 
+	/**
+	 * Adds new candidate to the pool of Candidates prepared for synchronization
+	 *
+	 * @param candidate Candidate
+	 * @throws InternalErrorException if the candidate is null
+	 */
 	void addCandidateToPool(Candidate candidate) throws InternalErrorException;
 
-	void synchronizeUsers(PerunSession sess ) throws InternalErrorException;
+	/**
+	 * Removes all interupted threads and starts new threads
+	 *
+	 * @param sess PerunSession
+	 * @throws InternalErrorException
+	 */
+	void reinitializeUserSynchronizerThreads(PerunSession sess) throws InternalErrorException;
 
+	/**
+	 * Starts user synchronization for candidate
+	 *
+	 * @param sess PerunSession
+	 * @param candidate Candidate
+	 * @throws InternalErrorException
+	 * @throws UserNotExistsException
+	 * @throws UserExtSourceNotExistsException
+	 * @throws ExtSourceNotExistsException
+	 * @throws AttributeNotExistsException
+	 * @throws WrongAttributeAssignmentException
+	 */
+	void synchronizeUser(PerunSession sess, Candidate candidate) throws InternalErrorException, UserNotExistsException, UserExtSourceNotExistsException, ExtSourceNotExistsException, AttributeNotExistsException, WrongAttributeAssignmentException;
 
-	void synchronizeUser(PerunSession sess,Candidate candidate ) throws InternalErrorException, UserNotExistsException, UserExtSourceNotExistsException, ExtSourceNotExistsException, AttributeNotExistsException, WrongAttributeAssignmentException;
-
+	/**
+	 * Returns priority of the userExtSource
+	 * @param sess PerunSession
+	 * @param userExtSource UserExtSource
+	 * @return priority
+	 */
 	int getUserExtSourcePriority(PerunSession sess, UserExtSource userExtSource);
 
+	/**
+	 * Updates all user attributes after UserExtSource was changed or removed
+	 * @param sess PerunSession
+	 * @param user User
+	 * @throws WrongAttributeAssignmentException
+	 * @throws WrongAttributeValueException
+	 * @throws WrongReferenceAttributeValueException
+	 * @throws InternalErrorException
+	 * @throws AttributeNotExistsException
+	 * @throws UserNotExistsException
+	 */
 	void updateUserAttributesAfterUesChanged(PerunSession sess, User user) throws WrongAttributeAssignmentException, WrongAttributeValueException, WrongReferenceAttributeValueException, InternalErrorException, AttributeNotExistsException, UserNotExistsException;
 }
