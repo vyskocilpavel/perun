@@ -2604,19 +2604,6 @@ public class UsersManagerBlImpl implements UsersManagerBl {
 						highestPriority = priority;
 						attribute.setValue(getPerunBl().getAttributesManagerBl().stringToAttributeValue(storedAttributes.optJSONArray(attrName).optString(0),attribute.getType()));
 						userExtSourceWithHighestPriority = userExtSource;
-					/*
-						if (attribute.getType().equals("java.lang.Integer")) {
-							attribute.setValue(storedAttributes.getJSONArray(attrName).getInt(0));
-						} else if (attribute.getType().equals("java.lang.Boolean")) {
-							attribute.setValue(storedAttributes.getJSONArray(attrName).getBoolean(0));
-						} else if (attribute.getType().equals("java.lang.String")) {
-							attribute.setValue(storedAttributes.getJSONArray(attrName).getString(0));
-						} else if (attribute.getType().equals("java.util.ArrayList")) {
-							attribute.setValue(storedAttributes.getJSONArray(attrName).get(0));
-						} else if (attribute.getType().equals("java.util.LinkedHashMap")) {
-							attribute.setValue(storedAttributes.getJSONArray(attrName).get(0));
-						}
-						*/
 					}
 				}
 			}
@@ -2625,17 +2612,17 @@ public class UsersManagerBlImpl implements UsersManagerBl {
 		if ((attribute.getType().equals("java.util.ArrayList") || attribute.getType().equals("java.util.LinkedHashMap")
 				&& userExtSourceWithHighestPriority != null && !getOverwriteAttributeList(sess, userExtSourceWithHighestPriority).contains(attrName))) {
 			for (UserExtSource ues : getPerunBl().getUsersManagerBl().getUserExtSources(sess, user)) {
-				Attribute uesStoredAttributesAttr = getUserExtSourceStoredAttributesAttr(sess, ues);
-
-				if (uesStoredAttributesAttr != null && uesStoredAttributesAttr.valueAsString() != null) {
-					JSONObject storedAttributes = new JSONObject(uesStoredAttributesAttr.valueAsString());
-					if (storedAttributes.opt(attrName) != null) {
-						if (attribute.getType().equals("java.util.ArrayList")) {
-							attribute.setValue(mergeValues(attribute.valueAsList(),getPerunBl().getAttributesManagerBl().stringToAttributeValue(storedAttributes.optJSONArray(attrName).optString(0), attribute.getType())));
-						} else if (attribute.getType().equals("java.util.LinkedHashMap")) {
-							attribute.setValue(mergeValues(attribute.valueAsMap(),getPerunBl().getAttributesManagerBl().stringToAttributeValue(storedAttributes.optJSONArray(attrName).optString(0), attribute.getType())));
+				if (!ues.equals(userExtSourceWithHighestPriority)) {
+					Attribute uesStoredAttributesAttr = getUserExtSourceStoredAttributesAttr(sess, ues);
+					if (uesStoredAttributesAttr != null && uesStoredAttributesAttr.valueAsString() != null) {
+						JSONObject storedAttributes = new JSONObject(uesStoredAttributesAttr.valueAsString());
+						if (storedAttributes.opt(attrName) != null) {
+							if (attribute.getType().equals("java.util.ArrayList")) {
+								attribute.setValue(mergeValues(attribute.valueAsList(),getPerunBl().getAttributesManagerBl().stringToAttributeValue(storedAttributes.optJSONArray(attrName).optString(0), attribute.getType())));
+							} else if (attribute.getType().equals("java.util.LinkedHashMap")) {
+								attribute.setValue(mergeValues(attribute.valueAsMap(),getPerunBl().getAttributesManagerBl().stringToAttributeValue(storedAttributes.optJSONArray(attrName).optString(0), attribute.getType())));
+							}
 						}
-
 					}
 				}
 			}
