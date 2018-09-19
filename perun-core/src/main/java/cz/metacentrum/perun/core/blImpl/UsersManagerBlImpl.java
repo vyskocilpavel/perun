@@ -2584,7 +2584,11 @@ public class UsersManagerBlImpl implements UsersManagerBl {
 				} catch (InternalErrorException e) {
 					log.error("User core attributes wasn't updated.");
 				}
+			} else {
+				log.error("User core attributes wasn't updated.");
 			}
+		} else {
+			log.error("User core attributes wasn't updated.");
 		}
 	}
 
