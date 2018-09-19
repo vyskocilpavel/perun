@@ -2549,7 +2549,6 @@ public class UsersManagerBlImpl implements UsersManagerBl {
 		if (storedAttribute != null && storedAttribute.valueAsString() != null) {
 			JSONObject storedAttributes = new JSONObject(storedAttribute.valueAsString());
 			boolean attributeChanged = false;
-			log.debug("StoredAttribute: {}",storedAttributes);
 			String firstName = storedAttributes.optJSONArray(AttributesManager.NS_USER_ATTR_CORE + ":firstName").optString(0);
 			String lastName = storedAttributes.optJSONArray(AttributesManager.NS_USER_ATTR_CORE + ":lastName").optString(0);
 			String middleName = storedAttributes.optJSONArray(AttributesManager.NS_USER_ATTR_CORE + ":middleName").optString(0);
@@ -2557,46 +2556,32 @@ public class UsersManagerBlImpl implements UsersManagerBl {
 			String tittleAfter = storedAttributes.optJSONArray(AttributesManager.NS_USER_ATTR_CORE + ":tittleAfter").optString(0);
 			Boolean isServiceUser = storedAttributes.optJSONArray(AttributesManager.NS_USER_ATTR_CORE + ":serviceUser").optBoolean(0);
 			Boolean isSponsoredUser = storedAttributes.optJSONArray(AttributesManager.NS_USER_ATTR_CORE + ":sponsoredUser").optBoolean(0);
-			if (storedAttributes.has(AttributesManager.NS_USER_ATTR_CORE + ":firstName")
-					&& !user.getFirstName().equals(firstName) && !(user.getFirstName() == null && firstName.equals(""))) {
+			if (!user.getFirstName().equals(firstName) && !(user.getFirstName() == null && firstName.equals(""))) {
 				user.setFirstName(firstName);
-				log.debug("Attribute: firstName was changed");
 				attributeChanged = true;
 			}
-			if (storedAttributes.has(AttributesManager.NS_USER_ATTR_CORE + ":lastName")
-					&& !user.getLastName().equals(lastName) && !(user.getLastName() == null && lastName.equals(""))) {
+			if (!user.getLastName().equals(lastName) && !(user.getLastName() == null && lastName.equals(""))) {
 				user.setLastName(lastName);
-				log.debug("Attribute: lastName was changed");
 				attributeChanged = true;
 			}
-			if (storedAttributes.has(AttributesManager.NS_USER_ATTR_CORE + ":middleName")
-					&& !user.getLastName().equals(middleName) && !(user.getMiddleName() == null && middleName.equals(""))) {
+			if (!user.getLastName().equals(middleName) && !(user.getMiddleName() == null && middleName.equals(""))) {
 				user.setMiddleName(middleName);
-				log.debug("Attribute: midleNanme was changed");
 				attributeChanged = true;
 			}
-			if (storedAttributes.has(AttributesManager.NS_USER_ATTR_CORE + ":tittleBefore")
-					&& !user.getLastName().equals(tittleBefore) && !(user.getTitleBefore() == null && tittleBefore.equals(""))) {
+			if (!user.getLastName().equals(tittleBefore) && !(user.getTitleBefore() == null && tittleBefore.equals(""))) {
 				user.setTitleAfter(tittleBefore);
-				log.debug("Attribute: tittleBefore was changed");
 				attributeChanged = true;
 			}
-			if (storedAttributes.has(AttributesManager.NS_USER_ATTR_CORE + ":tittleAfter")
-					&& !user.getLastName().equals(tittleAfter) && !(user.getTitleAfter() == null && tittleAfter.equals(""))) {
+			if (!user.getLastName().equals(tittleAfter) && !(user.getTitleAfter() == null && tittleAfter.equals(""))) {
 				user.setTitleBefore(tittleAfter);
-				log.debug("Attribute: tittleAfter was changed");
 				attributeChanged = true;
 			}
-			if (storedAttributes.has(AttributesManager.NS_USER_ATTR_CORE + ":serviceUser")
-					&& !user.isServiceUser() == isServiceUser) {
+			if (!user.isServiceUser() == isServiceUser) {
 				user.setServiceUser(isServiceUser);
-				log.debug("Attribute: serviceUser was changed");
 				attributeChanged = true;
 			}
-			if (storedAttributes.has(AttributesManager.NS_USER_ATTR_CORE + ":sponsoredUser")
-					&& !user.isSponsoredUser() == isSponsoredUser) {
+			if (!user.isSponsoredUser() == isSponsoredUser) {
 				user.setSponsoredUser(isSponsoredUser);
-				log.debug("Attribute: sponsorUser was changed");
 				attributeChanged = true;
 			}
 
