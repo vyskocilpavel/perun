@@ -2664,11 +2664,15 @@ public class UsersManagerBlImpl implements UsersManagerBl {
 		int priority = Integer.MAX_VALUE;
 		UserExtSource userExtSource = null;
 		for (UserExtSource ues : getPerunBl().getUsersManagerBl().getUserExtSources(sess, user)) {
-			int uesPriority = getUserExtSourcePriority(sess, ues);
-			Attribute storedAttributesAttr = getUserExtSourceStoredAttributesAttr(sess,ues);
-			if (uesPriority > 0 && uesPriority < priority && storedAttributesAttr != null) {
-				priority = uesPriority;
-				userExtSource = ues;
+			try {
+				int uesPriority = getUserExtSourcePriority(sess, ues);
+				Attribute storedAttributesAttr = getUserExtSourceStoredAttributesAttr(sess, ues);
+				if (uesPriority > 0 && uesPriority < priority && storedAttributesAttr != null) {
+					priority = uesPriority;
+					userExtSource = ues;
+				}
+			} catch (Exception e) {
+				//Skip this userExtSource
 			}
 		}
 		return userExtSource;
