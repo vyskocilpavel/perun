@@ -55,7 +55,7 @@ public class urn_perun_member_group_attribute_def_virt_isGroupAdminTest  extends
         newUser.setLastName("novak");
         newUser.setTitleBefore("");
         newUser.setTitleAfter("");
-        newUser = usersManager.createUser(sess, newUser);
+        newUser = usersManager. createUser(sess, newUser);
         assertNotNull(newUser);
         return newUser;
     }

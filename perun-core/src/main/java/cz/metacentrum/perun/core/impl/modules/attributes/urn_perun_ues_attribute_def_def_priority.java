@@ -6,6 +6,7 @@ import cz.metacentrum.perun.core.api.AttributesManager;
 import cz.metacentrum.perun.core.api.User;
 import cz.metacentrum.perun.core.api.UserExtSource;
 import cz.metacentrum.perun.core.api.exceptions.AttributeNotExistsException;
+import cz.metacentrum.perun.core.api.exceptions.ConsistencyErrorException;
 import cz.metacentrum.perun.core.api.exceptions.InternalErrorException;
 import cz.metacentrum.perun.core.api.exceptions.UserNotExistsException;
 import cz.metacentrum.perun.core.api.exceptions.WrongAttributeAssignmentException;
@@ -42,6 +43,8 @@ public class urn_perun_ues_attribute_def_def_priority extends UserExtSourceAttri
 			}
 		} catch (UserNotExistsException e) {
 			throw new InternalErrorException("User for UserExtSource does not exist.");
+		} catch (AttributeNotExistsException e) {
+			throw new ConsistencyErrorException("");
 		}
 	}
 

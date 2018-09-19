@@ -1235,7 +1235,7 @@ public interface UsersManagerBl {
 	 * @throws AttributeNotExistsException
 	 * @throws WrongAttributeAssignmentException
 	 */
-	void synchronizeUser(PerunSession sess, Candidate candidate) throws InternalErrorException, UserNotExistsException, UserExtSourceNotExistsException, ExtSourceNotExistsException, AttributeNotExistsException, WrongAttributeAssignmentException;
+	void synchronizeUser(PerunSession sess, Candidate candidate) throws InternalErrorException, UserNotExistsException, UserExtSourceNotExistsException, ExtSourceNotExistsException, AttributeNotExistsException, WrongAttributeAssignmentException, WrongAttributeValueException, WrongReferenceAttributeValueException;
 
 	/**
 	 * Returns priority of the userExtSource
@@ -1243,7 +1243,7 @@ public interface UsersManagerBl {
 	 * @param userExtSource UserExtSource
 	 * @return priority
 	 */
-	int getUserExtSourcePriority(PerunSession sess, UserExtSource userExtSource);
+	int getUserExtSourcePriority(PerunSession sess, UserExtSource userExtSource) throws WrongAttributeAssignmentException, InternalErrorException, AttributeNotExistsException;
 
 	/**
 	 * Updates all user attributes after UserExtSource was changed or removed
@@ -1257,4 +1257,18 @@ public interface UsersManagerBl {
 	 * @throws UserNotExistsException
 	 */
 	void updateUserAttributesAfterUesChanged(PerunSession sess, User user) throws WrongAttributeAssignmentException, WrongAttributeValueException, WrongReferenceAttributeValueException, InternalErrorException, AttributeNotExistsException, UserNotExistsException;
+
+	/**
+	 * This method set the lowest priority for userExtSource or return the priority if the priority was already setted
+	 * @param sess PerunSession
+	 * @param user User
+	 * @param userExtSource UserExtSource
+	 * @return Priority
+	 * @throws WrongAttributeAssignmentException
+	 * @throws WrongAttributeValueException
+	 * @throws WrongReferenceAttributeValueException
+	 * @throws InternalErrorException
+	 * @throws AttributeNotExistsException
+	 */
+	int setLowestPriority(PerunSession sess, User user, UserExtSource userExtSource) throws WrongAttributeAssignmentException, WrongAttributeValueException, WrongReferenceAttributeValueException, InternalErrorException, AttributeNotExistsException;
 }
