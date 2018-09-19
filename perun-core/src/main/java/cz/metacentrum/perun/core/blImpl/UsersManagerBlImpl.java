@@ -2394,31 +2394,37 @@ public class UsersManagerBlImpl implements UsersManagerBl {
 		if (actualPriority == 0) {
 			actualPriority = setLowestPriority(sess, user, userExtSource);
 		}
+		if (getUserExtSourceStoredAttributesAttr(sess, userExtSource) == null) {
+			log.debug("hasHighestPriority - returns false");
+			return false;
+		}
 		List<UserExtSource> userExtSourceList = getPerunBl().getUsersManagerBl().getUserExtSources(sess,user);
 		for (UserExtSource ues : userExtSourceList) {
 			int priority = getUserExtSourcePriority(sess, ues);
-			Attribute storedAttributesAttr = getUserExtSourceStoredAttributesAttr(sess, userExtSource);
-			if (storedAttributesAttr == null || storedAttributesAttr.getValue() == null
-					|| ( priority > 0 && priority < actualPriority)) {
+			Attribute storedAttributesAttr = getUserExtSourceStoredAttributesAttr(sess, ues);
+			if (storedAttributesAttr != null && storedAttributesAttr.getValue() != null
+					&& ( priority > 0 && priority < actualPriority)) {
+				log.debug("hasHighestPriority - returns false");
 				return false;
 			}
 		}
+		log.debug("hasHighestPriority - returns true");
 		return true;
 
 	}
 
 
 	/**
-	 * Returns attribute with storedAttributes for userExtSource stored during the last successfullz synchronization.
+	 * Returns attribute with storedAttributes(attributeName and attributeValue in JSON format) for userExtSource stored during the last successfully synchronization.
 	 * @param sess PerunSession
 	 * @param userExtSource UserExtSource
 	 * @return Attribute
 	 */
 	private Attribute getUserExtSourceStoredAttributesAttr (PerunSession sess, UserExtSource userExtSource) {
 		try {
-			Attribute userExtSourceStoredAttributesAttr = getPerunBl().getAttributesManagerBl().getAttribute(sess, userExtSource, UsersManager.USEREXTSOURCESTOREDATTRIBUTES_ATTRNAME);
-			return userExtSourceStoredAttributesAttr;
+			return getPerunBl().getAttributesManagerBl().getAttribute(sess, userExtSource, UsersManager.USEREXTSOURCESTOREDATTRIBUTES_ATTRNAME);
 		} catch (Exception e) {
+			log.error("getUserExtSourceStoredAttributesAttr returns null");
 			return null;
 		}
 	}
@@ -2538,39 +2544,50 @@ public class UsersManagerBlImpl implements UsersManagerBl {
 	 * @param user User
 	 * @throws ConsistencyErrorException
 	 */
-	private void updateUserCoreAttributesByHighestPriority(PerunSession sess, User user) throws InternalErrorException, WrongAttributeAssignmentException, AttributeNotExistsException {
+	private void updateUserCoreAttributesByHighestPriority(PerunSession sess, User user) throws InternalErrorException {
 		UserExtSource uesWithHighestPriority = getUserExtSourceWithHighestPriority(sess, user);
+		log.debug("getUserExtSourceWithHighestPriority - returns {}", uesWithHighestPriority);
+
 		Attribute storedAttribute = getUserExtSourceStoredAttributesAttr(sess, uesWithHighestPriority);
+		log.debug("getUserExtSourceStoredAttributesAttr - returns {}", storedAttribute);
+
 		if (storedAttribute != null && storedAttribute.valueAsString() != null) {
 			JSONObject storedAttributes = new JSONObject(storedAttribute.valueAsString());
 			boolean attributeChanged = false;
-
-			if (storedAttributes.has(AttributesManager.NS_USER_ATTR_CORE + "firstName")) {
-				user.setFirstName(storedAttributes.optJSONArray(AttributesManager.NS_USER_ATTR_CORE + "firstName").optString(0));
+			log.debug("StoredAttribute: {}",storedAttributes);
+			if (storedAttributes.has(AttributesManager.NS_USER_ATTR_CORE + ":firstName")
+					&& !user.getFirstName().equals(storedAttributes.optJSONArray(AttributesManager.NS_USER_ATTR_CORE + ":firstName").optString(0))) {
+				user.setFirstName(storedAttributes.optJSONArray(AttributesManager.NS_USER_ATTR_CORE + ":firstName").optString(0));
 				attributeChanged = true;
 			}
-			if (storedAttributes.has(AttributesManager.NS_USER_ATTR_CORE + "lastName")) {
-				user.setLastName(storedAttributes.optJSONArray(AttributesManager.NS_USER_ATTR_CORE + "lastName").optString(0));
+			if (storedAttributes.has(AttributesManager.NS_USER_ATTR_CORE + ":lastName")
+					&& !user.getLastName().equals(storedAttributes.optJSONArray(AttributesManager.NS_USER_ATTR_CORE + ":lastName").optString(0))) {
+				user.setLastName(storedAttributes.optJSONArray(AttributesManager.NS_USER_ATTR_CORE + ":lastName").optString(0));
 				attributeChanged = true;
 			}
-			if (storedAttributes.has(AttributesManager.NS_USER_ATTR_CORE + "middleName")) {
-				user.setMiddleName(storedAttributes.optJSONArray(AttributesManager.NS_USER_ATTR_CORE + "middleName").optString(0));
+			if (storedAttributes.has(AttributesManager.NS_USER_ATTR_CORE + ":middleName")
+					&& !user.getLastName().equals(storedAttributes.optJSONArray(AttributesManager.NS_USER_ATTR_CORE + ":middleName").optString(0))) {
+				user.setMiddleName(storedAttributes.optJSONArray(AttributesManager.NS_USER_ATTR_CORE + ":middleName").optString(0));
 				attributeChanged = true;
 			}
-			if (storedAttributes.has(AttributesManager.NS_USER_ATTR_CORE + "tittleBefore")) {
-				user.setTitleAfter(storedAttributes.optJSONArray(AttributesManager.NS_USER_ATTR_CORE + "tittleBefore").optString(0));
+			if (storedAttributes.has(AttributesManager.NS_USER_ATTR_CORE + ":tittleBefore")
+					&& !user.getLastName().equals(storedAttributes.optJSONArray(AttributesManager.NS_USER_ATTR_CORE + ":tittleBefore").optString(0))) {
+				user.setTitleAfter(storedAttributes.optJSONArray(AttributesManager.NS_USER_ATTR_CORE + ":tittleBefore").optString(0));
 				attributeChanged = true;
 			}
-			if (storedAttributes.has(AttributesManager.NS_USER_ATTR_CORE + "tittleAfter")) {
-				user.setTitleBefore(storedAttributes.optJSONArray(AttributesManager.NS_USER_ATTR_CORE + "tittleAfter").optString(0));
+			if (storedAttributes.has(AttributesManager.NS_USER_ATTR_CORE + ":tittleAfter")
+					&& !user.getLastName().equals(storedAttributes.optJSONArray(AttributesManager.NS_USER_ATTR_CORE + ":tittleAfter").optString(0))) {
+				user.setTitleBefore(storedAttributes.optJSONArray(AttributesManager.NS_USER_ATTR_CORE + ":tittleAfter").optString(0));
 				attributeChanged = true;
 			}
-			if (storedAttributes.has(AttributesManager.NS_USER_ATTR_CORE + "serviceUser")) {
-				user.setServiceUser(storedAttributes.optJSONArray(AttributesManager.NS_USER_ATTR_CORE + "serviceUser").optBoolean(0, false));
+			if (storedAttributes.has(AttributesManager.NS_USER_ATTR_CORE + ":serviceUser")
+					&& !user.isServiceUser() == storedAttributes.optJSONArray(AttributesManager.NS_USER_ATTR_CORE + ":serviceUser").optBoolean(0)) {
+				user.setServiceUser(storedAttributes.optJSONArray(AttributesManager.NS_USER_ATTR_CORE + ":serviceUser").optBoolean(0, false));
 				attributeChanged = true;
 			}
-			if (storedAttributes.has(AttributesManager.NS_USER_ATTR_CORE + "sponsoredUser")) {
-				user.setSponsoredUser(storedAttributes.optJSONArray(AttributesManager.NS_USER_ATTR_CORE + "sponsoredUser").optBoolean(0,false));
+			if (storedAttributes.has(AttributesManager.NS_USER_ATTR_CORE + ":sponsoredUser")
+					&& !user.isSponsoredUser() == storedAttributes.optJSONArray(AttributesManager.NS_USER_ATTR_CORE + ":sponsoredUser").optBoolean(0)) {
+				user.setSponsoredUser(storedAttributes.optJSONArray(AttributesManager.NS_USER_ATTR_CORE + ":sponsoredUser").optBoolean(0,false));
 				attributeChanged = true;
 			}
 
@@ -2582,13 +2599,13 @@ public class UsersManagerBlImpl implements UsersManagerBl {
 				} catch (UserNotExistsException e) {
 					throw new ConsistencyErrorException("User from perun not exists when should - removed during sync.", e);
 				} catch (InternalErrorException e) {
-					log.error("User core attributes wasn't updated.");
+					log.error("User core attributes wasn't updated." + e.getMessage());
 				}
 			} else {
-				log.error("User core attributes wasn't updated.");
+				log.error("1 - User core attributes wasn't updated.");
 			}
 		} else {
-			log.error("User core attributes wasn't updated.");
+			log.error("2 - User core attributes wasn't updated.");
 		}
 	}
 
@@ -2660,7 +2677,7 @@ public class UsersManagerBlImpl implements UsersManagerBl {
 	 * @param user User
 	 * @return UserExtSource
 	 */
-	private UserExtSource getUserExtSourceWithHighestPriority(PerunSession sess, User user) throws WrongAttributeAssignmentException, InternalErrorException, AttributeNotExistsException {
+	private UserExtSource getUserExtSourceWithHighestPriority(PerunSession sess, User user) throws InternalErrorException {
 		int priority = Integer.MAX_VALUE;
 		UserExtSource userExtSource = null;
 		for (UserExtSource ues : getPerunBl().getUsersManagerBl().getUserExtSources(sess, user)) {
