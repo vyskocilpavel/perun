@@ -185,8 +185,8 @@ public class Candidate extends User {
 		candidateAttributes.append(NS_USER_ATTR_CORE + "middleName", middleName);
 		candidateAttributes.append(NS_USER_ATTR_CORE + "tittleAfter", titleAfter);
 		candidateAttributes.append(NS_USER_ATTR_CORE + "tittleBefore", titleBefore);
-//		candidateAttributes.append(NS_USER_ATTR_CORE + "serviceUser", isServiceUser());
-//		candidateAttributes.append(NS_USER_ATTR_CORE + "sponsoredUser", isSponsoredUser());
+		candidateAttributes.append(NS_USER_ATTR_CORE + "serviceUser", isServiceUser());
+		candidateAttributes.append(NS_USER_ATTR_CORE + "sponsoredUser", isSponsoredUser());
 		for (Map.Entry<String, String> attribute : attributes.entrySet()) {
 			candidateAttributes.append(attribute.getKey(), attribute.getValue());
 		}

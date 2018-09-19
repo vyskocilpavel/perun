@@ -8,6 +8,7 @@ import java.io.OutputStream;
 import java.io.PrintWriter;
 import java.util.*;
 
+import com.sun.org.apache.xpath.internal.operations.Bool;
 import cz.metacentrum.perun.core.api.*;
 import cz.metacentrum.perun.core.api.exceptions.*;
 
@@ -2395,7 +2396,6 @@ public class UsersManagerBlImpl implements UsersManagerBl {
 			actualPriority = setLowestPriority(sess, user, userExtSource);
 		}
 		if (getUserExtSourceStoredAttributesAttr(sess, userExtSource) == null) {
-			log.debug("hasHighestPriority - returns false");
 			return false;
 		}
 		List<UserExtSource> userExtSourceList = getPerunBl().getUsersManagerBl().getUserExtSources(sess,user);
@@ -2404,11 +2404,9 @@ public class UsersManagerBlImpl implements UsersManagerBl {
 			Attribute storedAttributesAttr = getUserExtSourceStoredAttributesAttr(sess, ues);
 			if (storedAttributesAttr != null && storedAttributesAttr.getValue() != null
 					&& ( priority > 0 && priority < actualPriority)) {
-				log.debug("hasHighestPriority - returns false");
 				return false;
 			}
 		}
-		log.debug("hasHighestPriority - returns true");
 		return true;
 
 	}
@@ -2546,48 +2544,59 @@ public class UsersManagerBlImpl implements UsersManagerBl {
 	 */
 	private void updateUserCoreAttributesByHighestPriority(PerunSession sess, User user) throws InternalErrorException {
 		UserExtSource uesWithHighestPriority = getUserExtSourceWithHighestPriority(sess, user);
-		log.debug("getUserExtSourceWithHighestPriority - returns {}", uesWithHighestPriority);
-
 		Attribute storedAttribute = getUserExtSourceStoredAttributesAttr(sess, uesWithHighestPriority);
-		log.debug("getUserExtSourceStoredAttributesAttr - returns {}", storedAttribute);
 
 		if (storedAttribute != null && storedAttribute.valueAsString() != null) {
 			JSONObject storedAttributes = new JSONObject(storedAttribute.valueAsString());
 			boolean attributeChanged = false;
 			log.debug("StoredAttribute: {}",storedAttributes);
+			String firstName = storedAttributes.optJSONArray(AttributesManager.NS_USER_ATTR_CORE + ":firstName").optString(0);
+			String lastName = storedAttributes.optJSONArray(AttributesManager.NS_USER_ATTR_CORE + ":lastName").optString(0);
+			String middleName = storedAttributes.optJSONArray(AttributesManager.NS_USER_ATTR_CORE + ":middleName").optString(0);
+			String tittleBefore = storedAttributes.optJSONArray(AttributesManager.NS_USER_ATTR_CORE + ":tittleBefore").optString(0);
+			String tittleAfter = storedAttributes.optJSONArray(AttributesManager.NS_USER_ATTR_CORE + ":tittleAfter").optString(0);
+			Boolean isServiceUser = storedAttributes.optJSONArray(AttributesManager.NS_USER_ATTR_CORE + ":serviceUser").optBoolean(0);
+			Boolean isSponsoredUser = storedAttributes.optJSONArray(AttributesManager.NS_USER_ATTR_CORE + ":sponsoredUser").optBoolean(0);
 			if (storedAttributes.has(AttributesManager.NS_USER_ATTR_CORE + ":firstName")
-					&& !user.getFirstName().equals(storedAttributes.optJSONArray(AttributesManager.NS_USER_ATTR_CORE + ":firstName").optString(0))) {
-				user.setFirstName(storedAttributes.optJSONArray(AttributesManager.NS_USER_ATTR_CORE + ":firstName").optString(0));
+					&& !user.getFirstName().equals(firstName) && !(user.getFirstName() == null && firstName.equals(""))) {
+				user.setFirstName(firstName);
+				log.debug("Attribute: firstName was changed");
 				attributeChanged = true;
 			}
 			if (storedAttributes.has(AttributesManager.NS_USER_ATTR_CORE + ":lastName")
-					&& !user.getLastName().equals(storedAttributes.optJSONArray(AttributesManager.NS_USER_ATTR_CORE + ":lastName").optString(0))) {
-				user.setLastName(storedAttributes.optJSONArray(AttributesManager.NS_USER_ATTR_CORE + ":lastName").optString(0));
+					&& !user.getLastName().equals(lastName) && !(user.getLastName() == null && lastName.equals(""))) {
+				user.setLastName(lastName);
+				log.debug("Attribute: lastName was changed");
 				attributeChanged = true;
 			}
 			if (storedAttributes.has(AttributesManager.NS_USER_ATTR_CORE + ":middleName")
-					&& !user.getLastName().equals(storedAttributes.optJSONArray(AttributesManager.NS_USER_ATTR_CORE + ":middleName").optString(0))) {
-				user.setMiddleName(storedAttributes.optJSONArray(AttributesManager.NS_USER_ATTR_CORE + ":middleName").optString(0));
+					&& !user.getLastName().equals(middleName) && !(user.getMiddleName() == null && middleName.equals(""))) {
+				user.setMiddleName(middleName);
+				log.debug("Attribute: midleNanme was changed");
 				attributeChanged = true;
 			}
 			if (storedAttributes.has(AttributesManager.NS_USER_ATTR_CORE + ":tittleBefore")
-					&& !user.getLastName().equals(storedAttributes.optJSONArray(AttributesManager.NS_USER_ATTR_CORE + ":tittleBefore").optString(0))) {
-				user.setTitleAfter(storedAttributes.optJSONArray(AttributesManager.NS_USER_ATTR_CORE + ":tittleBefore").optString(0));
+					&& !user.getLastName().equals(tittleBefore) && !(user.getTitleBefore() == null && tittleBefore.equals(""))) {
+				user.setTitleAfter(tittleBefore);
+				log.debug("Attribute: tittleBefore was changed");
 				attributeChanged = true;
 			}
 			if (storedAttributes.has(AttributesManager.NS_USER_ATTR_CORE + ":tittleAfter")
-					&& !user.getLastName().equals(storedAttributes.optJSONArray(AttributesManager.NS_USER_ATTR_CORE + ":tittleAfter").optString(0))) {
-				user.setTitleBefore(storedAttributes.optJSONArray(AttributesManager.NS_USER_ATTR_CORE + ":tittleAfter").optString(0));
+					&& !user.getLastName().equals(tittleAfter) && !(user.getTitleAfter() == null && tittleAfter.equals(""))) {
+				user.setTitleBefore(tittleAfter);
+				log.debug("Attribute: tittleAfter was changed");
 				attributeChanged = true;
 			}
 			if (storedAttributes.has(AttributesManager.NS_USER_ATTR_CORE + ":serviceUser")
-					&& !user.isServiceUser() == storedAttributes.optJSONArray(AttributesManager.NS_USER_ATTR_CORE + ":serviceUser").optBoolean(0)) {
-				user.setServiceUser(storedAttributes.optJSONArray(AttributesManager.NS_USER_ATTR_CORE + ":serviceUser").optBoolean(0, false));
+					&& !user.isServiceUser() == isServiceUser) {
+				user.setServiceUser(isServiceUser);
+				log.debug("Attribute: serviceUser was changed");
 				attributeChanged = true;
 			}
 			if (storedAttributes.has(AttributesManager.NS_USER_ATTR_CORE + ":sponsoredUser")
-					&& !user.isSponsoredUser() == storedAttributes.optJSONArray(AttributesManager.NS_USER_ATTR_CORE + ":sponsoredUser").optBoolean(0)) {
-				user.setSponsoredUser(storedAttributes.optJSONArray(AttributesManager.NS_USER_ATTR_CORE + ":sponsoredUser").optBoolean(0,false));
+					&& !user.isSponsoredUser() == isSponsoredUser) {
+				user.setSponsoredUser(isSponsoredUser);
+				log.debug("Attribute: sponsorUser was changed");
 				attributeChanged = true;
 			}
 
@@ -2598,14 +2607,8 @@ public class UsersManagerBlImpl implements UsersManagerBl {
 					log.debug("Update User core Attributes for user {} was successfull.", user);
 				} catch (UserNotExistsException e) {
 					throw new ConsistencyErrorException("User from perun not exists when should - removed during sync.", e);
-				} catch (InternalErrorException e) {
-					log.error("User core attributes wasn't updated." + e.getMessage());
 				}
-			} else {
-				log.error("1 - User core attributes wasn't updated.");
 			}
-		} else {
-			log.error("2 - User core attributes wasn't updated.");
 		}
 	}
 
