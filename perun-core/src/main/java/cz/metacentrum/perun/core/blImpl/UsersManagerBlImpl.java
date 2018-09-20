@@ -2402,7 +2402,7 @@ public class UsersManagerBlImpl implements UsersManagerBl {
 	}
 
 
-	/* Private methods */
+	//----------- PRIVATE METHODS
 
 	/**
 	 *
@@ -2796,9 +2796,7 @@ public class UsersManagerBlImpl implements UsersManagerBl {
 		return numberOfNewlyRemovedThreads;
 	}
 
-	/*
-	* Private classes
-	*/
+	//----------- PRIVATE CLASSESS
 
 	private class UserSynchronizerThread extends Thread {
 

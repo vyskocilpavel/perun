@@ -257,11 +257,25 @@ public interface ExtSourcesManagerBl {
 	Map<String, String> getAttributes(ExtSource extSource) throws InternalErrorException;
 
 
-	void saveInformationAboutExtSourceSynchronization(PerunSession sess, ExtSource extSource, boolean failedDueToException, String exceptionMessage);
-
+	/**
+	 * Start userSynchronization for all subjects from extSource
+	 *
+	 * @param sess PerunSession
+	 * @param extSource ExtSource
+	 * @throws UserNotExistsException
+	 * @throws InternalErrorException
+	 * @throws AttributeNotExistsException
+	 * @throws ExtSourceUnsupportedOperationException
+	 * @throws CandidateNotExistsException
+	 * @throws ExtSourceNotExistsException
+	 */
 	void synchronizeExtSource(PerunSession sess, ExtSource extSource) throws UserNotExistsException, InternalErrorException, AttributeNotExistsException, ExtSourceUnsupportedOperationException, CandidateNotExistsException, ExtSourceNotExistsException;
 
+	/**
+	 * Run synchronization for all extSources
+	 * @param sess PerunSession
+	 * @throws InternalErrorException
+	 */
 	void synchronizeExtSources(PerunSession sess) throws InternalErrorException;
 
-	List<String> getOverwriteUserAttributesListFromExtSource(ExtSource extSource) throws InternalErrorException;
 }

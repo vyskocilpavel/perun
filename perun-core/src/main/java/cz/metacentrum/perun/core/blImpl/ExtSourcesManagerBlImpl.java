@@ -470,65 +470,17 @@ public class ExtSourcesManagerBlImpl implements ExtSourcesManagerBl {
 		return getExtSourcesManagerImpl().getAttributes(extSource);
 	}
 
-	public void synchronizeExtSource(PerunSession sess, ExtSource extSource) throws InternalErrorException, AttributeNotExistsException, ExtSourceUnsupportedOperationException, CandidateNotExistsException, ExtSourceNotExistsException {
+	public synchronized void synchronizeExtSource(PerunSession sess, ExtSource extSource) throws InternalErrorException, ExtSourceUnsupportedOperationException, CandidateNotExistsException, ExtSourceNotExistsException {
 		log.trace("ExtSource synchronization started for extSource: {} ", extSource.toString());
 
 		//Get subjects from extSource
-		List<Map<String, String>> subjects = getSubjectsFromExtSource(sess, extSource);
+		List<Map<String, String>> subjects = getSubjectsFromExtSource(extSource);
 
 		for (Map<String, String> subject : subjects) {
 			Candidate candidate = getCandidate(sess, subject, extSource, subject.get("login"));
 			getPerunBl().getUsersManagerBl().addCandidateToPool(candidate);
 		}
 		log.trace("ExtSource synchronization ended for extSource: {} ", extSource.toString());
-
-	}
-
-	private List<Map<String, String>> getSubjectsFromExtSource(PerunSession sess, ExtSource extSource) throws InternalErrorException {
-		Map<String, String> attributes = extSourcesManagerImpl.getAttributes(extSource);
-
-		List<Map<String, String>> subjects = new ArrayList<>();
-
-//		List<Map<String, String>> subjects;
-		try {
-			subjects = ((ExtSourceSimpleApi) extSource).getSubjects(attributes);
-
-		} catch (ExtSourceUnsupportedOperationException e) {
-			throw new InternalErrorException("ExtSource " + extSource.getName() + " doesn't support getSubjects", e);
-		}
-		return subjects;
-
-	}
-
-	public int removeInteruptedExtSources() {
-		int numberOfNewlyRemovedThreads = 0;
-
-		// Get the default synchronization timeout from the configuration file
-		int timeout = BeansUtils.getCoreConfig().getExtSourceSynchronizationTimeout();
-
-		Iterator<ExtSourceSynchronizerThread> threadIterator = extSourceSynchronizerThreads.iterator();
-
-		while(threadIterator.hasNext()) {
-			ExtSourceSynchronizerThread thread = threadIterator.next();
-			long threadStart = thread.getStartTime();
-			//If thread start time is 0, this thread is waiting for another job, skip it
-			if(threadStart == 0) continue;
-
-			long timeDiff = System.currentTimeMillis() - threadStart;
-			//If thread was interrupted by anything, remove it from the pool of active threads
-			if (thread.isInterrupted()) {
-				numberOfNewlyRemovedThreads++;
-				threadIterator.remove();
-			} else if(timeDiff/1000/60 > timeout) {
-				// If the time is greater than timeout set in the configuration file (in minutes), interrupt and remove this thread from pool
-				log.error("One of threads was interrupted because of timeout!");
-				thread.interrupt();
-				threadIterator.remove();
-				numberOfNewlyRemovedThreads++;
-			}
-		}
-
-		return numberOfNewlyRemovedThreads;
 	}
 
 	public synchronized void synchronizeExtSources(PerunSession sess) throws InternalErrorException {
@@ -578,10 +530,64 @@ public class ExtSourcesManagerBlImpl implements ExtSourcesManagerBl {
 				"'right now waiting extSources'='" + poolOfExtSourcesToBeSynchronized.getWaitingJobs() + "'.");
 	}
 
-	@Override
-	public void saveInformationAboutExtSourceSynchronization(PerunSession sess, ExtSource extSource, boolean failedDueToException, String exceptionMessage) {
 
+	//----------- PRIVATE METHODS
+
+	/**
+	 * Returns all subjects from extSource
+	 * @param extSource ExtSource
+	 * @return List of subjects from extSource
+	 * @throws InternalErrorException
+	 */
+	private List<Map<String, String>> getSubjectsFromExtSource(ExtSource extSource) throws InternalErrorException {
+		Map<String, String> attributes = extSourcesManagerImpl.getAttributes(extSource);
+		List<Map<String, String>> subjects;
+		try {
+			subjects = ((ExtSourceSimpleApi) extSource).getSubjects(attributes);
+		} catch (ExtSourceUnsupportedOperationException e) {
+			throw new InternalErrorException("ExtSource " + extSource.getName() + " doesn't support getSubjects", e);
+		}
+		return subjects;
 	}
+
+	/**
+	 * This function removed interupted threads
+	 *
+	 * @return Number of removed threads
+	 */
+	private int removeInteruptedExtSources() {
+		int numberOfNewlyRemovedThreads = 0;
+
+		// Get the default synchronization timeout from the configuration file
+		int timeout = BeansUtils.getCoreConfig().getExtSourceSynchronizationTimeout();
+
+		Iterator<ExtSourceSynchronizerThread> threadIterator = extSourceSynchronizerThreads.iterator();
+
+		while(threadIterator.hasNext()) {
+			ExtSourceSynchronizerThread thread = threadIterator.next();
+			long threadStart = thread.getStartTime();
+			//If thread start time is 0, this thread is waiting for another job, skip it
+			if(threadStart == 0) continue;
+
+			long timeDiff = System.currentTimeMillis() - threadStart;
+			//If thread was interrupted by anything, remove it from the pool of active threads
+			if (thread.isInterrupted()) {
+				numberOfNewlyRemovedThreads++;
+				threadIterator.remove();
+			} else if(timeDiff/1000/60 > timeout) {
+				// If the time is greater than timeout set in the configuration file (in minutes), interrupt and remove this thread from pool
+				log.error("One of threads was interrupted because of timeout!");
+				thread.interrupt();
+				threadIterator.remove();
+				numberOfNewlyRemovedThreads++;
+			}
+		}
+
+		return numberOfNewlyRemovedThreads;
+	}
+
+
+	//----------- PRIVATE CLASSESS
 
 	private class ExtSourceSynchronizerThread extends Thread {
 		// all synchronization runs under synchronizer identity.
@@ -606,11 +612,6 @@ public class ExtSourcesManagerBlImpl implements ExtSourcesManagerBl {
 				//If this thread was interrupted, end it's running
 				if(this.isInterrupted()) return;
 
-				//text of exception if was thrown, null in exceptionMessage means "no exception, it's ok"
-				String exceptionMessage = null;
-				//if exception which produce fail of whole synchronization was thrown
-				boolean failedDueToException = false;
-
 				//Take another extSource from the pool to synchronize it
 				ExtSource extSource = null;
 				try {
@@ -632,23 +633,9 @@ public class ExtSourcesManagerBlImpl implements ExtSourcesManagerBl {
 					perunBl.getExtSourcesManagerBl().synchronizeExtSource(sess, extSource);
 
 					log.debug("Synchronization thread for extSource {} has finished in {} ms.", extSource, System.currentTimeMillis() - startTime);
-				} /*catch (InternalErrorException e) {
-					failedDueToException = true;
-					exceptionMessage = "Cannot synchronize extSource ";
-					log.error(exceptionMessage + extSource, e);
-					exceptionMessage += "due to exception: " + e.getName() + " => " + e.getMessage();
-				} */catch (Exception e) {
-					failedDueToException = true;
-					exceptionMessage = "Cannot synchronize extSource ";
-					log.error(exceptionMessage + extSource, e);
-					exceptionMessage += "due to unexpected exception: " + e.getClass().getName() + " => " + e.getMessage();
+				} catch (Exception e) {
+					log.error("Cannot synchronize extSource " + extSource, e);
 				} finally {
-					//Save information about extSources synchronization, this method run in new transaction
-					try {
-						perunBl.getExtSourcesManagerBl().saveInformationAboutExtSourceSynchronization(sess, extSource, failedDueToException, exceptionMessage);
-					} catch (Exception ex) {
-						log.error("When synchronization extSource " + extSource + ", exception was thrown.", ex);
-					}
 					//Remove job from running jobs
 					if(!poolOfExtSourcesToBeSynchronized.removeJob(extSource)) {
 						log.error("Can't remove running job for object " + extSource + " from pool of running jobs because it is not containing it.");
@@ -668,15 +655,4 @@ public class ExtSourcesManagerBlImpl implements ExtSourcesManagerBl {
 		}
 	}
 
-	public List<String> getOverwriteUserAttributesListFromExtSource(ExtSource extSource) throws InternalErrorException {
-		Map<String, String> attributes = getPerunBl().getExtSourcesManagerBl().getAttributes(extSource);
-		List<String> overwriteUserAttributesList = new ArrayList<>();
-		String overwriteUserAttributes = attributes.get("overwriteUserAttributes");
-		if(overwriteUserAttributes != null && !overwriteUserAttributes.isEmpty()) {
-			//remove all white spaces and invisible characters
-			overwriteUserAttributes = overwriteUserAttributes.replaceAll("\\s", "");
-			overwriteUserAttributesList = Arrays.asList(overwriteUserAttributes.split(","));
-		}
-		return overwriteUserAttributesList;
-	}
 }

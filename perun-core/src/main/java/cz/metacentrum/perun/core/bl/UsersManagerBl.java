@@ -1224,7 +1224,7 @@ public interface UsersManagerBl {
 	void reinitializeUserSynchronizerThreads(PerunSession sess) throws InternalErrorException;
 
 	/**
-	 * Starts user synchronization for candidate
+	 * Synchronize user with external user
 	 *
 	 * @param sess PerunSession
 	 * @param candidate Candidate
