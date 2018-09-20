@@ -1271,4 +1271,30 @@ public interface UsersManagerBl {
 	 * @throws AttributeNotExistsException
 	 */
 	int setLowestPriority(PerunSession sess, User user, UserExtSource userExtSource) throws WrongAttributeAssignmentException, WrongAttributeValueException, WrongReferenceAttributeValueException, InternalErrorException, AttributeNotExistsException;
+
+
+	/**
+	 * This method will set timestamp and exceptionMessage to userExtSource attributes for the user.
+	 * Also log information about failed synchronization to auditer_log.
+	 *
+	 * IMPORTANT: This method runs in new transaction (because of using in synchronization of users)
+	 *
+	 * Set timestamp to attribute "ues_def_lastSynchronizationTimestamp"
+	 * Set exception message to attribute "ues_def_lastSynchronizationState"
+	 *
+	 * FailedDueToException is true means user synchronization failed at all.
+	 * FailedDueToException is false means user synchronization is ok
+	 *
+	 * @param sess perun session
+	 * @param candidate the candidate for synchronization
+	 * @param failedDueToException if exception means fail of whole synchronization of this group or only problem with some data
+	 * @param exceptionMessage message of an exception, ok if everything is ok
+	 * @throws AttributeNotExistsException
+	 * @throws InternalErrorException
+	 * @throws WrongReferenceAttributeValueException
+	 * @throws WrongAttributeAssignmentException
+	 * @throws WrongAttributeValueException
+	 */
+	void saveInformationAboutUserSynchronization(PerunSession sess, Candidate candidate, boolean failedDueToException, String exceptionMessage) throws AttributeNotExistsException, InternalErrorException, WrongReferenceAttributeValueException, WrongAttributeAssignmentException, WrongAttributeValueException;
+
 }

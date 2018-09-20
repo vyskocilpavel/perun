@@ -2171,7 +2171,6 @@ public class UsersManagerBlImpl implements UsersManagerBl {
 
 	public synchronized void reinitializeUserSynchronizerThreads(PerunSession sess) throws InternalErrorException {
 		int numberOfNewlyRemovedThreads = removeInteruptedUsers();
-
 		int numberOfNewlyCreatedThreads = 0;
 
 		// Start new threads if there is place for them
@@ -2264,7 +2263,7 @@ public class UsersManagerBlImpl implements UsersManagerBl {
 		if (ues != null) {
 			try {
 				UserExtSource userExtSourceFromPerun = getPerunBl().getUsersManagerBl().getUserExtSourceByExtLogin(sess, ues.getExtSource(), ues.getLogin());
-				// Update user attributes
+				// Update user attributes and if this userExtSource has highest priority update also user core attributes
 				boolean hasHighestPriority = hasHighestPriority(sess, user, userExtSourceFromPerun);
 				if (hasHighestPriority) {
 					updateUserCoreAttributes(sess, user, candidate);
@@ -2314,45 +2313,89 @@ public class UsersManagerBlImpl implements UsersManagerBl {
 	}
 
 
-	/*
-	*  Private methods
-	*/
+	public int setLowestPriority(PerunSession sess, User user, UserExtSource userExtSource) throws WrongAttributeAssignmentException, WrongAttributeValueException, WrongReferenceAttributeValueException, InternalErrorException, AttributeNotExistsException {
+		int priority = 0;
 
-	/**
-	 * This function removed interupted threads
-	 *
-	 * @return Number of removed threads
-	 */
-	private int removeInteruptedUsers() {
-		int numberOfNewlyRemovedThreads = 0;
+		Attribute priorityAttribute = getPerunBl().getAttributesManagerBl().getAttribute(sess, userExtSource, UsersManager.USEREXTSOURCEPRIORITY_ATTRNAME);
+		if (priorityAttribute.getValue() == null ) {
+			Attribute userExtSourceStoredAttributesAttr = getPerunBl().getAttributesManagerBl().getAttribute(sess, userExtSource, UsersManager.USEREXTSOURCESTOREDATTRIBUTES_ATTRNAME);
+			if (userExtSourceStoredAttributesAttr.getValue() != null) {
+				priority = getNewLowestPriority(sess, user);
+				priorityAttribute.setValue(priority);
+				getPerunBl().getAttributesManagerBl().setAttribute(sess, userExtSource, priorityAttribute);
+				log.debug("Priority: {} was stored for UserExtSource: {} .", priority, userExtSource);
+			}
+		} else {
+			priority = priorityAttribute.valueAsInteger();
+			log.debug("Priority is already setted for UserExtSource: {}. Returning priority: {}. ", userExtSource, priority);
+		}
+		return priority;
+	}
 
-		// Get the default synchronization timeout from the configuration file
-		int timeout = BeansUtils.getCoreConfig().getExtSourceSynchronizationTimeout();
+	public void saveInformationAboutUserSynchronization(PerunSession sess, Candidate candidate, boolean failedDueToException, String exceptionMessage) throws AttributeNotExistsException, InternalErrorException, WrongReferenceAttributeValueException, WrongAttributeAssignmentException, WrongAttributeValueException {
+		//get current timestamp of this synchronization
+		Date currentTimestamp = new Date();
+		String originalExceptionMessage = exceptionMessage;
+		//If session is null, throw an exception
+		if (sess == null) {
+			throw new InternalErrorException("Session is null when trying to save information about synchronization. Candidate: " + candidate+ ", timestamp: " + currentTimestamp + ",message: " + exceptionMessage);
+		}
 
-		Iterator<UserSynchronizerThread> threadIterator = userSynchronizerThreads.iterator();
+		//If group is null, throw an exception
+		if (candidate == null) {
+			throw new InternalErrorException("Object candidate is null when trying to save information about synchronization. Timestamp: " + currentTimestamp + ", message: " + exceptionMessage);
+		}
 
-		while (threadIterator.hasNext()) {
-			UserSynchronizerThread thread = threadIterator.next();
-			long threadStart = thread.getStartTime();
-			//If thread start time is 0, this thread is waiting for another job, skip it
-			if (threadStart == 0) continue;
+		//if exceptionMessage is empty, use "Empty message" instead
+		if (exceptionMessage != null && exceptionMessage.isEmpty()) {
+			exceptionMessage = "Empty message.";
+			//else trim the message on 1000 characters if not null
+		} else if (exceptionMessage != null && exceptionMessage.length() > 1000) {
+			exceptionMessage = exceptionMessage.substring(0, 1000) + " ... message is too long, other info is in perun log file. If needed, please ask perun administrators.";
+		}
 
-			long timeDiff = System.currentTimeMillis() - threadStart;
-			//If thread was interrupted by anything, remove it from the pool of active threads
-			if (thread.isInterrupted()) {
-				numberOfNewlyRemovedThreads++;
-				threadIterator.remove();
-			} else if (timeDiff / 1000 / 60 > timeout) {
-				// If the time is greater than timeout set in the configuration file (in minutes), interrupt and remove this thread from pool
-				log.error("One of threads was interrupted because of timeout!");
-				thread.interrupt();
-				threadIterator.remove();
-				numberOfNewlyRemovedThreads++;
+		//Set correct format of currentTimestamp
+		String correctTimestampString = BeansUtils.getDateFormatter().format(currentTimestamp);
+
+		//Get both attribute definition lastSynchroTimestamp and lastSynchroState
+		//Get definitions and values, set values
+		Attribute lastSynchronizationTimestamp = new Attribute(((PerunBl) sess.getPerun()).getAttributesManagerBl().getAttributeDefinition(sess, AttributesManager.NS_UES_ATTR_DEF + ":lastSynchronizationTimestamp"));
+		Attribute lastSynchronizationState = new Attribute(((PerunBl) sess.getPerun()).getAttributesManagerBl().getAttributeDefinition(sess, AttributesManager.NS_UES_ATTR_DEF + ":lastSynchronizationState"));
+		lastSynchronizationTimestamp.setValue(correctTimestampString);
+		//if exception is null, set null to value => remove attribute instead of setting in method setAttributes
+		lastSynchronizationState.setValue(exceptionMessage);
+
+		//attributes to set
+		List<Attribute> attrsToSet = new ArrayList<>();
+
+		//null in exceptionMessage means no exception, success
+		//Set lastSuccessSynchronizationTimestamp if this one is success
+		if(exceptionMessage == null) {
+			String attrName = AttributesManager.NS_UES_ATTR_DEF + ":lastSuccessSynchronizationTimestamp";
+			try {
+				Attribute lastSuccessSynchronizationTimestamp = new Attribute(((PerunBl) sess.getPerun()).getAttributesManagerBl().getAttributeDefinition(sess, AttributesManager.NS_UES_ATTR_DEF + ":lastSuccessSynchronizationTimestamp"));
+				lastSuccessSynchronizationTimestamp.setValue(correctTimestampString);
+				attrsToSet.add(lastSuccessSynchronizationTimestamp);
+			} catch (AttributeNotExistsException ex) {
+				log.error("Can't save lastSuccessSynchronizationTimestamp, because there is missing attribute with name {}", attrName);
+			}
+		} else {
+			//Log to auditer_log that synchronization failed or finished with some errors
+			if(failedDueToException) {
+				getPerunBl().getAuditer().log(sess, "{} synchronization failed because of {}.", candidate, originalExceptionMessage);
+			} else {
+				getPerunBl().getAuditer().log(sess, "{} synchronization finished with errors: {}.", candidate, originalExceptionMessage);
 			}
 		}
 
-		return numberOfNewlyRemovedThreads;
+		//set lastSynchronizationState and lastSynchronizationTimestamp
+		attrsToSet.add(lastSynchronizationState);
+		attrsToSet.add(lastSynchronizationTimestamp);
+		((PerunBl) sess.getPerun()).getAttributesManagerBl().setAttributes(sess, candidate, attrsToSet);
 	}
+
+
+	/* Private methods */
 
 	/**
 	 *
@@ -2469,26 +2512,6 @@ public class UsersManagerBlImpl implements UsersManagerBl {
 		}
 	}
 
-
-	public int setLowestPriority(PerunSession sess, User user, UserExtSource userExtSource) throws WrongAttributeAssignmentException, WrongAttributeValueException, WrongReferenceAttributeValueException, InternalErrorException, AttributeNotExistsException {
-		int priority = 0;
-
-		Attribute priorityAttribute = getPerunBl().getAttributesManagerBl().getAttribute(sess, userExtSource, UsersManager.USEREXTSOURCEPRIORITY_ATTRNAME);
-		if (priorityAttribute.getValue() == null ) {
-			Attribute userExtSourceStoredAttributesAttr = getPerunBl().getAttributesManagerBl().getAttribute(sess, userExtSource, UsersManager.USEREXTSOURCESTOREDATTRIBUTES_ATTRNAME);
-			if (userExtSourceStoredAttributesAttr.getValue() != null) {
-				priority = getNewLowestPriority(sess, user);
-				priorityAttribute.setValue(priority);
-				getPerunBl().getAttributesManagerBl().setAttribute(sess, userExtSource, priorityAttribute);
-				log.debug("Priority: {} was stored for UserExtSource: {} .", priority, userExtSource);
-			}
-		} else {
-			priority = priorityAttribute.valueAsInteger();
-			log.debug("Priority is already setted for UserExtSource: {}. Returning priority: {}. ", userExtSource, priority);
-		}
-		return priority;
-	}
-
 	/**
 	 * Returns the new lowest priority for user
 	 * @param sess PerunSession
@@ -2556,6 +2579,7 @@ public class UsersManagerBlImpl implements UsersManagerBl {
 			String tittleAfter = storedAttributes.optJSONArray(AttributesManager.NS_USER_ATTR_CORE + ":tittleAfter").optString(0);
 			Boolean isServiceUser = storedAttributes.optJSONArray(AttributesManager.NS_USER_ATTR_CORE + ":serviceUser").optBoolean(0);
 			Boolean isSponsoredUser = storedAttributes.optJSONArray(AttributesManager.NS_USER_ATTR_CORE + ":sponsoredUser").optBoolean(0);
+
 			if (!user.getFirstName().equals(firstName) && !(user.getFirstName() == null && firstName.equals(""))) {
 				user.setFirstName(firstName);
 				attributeChanged = true;
@@ -2729,6 +2753,41 @@ public class UsersManagerBlImpl implements UsersManagerBl {
 		}
 	}
 
+	/**
+	 * This function removed interupted threads
+	 *
+	 * @return Number of removed threads
+	 */
+	private int removeInteruptedUsers() {
+		int numberOfNewlyRemovedThreads = 0;
+
+		// Get the default synchronization timeout from the configuration file
+		int timeout = BeansUtils.getCoreConfig().getExtSourceSynchronizationTimeout();
+
+		Iterator<UserSynchronizerThread> threadIterator = userSynchronizerThreads.iterator();
+
+		while (threadIterator.hasNext()) {
+			UserSynchronizerThread thread = threadIterator.next();
+			long threadStart = thread.getStartTime();
+			//If thread start time is 0, this thread is waiting for another job, skip it
+			if (threadStart == 0) continue;
+
+			long timeDiff = System.currentTimeMillis() - threadStart;
+			//If thread was interrupted by anything, remove it from the pool of active threads
+			if (thread.isInterrupted()) {
+				numberOfNewlyRemovedThreads++;
+				threadIterator.remove();
+			} else if (timeDiff / 1000 / 60 > timeout) {
+				// If the time is greater than timeout set in the configuration file (in minutes), interrupt and remove this thread from pool
+				log.error("One of threads was interrupted because of timeout!");
+				thread.interrupt();
+				threadIterator.remove();
+				numberOfNewlyRemovedThreads++;
+			}
+		}
+
+		return numberOfNewlyRemovedThreads;
+	}
 
 	/*
 	* Private classes
@@ -2780,37 +2839,17 @@ public class UsersManagerBlImpl implements UsersManagerBl {
 					log.debug("Synchronization thread started synchronization for user with subject {}.", candidate);
 
 					synchronizeUser(sess, candidate);
-					//synchronize Group and get information about skipped Members
-					//List<String> skippedMembers = perunBl.getGroupsManagerBl().synchronizeGroup(sess, group);
-/*
-					if (!skippedMembers.isEmpty()) {
-						skippedMembersMessage = "These members from extSource were skipped: { ";
 
-						for (String skippedMember : skippedMembers) {
-							if (skippedMember == null) continue;
-
-							skippedMembersMessage += skippedMember + ", ";
-						}
-						skippedMembersMessage += " }";
-						exceptionMessage = skippedMembersMessage;
-					}*/
 					log.debug("Synchronization thread for candidate {} has finished in {} ms.", candidate, System.currentTimeMillis() - startTime);
-				} /*catch (WrongAttributeValueException | WrongReferenceAttributeValueException | InternalErrorException |
-						WrongAttributeAssignmentException  | GroupNotExistsException |
-						AttributeNotExistsException  | ExtSourceNotExistsException e) {
+				} catch (InternalErrorException  e) {
 					failedDueToException = true;
-					exceptionMessage = "Cannot synchronize group ";
-					log.error(exceptionMessage + user, e);
-					exceptionMessage += "due to exception: " + e.getName() + " => " + e.getMessage();
-				} */catch (Exception e) {
-					failedDueToException = true;
-					exceptionMessage = "Cannot synchronize user ";
+					exceptionMessage = "Cannot synchronize user with candidate ";
 					log.error(exceptionMessage + candidate, e);
-					exceptionMessage += "due to unexpected exception: " + e.getClass().getName() + " => " + e.getMessage();
+					exceptionMessage += "due to exception: " + e.getName() + " => " + e.getMessage();
 				} finally {
 					//Save information about group synchronization, this method run in new transaction
 					try {
-						//perunBl.getGroupsManagerBl().saveInformationAboutGroupSynchronization(sess, group, failedDueToException, exceptionMessage);
+						perunBl.getUsersManagerBl().saveInformationAboutUserSynchronization(sess, candidate, failedDueToException, exceptionMessage);
 					} catch (Exception ex) {
 						log.error("When synchronization user with candidate {}, exception was thrown.",candidate, ex);
 					}

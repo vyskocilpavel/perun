@@ -63,6 +63,11 @@ public class Synchronizer {
 		}
 	}
 
+	/**
+	 * Start synchronization of ExtSources if not running.
+	 *
+	 * Method is triggered by Spring scheduler (every 5 minutes).
+	 */
 	public void synchronizeExtSources() {
 		if(perunBl.isPerunReadOnly()) {
 			log.debug("This instance is just read only so skip synchronization of extSources.");
@@ -86,6 +91,11 @@ public class Synchronizer {
 		}
 	}
 
+	/**
+	 * Start synchronization of Users if not running.
+	 *
+	 * Method is triggered by Spring scheduler (every 5 minutes).
+	 */
 	public void synchronizeUsers() {
 		if(perunBl.isPerunReadOnly()) {
 			log.debug("This instance is just read only so skip synchronization of users.");
