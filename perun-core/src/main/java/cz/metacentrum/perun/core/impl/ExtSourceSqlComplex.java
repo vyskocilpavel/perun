@@ -114,6 +114,12 @@ public class ExtSourceSqlComplex extends ExtSource implements ExtSourceApi {
 		return this.querySource(sqlQueryForGroup, null, 0);
 	}
 
+	@Override
+	public List<Map<String, String>> getSubjects(Map<String, String> attributes) throws InternalErrorException, ExtSourceUnsupportedOperationException {
+		throw new ExtSourceUnsupportedOperationException();
+	}
+
+
 	protected List<Map<String,String>> querySource(String query, String searchString, int maxResults) throws InternalErrorException {
 		PreparedStatement st = null;
 		ResultSet rs = null;

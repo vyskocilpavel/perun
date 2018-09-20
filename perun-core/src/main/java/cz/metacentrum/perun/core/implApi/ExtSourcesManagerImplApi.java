@@ -221,4 +221,6 @@ public interface ExtSourcesManagerImplApi {
 	 * @throws InternalErrorException
 	 */
 	public Map<String,String> getAttributes(ExtSource extSource) throws InternalErrorException;
+
+	List<ExtSource> getExtSourcesToSynchronize(PerunSession sess) throws InternalErrorException;
 }

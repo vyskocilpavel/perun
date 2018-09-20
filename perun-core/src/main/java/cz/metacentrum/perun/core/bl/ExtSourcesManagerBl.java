@@ -11,6 +11,7 @@ import cz.metacentrum.perun.core.api.Group;
 import cz.metacentrum.perun.core.api.PerunSession;
 import cz.metacentrum.perun.core.api.User;
 import cz.metacentrum.perun.core.api.Vo;
+import cz.metacentrum.perun.core.api.exceptions.AttributeNotExistsException;
 import cz.metacentrum.perun.core.api.exceptions.CandidateNotExistsException;
 import cz.metacentrum.perun.core.api.exceptions.ExtSourceAlreadyAssignedException;
 import cz.metacentrum.perun.core.api.exceptions.ExtSourceAlreadyRemovedException;
@@ -19,6 +20,7 @@ import cz.metacentrum.perun.core.api.exceptions.ExtSourceNotAssignedException;
 import cz.metacentrum.perun.core.api.exceptions.ExtSourceNotExistsException;
 import cz.metacentrum.perun.core.api.exceptions.ExtSourceUnsupportedOperationException;
 import cz.metacentrum.perun.core.api.exceptions.InternalErrorException;
+import cz.metacentrum.perun.core.api.exceptions.UserNotExistsException;
 import cz.metacentrum.perun.core.api.exceptions.VoNotExistsException;
 import java.util.Map;
 
@@ -253,4 +255,27 @@ public interface ExtSourcesManagerBl {
 	 * @throws InternalErrorException
 	 */
 	Map<String, String> getAttributes(ExtSource extSource) throws InternalErrorException;
+
+
+	/**
+	 * Start userSynchronization for all subjects from extSource
+	 *
+	 * @param sess PerunSession
+	 * @param extSource ExtSource
+	 * @throws UserNotExistsException
+	 * @throws InternalErrorException
+	 * @throws AttributeNotExistsException
+	 * @throws ExtSourceUnsupportedOperationException
+	 * @throws CandidateNotExistsException
+	 * @throws ExtSourceNotExistsException
+	 */
+	void synchronizeExtSource(PerunSession sess, ExtSource extSource) throws UserNotExistsException, InternalErrorException, AttributeNotExistsException, ExtSourceUnsupportedOperationException, CandidateNotExistsException, ExtSourceNotExistsException;
+
+	/**
+	 * Run synchronization for all extSources
+	 * @param sess PerunSession
+	 * @throws InternalErrorException
+	 */
+	void synchronizeExtSources(PerunSession sess) throws InternalErrorException;
+
 }

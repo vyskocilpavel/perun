@@ -24,6 +24,8 @@ public class Synchronizer {
 
 	private PerunBl perunBl;
 	private AtomicBoolean synchronizeGroupsRunning = new AtomicBoolean(false);
+	private AtomicBoolean synchronizeExtSourcesRunning = new AtomicBoolean(false);
+	private AtomicBoolean synchronizeUsersRunning = new AtomicBoolean(false);
 
 	public Synchronizer() {
 	}
@@ -58,6 +60,62 @@ public class Synchronizer {
 			}
 		} else {
 			log.debug("Synchronizer: group synchronization currently running.");
+		}
+	}
+
+	/**
+	 * Start synchronization of ExtSources if not running.
+	 *
+	 * Method is triggered by Spring scheduler (every 5 minutes).
+	 */
+	public void synchronizeExtSources() {
+		if(perunBl.isPerunReadOnly()) {
+			log.debug("This instance is just read only so skip synchronization of extSources.");
+			return;
+		}
+
+		if (synchronizeExtSourcesRunning.compareAndSet(false, true)) {
+			try {
+				log.debug("Synchronizer starting synchronizing the extSources");
+				this.perunBl.getExtSourcesManagerBl().synchronizeExtSources(this.sess);
+				if (!synchronizeExtSourcesRunning.compareAndSet(true, false)) {
+					log.error("Synchronizer: extSource synchronization out of sync, resetting.");
+					synchronizeExtSourcesRunning.set(false);
+				}
+			} catch (InternalErrorException e) {
+				log.error("Cannot synchronize extSources:", e);
+				synchronizeExtSourcesRunning.set(false);
+			}
+		} else {
+			log.debug("Synchronizer: extSources synchronization currently running.");
+		}
+	}
+
+	/**
+	 * Start synchronization of Users if not running.
+	 *
+	 * Method is triggered by Spring scheduler (every 5 minutes).
+	 */
+	public void synchronizeUsers() {
+		if(perunBl.isPerunReadOnly()) {
+			log.debug("This instance is just read only so skip synchronization of users.");
+			return;
+		}
+
+		if (synchronizeUsersRunning.compareAndSet(false, true)) {
+			try {
+				log.debug("Synchronizer starting synchronizing the users");
+				this.perunBl.getUsersManagerBl().reinitializeUserSynchronizerThreads(this.sess);
+				if (!synchronizeUsersRunning.compareAndSet(true, false)) {
+					log.error("Synchronizer: user synchronization out of sync, resetting.");
+					synchronizeUsersRunning.set(false);
+				}
+			} catch (InternalErrorException e) {
+				log.error("Cannot synchronize user:", e);
+				synchronizeUsersRunning.set(false);
+			}
+		} else {
+			log.debug("Synchronizer: user synchronization currently running.");
 		}
 	}
 

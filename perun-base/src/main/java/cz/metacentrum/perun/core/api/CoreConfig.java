@@ -30,6 +30,9 @@ public class CoreConfig {
 
 	private boolean dbInitializatorEnabled;
 	private boolean readOnlyPerun;
+	private int userMaxConcurentUsersToSynchronize;
+	private int extSourceSynchronizationTimeout;
+	private int extSourceMaxConcurentExtSourcesToSynchronize;
 	private int groupSynchronizationInterval;
 	private int groupSynchronizationTimeout;
 	private int groupMaxConcurentGroupsToSynchronize;
@@ -61,6 +64,30 @@ public class CoreConfig {
 	private String rtUrl;
 	private String smsProgram;
 	private String userExtSourcesPersistent;
+
+	public int getUserMaxConcurentUsersToSynchronize() {
+		return userMaxConcurentUsersToSynchronize;
+	}
+
+	public void setUserMaxConcurentUsersToSynchronize(int userMaxConcurentUsersToSynchronize) {
+		this.userMaxConcurentUsersToSynchronize = userMaxConcurentUsersToSynchronize;
+	}
+
+	public int getExtSourceSynchronizationTimeout() {
+		return extSourceSynchronizationTimeout;
+	}
+
+	public void setExtSourceSynchronizationTimeout(int extSourceSynchronizationTimeout) {
+		this.extSourceSynchronizationTimeout = extSourceSynchronizationTimeout;
+	}
+
+	public int getExtSourceMaxConcurentExtSourcesToSynchronize() {
+		return extSourceMaxConcurentExtSourcesToSynchronize;
+	}
+
+	public void setExtSourceMaxConcurentExtSourcesToSynchronize(int extSourceMaxConcurentExtSourcesToSynchronize) {
+		this.extSourceMaxConcurentExtSourcesToSynchronize = extSourceMaxConcurentExtSourcesToSynchronize;
+	}
 
 	public int getGroupMaxConcurentGroupsToSynchronize() {
 		return groupMaxConcurentGroupsToSynchronize;

@@ -174,6 +174,11 @@ public class ExtSourceLdap extends ExtSource implements ExtSourceApi {
 		}
 	}
 
+	@Override
+	public List<Map<String, String>> getSubjects(Map<String, String> attributes) throws InternalErrorException, ExtSourceUnsupportedOperationException {
+		throw new ExtSourceUnsupportedOperationException();
+	}
+
 	protected void initContext() throws InternalErrorException {
 		// Load mapping between LDAP attributes and Perun attributes
 		Hashtable<String,String> env = new Hashtable<String,String>();

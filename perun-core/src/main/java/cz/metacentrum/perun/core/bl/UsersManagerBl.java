@@ -174,7 +174,7 @@ public interface UsersManagerBl {
 	RichUser getRichUser(PerunSession sess, User user) throws InternalErrorException, UserNotExistsException;
 
 	/**
-	 * Get User to RichUser with attributes.
+	 * Get User to RichUser with <b>non-empty</b> attributes.
 	 *
 	 * @param sess
 	 * @param user
@@ -183,6 +183,17 @@ public interface UsersManagerBl {
 	 * @throws UserNotExistsException
 	 */
 	RichUser getRichUserWithAttributes(PerunSession sess, User user) throws InternalErrorException, UserNotExistsException;
+
+	/**
+	 * Get User to RichUser with all attributes.
+	 *
+	 * @param sess
+	 * @param user
+	 * @return
+	 * @throws InternalErrorException
+	 * @throws UserNotExistsException
+	 */
+	RichUser getRichUserWithAllAttributes(PerunSession sess, User user) throws InternalErrorException, UserNotExistsException;
 
 	/**
 	 * Get All richUsers with or without specificUsers.
@@ -255,6 +266,15 @@ public interface UsersManagerBl {
 	 * @throws InternalErrorException
 	 */
 	User createUser(PerunSession perunSession, User user) throws InternalErrorException;
+
+	/**
+	 * Inserts user into DB.
+	 *
+	 * @param perunSession
+	 * @param candidate
+	 * @throws InternalErrorException
+	 */
+	User createUser(PerunSession perunSession, Candidate candidate) throws InternalErrorException;
 
 	/**
 	 * Deletes user.
@@ -896,7 +916,7 @@ public interface UsersManagerBl {
 	List<RichUser> convertUsersToRichUsers(PerunSession sess, List<User> users) throws InternalErrorException;
 
 	/**
-	 * From List of Rich Users without attribute make list of Rich Users with attributes
+	 * From List of Rich Users without attribute make list of Rich Users with <b>non-empty</b> attributes
 	 *
 	 * @param sess
 	 * @param richUsers
@@ -905,6 +925,17 @@ public interface UsersManagerBl {
 	 * @throws UserNotExistsException
 	 */
 	List<RichUser> convertRichUsersToRichUsersWithAttributes(PerunSession sess, List<RichUser> richUsers) throws InternalErrorException, UserNotExistsException;
+
+	/**
+	 * From List of Rich Users without attribute make list of Rich Users with all attributes
+	 *
+	 * @param sess
+	 * @param richUsers
+	 * @return list of Rich Users with attributes
+	 * @throws InternalErrorException
+	 * @throws UserNotExistsException
+	 */
+	List<RichUser> convertRichUsersToRichUsersWithAllAttributes(PerunSession sess, List<RichUser> richUsers) throws InternalErrorException, UserNotExistsException;
 
 	/**
 	 * From List of Users make list of RichUsers (with attributes by names)
@@ -1175,5 +1206,95 @@ public interface UsersManagerBl {
 	 * @return list of users
 	 */
 	List<User> findUsersWithExtSourceAttributeValueEnding(PerunSessionImpl sess, String attributeName, String valueEnd, List<String> excludeValueEnds) throws AttributeNotExistsException, InternalErrorException;
+
+	/**
+	 * Adds new candidate to the pool of Candidates prepared for synchronization
+	 *
+	 * @param candidate Candidate
+	 * @throws InternalErrorException if the candidate is null
+	 */
+	void addCandidateToPool(Candidate candidate) throws InternalErrorException;
+
+	/**
+	 * Removes all interupted threads and starts new threads
+	 *
+	 * @param sess PerunSession
+	 * @throws InternalErrorException
+	 */
+	void reinitializeUserSynchronizerThreads(PerunSession sess) throws InternalErrorException;
+
+	/**
+	 * Synchronize user with external user
+	 *
+	 * @param sess PerunSession
+	 * @param candidate Candidate
+	 * @throws InternalErrorException
+	 * @throws UserNotExistsException
+	 * @throws UserExtSourceNotExistsException
+	 * @throws ExtSourceNotExistsException
+	 * @throws AttributeNotExistsException
+	 * @throws WrongAttributeAssignmentException
+	 */
+	void synchronizeUser(PerunSession sess, Candidate candidate) throws InternalErrorException, UserNotExistsException, UserExtSourceNotExistsException, ExtSourceNotExistsException, AttributeNotExistsException, WrongAttributeAssignmentException, WrongAttributeValueException, WrongReferenceAttributeValueException;
+
+	/**
+	 * Returns priority of the userExtSource
+	 * @param sess PerunSession
+	 * @param userExtSource UserExtSource
+	 * @return priority
+	 */
+	int getUserExtSourcePriority(PerunSession sess, UserExtSource userExtSource) throws WrongAttributeAssignmentException, InternalErrorException, AttributeNotExistsException;
+
+	/**
+	 * Updates all user attributes after UserExtSource was changed or removed
+	 * @param sess PerunSession
+	 * @param user User
+	 * @throws WrongAttributeAssignmentException
+	 * @throws WrongAttributeValueException
+	 * @throws WrongReferenceAttributeValueException
+	 * @throws InternalErrorException
+	 * @throws AttributeNotExistsException
+	 * @throws UserNotExistsException
+	 */
+	void updateUserAttributesAfterUesChanged(PerunSession sess, User user) throws WrongAttributeAssignmentException, WrongAttributeValueException, WrongReferenceAttributeValueException, InternalErrorException, AttributeNotExistsException, UserNotExistsException;
+
+	/**
+	 * This method set the lowest priority for userExtSource or return the priority if the priority was already setted
+	 * @param sess PerunSession
+	 * @param user User
+	 * @param userExtSource UserExtSource
+	 * @return Priority
+	 * @throws WrongAttributeAssignmentException
+	 * @throws WrongAttributeValueException
+	 * @throws WrongReferenceAttributeValueException
+	 * @throws InternalErrorException
+	 * @throws AttributeNotExistsException
+	 */
+	int setLowestPriority(PerunSession sess, User user, UserExtSource userExtSource) throws WrongAttributeAssignmentException, WrongAttributeValueException, WrongReferenceAttributeValueException, InternalErrorException, AttributeNotExistsException;
+
+
+	/**
+	 * This method will set timestamp and exceptionMessage to userExtSource attributes for the user.
+	 * Also log information about failed synchronization to auditer_log.
+	 *
+	 * IMPORTANT: This method runs in new transaction (because of using in synchronization of users)
+	 *
+	 * Set timestamp to attribute "ues_def_lastSynchronizationTimestamp"
+	 * Set exception message to attribute "ues_def_lastSynchronizationState"
+	 *
+	 * FailedDueToException is true means user synchronization failed at all.
+	 * FailedDueToException is false means user synchronization is ok
+	 *
+	 * @param sess perun session
+	 * @param candidate the candidate for synchronization
+	 * @param failedDueToException if exception means fail of whole synchronization of this group or only problem with some data
+	 * @param exceptionMessage message of an exception, ok if everything is ok
+	 * @throws AttributeNotExistsException
+	 * @throws InternalErrorException
+	 * @throws WrongReferenceAttributeValueException
+	 * @throws WrongAttributeAssignmentException
+	 * @throws WrongAttributeValueException
+	 */
+	void saveInformationAboutUserSynchronization(PerunSession sess, Candidate candidate, boolean failedDueToException, String exceptionMessage) throws AttributeNotExistsException, InternalErrorException, WrongReferenceAttributeValueException, WrongAttributeAssignmentException, WrongAttributeValueException;
 
 }
