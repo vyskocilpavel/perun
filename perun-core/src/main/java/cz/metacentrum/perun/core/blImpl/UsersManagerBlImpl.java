@@ -2287,18 +2287,20 @@ public class UsersManagerBlImpl implements UsersManagerBl {
 			//Update UserAttributes
 			for (Attribute userAttribute : richUser.getUserAttributes()) {
 				if (userAttribute.getNamespace().equals(AttributesManager.NS_USER_ATTR_DEF)) {
-					Attribute attribute = getUserAttributeFromUserExtSourcesWithHighestPriority(sess, user, userAttribute.getName());
-					if ((userAttribute.getValue() != null && !userAttribute.getValue().equals(attribute.getValue()))
-							|| (userAttribute.getValue() == null && attribute.getValue() != null)) {
-						userAttribute.setValue(attribute.getValue());
-						getPerunBl().getAttributesManagerBl().setAttributeInNestedTransaction(sess, user, userAttribute);
+					try {
+						Attribute attribute = getUserAttributeFromUserExtSourcesWithHighestPriority(sess, user, userAttribute.getName());
+						if ((userAttribute.getValue() != null && !userAttribute.getValue().equals(attribute.getValue()))
+								|| (userAttribute.getValue() == null && attribute.getValue() != null)) {
+							userAttribute.setValue(attribute.getValue());
+							getPerunBl().getAttributesManagerBl().setAttributeInNestedTransaction(sess, user, userAttribute);
+						}
+					} catch (WrongAttributeValueException | WrongReferenceAttributeValueException
+							| WrongAttributeAssignmentException | AttributeNotExistsException e) {
+						throw new InternalErrorException(e);
 					}
 				}
 			}
-		} catch (WrongAttributeValueException | WrongReferenceAttributeValueException
-					| WrongAttributeAssignmentException | AttributeNotExistsException e) {
-			throw new InternalErrorException(e);
-		} catch (UserNotExistsException e) {
+		}catch (UserNotExistsException e) {
 			throw new InternalErrorException("User not exist in Perun!");
 		}
 	}
@@ -2391,7 +2393,12 @@ public class UsersManagerBlImpl implements UsersManagerBl {
 		//set lastSynchronizationState and lastSynchronizationTimestamp
 		attrsToSet.add(lastSynchronizationState);
 		attrsToSet.add(lastSynchronizationTimestamp);
-		((PerunBl) sess.getPerun()).getAttributesManagerBl().setAttributes(sess, candidate, attrsToSet);
+		try {
+			UserExtSource userExtSourceFromPerun = getPerunBl().getUsersManagerBl().getUserExtSourceByExtLogin(sess, candidate.getUserExtSource().getExtSource(), candidate.getUserExtSource().getLogin());
+			((PerunBl) sess.getPerun()).getAttributesManagerBl().setAttributes(sess, userExtSourceFromPerun, attrsToSet);
+		} catch (UserExtSourceNotExistsException e) {
+			log.error("Can't save information about user synchronization, because the userExtSource from candidate doesn't exist in Perun.");
+		}
 	}
 
 
@@ -2402,7 +2409,7 @@ public class UsersManagerBlImpl implements UsersManagerBl {
 	 * @param sess
 	 * @param candidate
 	 * @param user
-	 * @param userExtSource
+	 * @param candidate
 	 * @param overwriteAttributeList
 	 * @return
 	 */

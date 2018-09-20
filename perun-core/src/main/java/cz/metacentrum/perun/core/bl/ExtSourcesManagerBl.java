@@ -256,6 +256,7 @@ public interface ExtSourcesManagerBl {
 	 */
 	Map<String, String> getAttributes(ExtSource extSource) throws InternalErrorException;
 
+
 	void saveInformationAboutExtSourceSynchronization(PerunSession sess, ExtSource extSource, boolean failedDueToException, String exceptionMessage);
 
 	void synchronizeExtSource(PerunSession sess, ExtSource extSource) throws UserNotExistsException, InternalErrorException, AttributeNotExistsException, ExtSourceUnsupportedOperationException, CandidateNotExistsException, ExtSourceNotExistsException;
