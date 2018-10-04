@@ -531,6 +531,24 @@ public class ExtSourcesManagerBlImpl implements ExtSourcesManagerBl {
 	}
 
 
+	public List<String> getOverwriteUserAttributeList(ExtSource extSource) throws InternalErrorException {
+		Map<String, String> extSourceAttributes = getPerunBl().getExtSourcesManagerBl().getAttributes(extSource);
+		String[] overwriteUserAttributes = extSourceAttributes.get(ExtSourcesManager.USEROVERWRITEATTRIBUTES_ATTRNAME).split(",");
+		List<String> overwriteUserAttributeList = Arrays.asList(overwriteUserAttributes);
+
+		return overwriteUserAttributeList;
+	}
+
+
+	public List<String> getSynchronizedUserAttributeList(ExtSource extSource) throws InternalErrorException {
+		Map<String, String> extSourceAttributes = getPerunBl().getExtSourcesManagerBl().getAttributes(extSource);
+		String[] synchronizedUserAttributes = extSourceAttributes.get(ExtSourcesManager.USEROVERWRITEATTRIBUTES_ATTRNAME).split(",");
+		List<String> synchronizedUserAttributeList = Arrays.asList(synchronizedUserAttributes);
+
+		return synchronizedUserAttributeList;
+	}
+
+
 	//----------- PRIVATE METHODS
 
 	/**

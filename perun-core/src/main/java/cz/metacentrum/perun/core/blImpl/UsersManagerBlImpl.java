@@ -2243,7 +2243,7 @@ public class UsersManagerBlImpl implements UsersManagerBl {
 					Attribute userExtSourceStoredAttributesAttr = getPerunBl().getAttributesManagerBl().getAttribute(sess, uesFromPerun, UsersManager.USEREXTSOURCESTOREDATTRIBUTES_ATTRNAME);
 					userExtSourceStoredAttributesAttr.setValue(candidate.convertAttributesToJSON().toString());
 					getPerunBl().getAttributesManagerBl().setAttribute(sess, uesFromPerun, userExtSourceStoredAttributesAttr);
-
+/*
 					//Store or updated overwriteAttributeList
 					Attribute overwriteAttributeListAttr = getPerunBl().getAttributesManagerBl().getAttribute(sess, uesFromPerun, UsersManager.USEREXTSOURCEOVERWRITEUSERATTRIBUTELIST_ATTRNAME);
 					overwriteAttributeListAttr.setValue(new ArrayList<>(overwriteUserAttributeList));
@@ -2253,7 +2253,7 @@ public class UsersManagerBlImpl implements UsersManagerBl {
 					Attribute synchronizedAttributeListAttr = getPerunBl().getAttributesManagerBl().getAttribute(sess, uesFromPerun, UsersManager.USEREXTSOURCESYNCHRONIZEDATTRIBUTELIST_ATTRNAME);
 					List<String> sychronizedAttributeList = new ArrayList<>(candidate.getAttributes().keySet());
 					synchronizedAttributeListAttr.setValue(sychronizedAttributeList);
-					getPerunBl().getAttributesManagerBl().setAttribute(sess, uesFromPerun, synchronizedAttributeListAttr);
+					getPerunBl().getAttributesManagerBl().setAttribute(sess, uesFromPerun, synchronizedAttributeListAttr);*/
 				} catch (WrongAttributeValueException | WrongReferenceAttributeValueException
 						| WrongAttributeAssignmentException | AttributeNotExistsException e) {
 					throw new InternalErrorException(e);
@@ -2421,8 +2421,9 @@ public class UsersManagerBlImpl implements UsersManagerBl {
 			if (!ues.equals(userExtSource)) {
 				int priority = getUserExtSourcePriority(sess, ues);
 				if (priority > 0 && priority < actualPriority) {
-					List<String> uesSynchronizedAttrList = getSynchronizeAttributeList(sess, userExtSource);
-					for (String attrName : uesSynchronizedAttrList) {
+//					List<String> uesSynchronizedAttrList = getSynchronizeAttributeList(sess, userExtSource);
+					List<String> synchronizedUserAttrList = getPerunBl().getExtSourcesManagerBl().getSynchronizedUserAttributeList(userExtSource.getExtSource());
+					for (String attrName : synchronizedUserAttrList) {
 						if (overwriteAttributeList.contains(attrName)) {
 							userAttributeListForSynchronization.remove(attrName);
 						}
@@ -2483,7 +2484,7 @@ public class UsersManagerBlImpl implements UsersManagerBl {
 	 * @param userExtSource UserExtSource
 	 * @return List of attributeNames
 	 */
-	private List<String> getOverwriteAttributeList(PerunSession sess, UserExtSource userExtSource){
+	/*private List<String> getOverwriteAttributeList(PerunSession sess, UserExtSource userExtSource){
 		try {
 			Attribute overwriteUserAttributeList_attr = getPerunBl().getAttributesManagerBl().getAttribute(sess, userExtSource, UsersManager.USEREXTSOURCEOVERWRITEUSERATTRIBUTELIST_ATTRNAME);
 			if (overwriteUserAttributeList_attr != null && overwriteUserAttributeList_attr.getValue() != null) {
@@ -2501,7 +2502,7 @@ public class UsersManagerBlImpl implements UsersManagerBl {
 		}
 
 		return new ArrayList<>();
-	}
+	}*/
 
 	/**
 	 * Returns list of attributesName which was synchronized from userExtSource
@@ -2509,7 +2510,7 @@ public class UsersManagerBlImpl implements UsersManagerBl {
 	 * @param userExtSource UserExtSource
 	 * @return List of attributeNames
 	 */
-	private List<String> getSynchronizeAttributeList(PerunSession sess, UserExtSource userExtSource) throws WrongAttributeAssignmentException, InternalErrorException, AttributeNotExistsException {
+	/*private List<String> getSynchronizeAttributeList(PerunSession sess, UserExtSource userExtSource) throws WrongAttributeAssignmentException, InternalErrorException, AttributeNotExistsException {
 		Attribute synchronizedAttributeList_attr = getPerunBl().getAttributesManagerBl().getAttribute(sess, userExtSource, UsersManager.USEREXTSOURCESYNCHRONIZEDATTRIBUTELIST_ATTRNAME);
 		if (synchronizedAttributeList_attr != null && synchronizedAttributeList_attr.getValue() != null) {
 			List<String> synchronizedAttributeList = synchronizedAttributeList_attr.valueAsList();
@@ -2517,7 +2518,7 @@ public class UsersManagerBlImpl implements UsersManagerBl {
 		} else {
 			return new ArrayList<>();
 		}
-	}
+	}*/
 
 	/**
 	 * Returns the new lowest priority for user
@@ -2666,7 +2667,7 @@ public class UsersManagerBlImpl implements UsersManagerBl {
 
 		//Merge attribute value for attribute with type ArrayList and LinkedHashMap if the attribute is not in overwriteAttributeList
 		if ((attribute.getType().equals("java.util.ArrayList") || attribute.getType().equals("java.util.LinkedHashMap")
-				&& userExtSourceWithHighestPriority != null && !getOverwriteAttributeList(sess, userExtSourceWithHighestPriority).contains(attrName))) {
+				&& userExtSourceWithHighestPriority != null && !getPerunBl().getExtSourcesManagerBl().getOverwriteUserAttributeList(userExtSourceWithHighestPriority.getExtSource()).contains(attrName))) {
 			for (UserExtSource ues : getPerunBl().getUsersManagerBl().getUserExtSources(sess, user)) {
 				if (!ues.equals(userExtSourceWithHighestPriority)) {
 					Attribute uesStoredAttributesAttr = getUserExtSourceStoredAttributesAttr(sess, ues);

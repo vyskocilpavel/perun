@@ -278,4 +278,8 @@ public interface ExtSourcesManagerBl {
 	 */
 	void synchronizeExtSources(PerunSession sess) throws InternalErrorException;
 
-}
+	List<String> getOverwriteUserAttributeList(ExtSource extSource) throws InternalErrorException;
+
+	List<String> getSynchronizedUserAttributeList(ExtSource extSource) throws InternalErrorException;
+
+	}
