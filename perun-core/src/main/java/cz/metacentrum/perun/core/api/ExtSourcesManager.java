@@ -178,4 +178,6 @@ public interface ExtSourcesManager {
 	Map<String, String> getAttributes(PerunSession sess, ExtSource extSource) throws InternalErrorException, PrivilegeException, ExtSourceNotExistsException;
 
 	void synchronizeExtSources(PerunSession sess) throws InternalErrorException, PrivilegeException;
+
+	void forceExtSourceSynchronization(PerunSession sess, ExtSource extSource) throws InternalErrorException, PrivilegeException;
 }

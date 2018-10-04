@@ -483,6 +483,11 @@ public class ExtSourcesManagerBlImpl implements ExtSourcesManagerBl {
 		log.trace("ExtSource synchronization ended for extSource: {} ", extSource.toString());
 	}
 
+	public void forceExtSourceSynchronization(ExtSource extSource) throws InternalErrorException {
+		poolOfExtSourcesToBeSynchronized.putJobIfAbsent(extSource, true);
+		log.info("Force synchronization for ExtSource {} started.", extSource);
+	}
+
 	public synchronized void synchronizeExtSources(PerunSession sess) throws InternalErrorException {
 		log.info("ExtSourceManagerBlImpl:  synchronizeExtSources started");
 		LocalDateTime localDateTime = LocalDateTime.now();

@@ -327,4 +327,17 @@ public class ExtSourcesManagerEntry implements ExtSourcesManager {
 
 		getExtSourcesManagerBl().synchronizeExtSources(sess);
 	}
+
+	@Override
+	public void forceExtSourceSynchronization(PerunSession sess, ExtSource extSource) throws InternalErrorException, PrivilegeException {
+		log.info("ExtSourceManagerEntry:  force synchronization for ExtSource: {} started", extSource);
+		Utils.checkPerunSession(sess);
+
+		// Authorization
+		if (!AuthzResolver.isAuthorized(sess, Role.PERUNADMIN))  {
+			throw new PrivilegeException(sess, "synchronizeExtSources");
+		}
+
+		getExtSourcesManagerBl().forceExtSourceSynchronization(extSource);
+	}
 }

@@ -189,13 +189,22 @@ public enum ExtSourcesManagerMethod implements ManagerMethod {
 		}
 	},
 
-	synchronizeExtSources {
+
+	forceExtSourceSynchronization {
 
 		@Override
 		public Void call(ApiCaller ac, Deserializer parms) throws PerunException {
 
-			ac.getExtSourcesManager().synchronizeExtSources(ac.getSession());
+			if (parms.contains("extSource")) {
+				ac.getExtSourcesManager().forceExtSourceSynchronization(ac.getSession(),
+						ac.getExtSourceById(parms.readInt("extSource"))
+				);
+			} else {
+				throw new RpcException(RpcException.Type.MISSING_VALUE, "extSource");
+			}
 			return null;
 		}
 	};
+
+
 }

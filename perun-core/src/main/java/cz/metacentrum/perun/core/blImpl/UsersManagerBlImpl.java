@@ -2243,17 +2243,6 @@ public class UsersManagerBlImpl implements UsersManagerBl {
 					Attribute userExtSourceStoredAttributesAttr = getPerunBl().getAttributesManagerBl().getAttribute(sess, uesFromPerun, UsersManager.USEREXTSOURCESTOREDATTRIBUTES_ATTRNAME);
 					userExtSourceStoredAttributesAttr.setValue(candidate.convertAttributesToJSON().toString());
 					getPerunBl().getAttributesManagerBl().setAttribute(sess, uesFromPerun, userExtSourceStoredAttributesAttr);
-/*
-					//Store or updated overwriteAttributeList
-					Attribute overwriteAttributeListAttr = getPerunBl().getAttributesManagerBl().getAttribute(sess, uesFromPerun, UsersManager.USEREXTSOURCEOVERWRITEUSERATTRIBUTELIST_ATTRNAME);
-					overwriteAttributeListAttr.setValue(new ArrayList<>(overwriteUserAttributeList));
-					getPerunBl().getAttributesManagerBl().setAttribute(sess, uesFromPerun, overwriteAttributeListAttr);
-
-					//Store or updated synchronizedAttributeList
-					Attribute synchronizedAttributeListAttr = getPerunBl().getAttributesManagerBl().getAttribute(sess, uesFromPerun, UsersManager.USEREXTSOURCESYNCHRONIZEDATTRIBUTELIST_ATTRNAME);
-					List<String> sychronizedAttributeList = new ArrayList<>(candidate.getAttributes().keySet());
-					synchronizedAttributeListAttr.setValue(sychronizedAttributeList);
-					getPerunBl().getAttributesManagerBl().setAttribute(sess, uesFromPerun, synchronizedAttributeListAttr);*/
 				} catch (WrongAttributeValueException | WrongReferenceAttributeValueException
 						| WrongAttributeAssignmentException | AttributeNotExistsException e) {
 					throw new InternalErrorException(e);
@@ -2292,7 +2281,7 @@ public class UsersManagerBlImpl implements UsersManagerBl {
 						if ((userAttribute.getValue() != null && !userAttribute.getValue().equals(attribute.getValue()))
 								|| (userAttribute.getValue() == null && attribute.getValue() != null)) {
 							userAttribute.setValue(attribute.getValue());
-							getPerunBl().getAttributesManagerBl().setAttributeInNestedTransaction(sess, user, userAttribute);
+							getPerunBl().getAttributesManagerBl().setAttribute(sess, user, userAttribute);
 						}
 					} catch (WrongAttributeValueException | WrongReferenceAttributeValueException
 							| WrongAttributeAssignmentException | AttributeNotExistsException e) {
