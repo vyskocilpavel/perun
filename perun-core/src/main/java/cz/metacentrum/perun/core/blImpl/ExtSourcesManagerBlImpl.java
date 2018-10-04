@@ -483,18 +483,13 @@ public class ExtSourcesManagerBlImpl implements ExtSourcesManagerBl {
 		log.trace("ExtSource synchronization ended for extSource: {} ", extSource.toString());
 	}
 
-	public void forceExtSourceSynchronization(ExtSource extSource) throws InternalErrorException {
+	public void forceExtSourceSynchronization(PerunSession sess, ExtSource extSource) throws InternalErrorException {
+		initializeNewSynchronizationThreads(sess);
 		poolOfExtSourcesToBeSynchronized.putJobIfAbsent(extSource, true);
 		log.info("Force synchronization for ExtSource {} started.", extSource);
 	}
 
-	public synchronized void synchronizeExtSources(PerunSession sess) throws InternalErrorException {
-		log.info("ExtSourceManagerBlImpl:  synchronizeExtSources started");
-		LocalDateTime localDateTime = LocalDateTime.now();
-		String pattern = "^(([0-1][0-9])|(2[0-3])):[0-5][0,5]$";
-
-		int numberOfNewlyRemovedThreads = removeInteruptedExtSources();
-
+	private int initializeNewSynchronizationThreads(PerunSession sess) throws InternalErrorException {
 		int numberOfNewlyCreatedThreads = 0;
 
 		// Start new threads if there is place for them
@@ -505,6 +500,17 @@ public class ExtSourcesManagerBlImpl implements ExtSourcesManagerBl {
 			numberOfNewlyCreatedThreads++;
 			log.debug("New thread for extSources synchronization started.");
 		}
+		return numberOfNewlyCreatedThreads;
+	}
+
+	public synchronized void synchronizeExtSources(PerunSession sess) throws InternalErrorException {
+		log.info("ExtSourceManagerBlImpl:  synchronizeExtSources started");
+		LocalDateTime localDateTime = LocalDateTime.now();
+		String pattern = "^(([0-1][0-9])|(2[0-3])):[0-5][0,5]$";
+
+		int numberOfNewlyRemovedThreads = removeInteruptedExtSources();
+
+		int numberOfNewlyCreatedThreads = numberOfNewlyRemovedThreads;
 
 		List<ExtSource> extSources = extSourcesManagerImpl.getExtSourcesToSynchronize(sess);
 

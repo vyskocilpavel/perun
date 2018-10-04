@@ -338,6 +338,6 @@ public class ExtSourcesManagerEntry implements ExtSourcesManager {
 			throw new PrivilegeException(sess, "synchronizeExtSources");
 		}
 
-		getExtSourcesManagerBl().forceExtSourceSynchronization(extSource);
+		getExtSourcesManagerBl().forceExtSourceSynchronization(sess, extSource);
 	}
 }
