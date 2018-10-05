@@ -514,7 +514,7 @@ public class ExtSourcesManagerBlImpl implements ExtSourcesManagerBl {
 
 		int numberOfNewlyRemovedThreads = removeInteruptedExtSources();
 
-		int numberOfNewlyCreatedThreads = numberOfNewlyRemovedThreads;
+		int numberOfNewlyCreatedThreads = initializeNewSynchronizationThreads(sess);
 
 		List<ExtSource> extSources = extSourcesManagerImpl.getExtSourcesToSynchronize(sess);
 
@@ -539,7 +539,7 @@ public class ExtSourcesManagerBlImpl implements ExtSourcesManagerBl {
 		// Save state of synchronization to the info log
 		log.info("SynchronizeExtSources method ends with these states: " +
 				"'number of newly removed threads'='" + numberOfNewlyRemovedThreads + "', " +
-				"'number of newly created threads'='" + numberOfNewlyAddedExtSource + "', " +
+				"'number of newly created threads'='" + numberOfNewlyCreatedThreads + "', " +
 				"'number of newly added extSources to the pool'='" + numberOfNewlyAddedExtSource + "', " +
 				"'right now synchronized extSources'='" + poolOfExtSourcesToBeSynchronized.getRunningJobs() + "', " +
 				"'right now waiting extSources'='" + poolOfExtSourcesToBeSynchronized.getWaitingJobs() + "'.");
