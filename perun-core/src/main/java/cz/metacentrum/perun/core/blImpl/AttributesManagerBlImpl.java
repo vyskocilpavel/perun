@@ -2115,6 +2115,10 @@ public class AttributesManagerBlImpl implements AttributesManagerBl {
 		}
 	}
 
+	public void setAttributeInNestedTransaction(PerunSession sess, UserExtSource userExtSource, Attribute attribute) throws InternalErrorException, WrongAttributeValueException, WrongAttributeAssignmentException, WrongReferenceAttributeValueException {
+		setAttribute(sess, userExtSource, attribute);
+	}
+
 	public AttributeDefinition createAttribute(PerunSession sess, AttributeDefinition attribute) throws InternalErrorException, AttributeDefinitionExistsException {
 		Utils.notNull(attribute.getName(), "attribute.getName");
 		Utils.notNull(attribute.getNamespace(), "attribute.getNamespace");

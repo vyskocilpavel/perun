@@ -2243,7 +2243,7 @@ public class UsersManagerBlImpl implements UsersManagerBl {
 //					Attribute userExtSourceStoredAttributesAttr = getPerunBl().getAttributesManagerBl().getAttribute(sess, uesFromPerun, UsersManager.USEREXTSOURCESTOREDATTRIBUTES_ATTRNAME);
 					Attribute userExtSourceStoredAttributesAttr = new Attribute(((PerunBl) sess.getPerun()).getAttributesManagerBl().getAttributeDefinition(sess, UsersManager.USEREXTSOURCESTOREDATTRIBUTES_ATTRNAME));
 					userExtSourceStoredAttributesAttr.setValue(candidate.convertAttributesToJSON().toString());
-					getPerunBl().getAttributesManagerBl().setAttribute(sess, uesFromPerun, userExtSourceStoredAttributesAttr);
+					getPerunBl().getAttributesManagerBl().setAttributeInNestedTransaction(sess, uesFromPerun, userExtSourceStoredAttributesAttr);
 				} catch (WrongAttributeValueException | WrongReferenceAttributeValueException
 						| WrongAttributeAssignmentException | AttributeNotExistsException e) {
 					throw new InternalErrorException(e);
@@ -2311,7 +2311,7 @@ public class UsersManagerBlImpl implements UsersManagerBl {
 			if (userExtSourceStoredAttributesAttr.getValue() != null) {
 				priority = getNewLowestPriority(sess, user);
 				priorityAttribute.setValue(priority);
-				getPerunBl().getAttributesManagerBl().setAttribute(sess, userExtSource, priorityAttribute);
+				getPerunBl().getAttributesManagerBl().setAttributeInNestedTransaction(sess, userExtSource, priorityAttribute);
 				log.debug("Priority: {} was stored for UserExtSource: {} .", priority, userExtSource);
 			}
 		} else {
