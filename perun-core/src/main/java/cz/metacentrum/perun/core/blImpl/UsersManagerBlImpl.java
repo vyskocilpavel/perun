@@ -2190,7 +2190,7 @@ public class UsersManagerBlImpl implements UsersManagerBl {
 				"'right now waiting users with subjects'='" + poolOfCandidatesToBeSynchronized.getWaitingJobs() + "'.");
 	}
 
-	public synchronized void synchronizeUser(PerunSession sess, Candidate candidate) throws InternalErrorException {
+	public synchronized void synchronizeUser(PerunSession sess, Candidate candidate) throws InternalErrorException, AttributeNotExistsException, WrongAttributeAssignmentException, WrongAttributeValueException, WrongReferenceAttributeValueException {
 		log.info("User synchronization started for candidate: {}", candidate);
 
 		Map<String, String> extSourceAttributes = getPerunBl().getExtSourcesManagerBl().getAttributes(candidate.getUserExtSource().getExtSource());
@@ -2259,9 +2259,6 @@ public class UsersManagerBlImpl implements UsersManagerBl {
 					updateUserCoreAttributes(sess, user, candidate);
 				}
 				updateUserAttributes(sess, user, candidate, userExtSourceFromPerun, overwriteUserAttributeList);
-			} catch (WrongAttributeValueException | WrongReferenceAttributeValueException
-					| WrongAttributeAssignmentException | AttributeNotExistsException e) {
-				throw new InternalErrorException(e);
 			} catch (UserExtSourceNotExistsException e) {
 				throw new InternalErrorException("UserExtSource not exist in Perun");
 			}
@@ -2795,7 +2792,7 @@ public class UsersManagerBlImpl implements UsersManagerBl {
 					synchronizeUser(sess, candidate);
 
 					log.debug("Synchronization thread for candidate {} has finished in {} ms.", candidate, System.currentTimeMillis() - startTime);
-				} catch (InternalErrorException  e) {
+				} catch (InternalErrorException | AttributeNotExistsException | WrongAttributeAssignmentException | WrongAttributeValueException | WrongReferenceAttributeValueException e) {
 					failedDueToException = true;
 					exceptionMessage = "Cannot synchronize user with candidate ";
 					log.error(exceptionMessage + candidate, e);
