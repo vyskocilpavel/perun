@@ -486,6 +486,9 @@ public class ExtSourcesManagerBlImpl implements ExtSourcesManagerBl {
 		int numberOfNewlyRemovedThreads = removeInteruptedThreads();
 		int numberOfNewlyCreatedThreads = initializeNewSynchronizationThreads(sess);
 		int numberOfNewlyAddedExtSource = 0;
+
+		this.perunBl.getUsersManagerBl().reinitializeUserSynchronizerThreads(sess);
+
 		if (extSourcesManagerImpl.getExtSourcesToSynchronize(sess).contains(extSource)) {
 			poolOfExtSourcesToBeSynchronized.putJobIfAbsent(extSource, true);
 			numberOfNewlyAddedExtSource++;
