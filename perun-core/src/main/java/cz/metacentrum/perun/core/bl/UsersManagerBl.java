@@ -341,6 +341,17 @@ public interface UsersManagerBl {
 	UserExtSource updateUserExtSource(PerunSession perunSession, UserExtSource userExtSource) throws InternalErrorException, UserExtSourceExistsException;
 
 	/**
+	 * Updates user's userExtSource in DB.
+	 *
+	 * @param perunSession
+	 * @param userExtSource
+	 * @return updated userExtSource
+	 * @throws InternalErrorException
+	 * @throws UserExtSourceExistsException When UES with same login/extSource already exists.
+	 */
+	UserExtSource updateUserExtSource2(PerunSession perunSession, UserExtSource userExtSource) throws InternalErrorException, UserExtSourceExistsException;
+
+	/**
 	 * Updates user's userExtSource last access time in DB. We can get information which userExtSource has been used as a last one.
 	 *
 	 * @param perunSession

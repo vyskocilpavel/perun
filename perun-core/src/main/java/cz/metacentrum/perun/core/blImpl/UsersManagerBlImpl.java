@@ -550,6 +550,12 @@ public class UsersManagerBlImpl implements UsersManagerBl {
 		return updatedUserExtSource;
 	}
 
+	public UserExtSource updateUserExtSource2(PerunSession sess, UserExtSource userExtSource) throws InternalErrorException, UserExtSourceExistsException {
+		getPerunBl().getAuditer().log(sess, "{} updated.", userExtSource);
+		UserExtSource updatedUserExtSource = getUsersManagerImpl().updateUserExtSource(sess, userExtSource);
+		return updatedUserExtSource;
+	}
+
 	public void updateUserExtSourceLastAccess(PerunSession sess, UserExtSource userExtSource) throws InternalErrorException {
 		getUsersManagerImpl().updateUserExtSourceLastAccess(sess, userExtSource);
 	}
@@ -2226,7 +2232,7 @@ public class UsersManagerBlImpl implements UsersManagerBl {
 					uesFromPerun = getPerunBl().getUsersManagerBl().getUserExtSourceByExtLogin(sess, userExtSource.getExtSource(), userExtSource.getLogin());
 					// Update LoA
 					uesFromPerun.setLoa(userExtSource.getLoa());
-					getPerunBl().getUsersManagerBl().updateUserExtSource(sess, uesFromPerun);
+					getPerunBl().getUsersManagerBl().updateUserExtSource2(sess, uesFromPerun);
 				} catch (UserExtSourceNotExistsException e) {
 					// Create userExtSource
 					try {
@@ -2614,7 +2620,7 @@ public class UsersManagerBlImpl implements UsersManagerBl {
 		if ((attribute.getType().equals("java.util.ArrayList") || attribute.getType().equals("java.util.LinkedHashMap")
 				&& userExtSourceWithHighestPriority != null && !getPerunBl().getExtSourcesManagerBl().getOverwriteUserAttributeList(userExtSourceWithHighestPriority.getExtSource()).contains(attrName))) {
 			for (UserExtSource ues : getPerunBl().getUsersManagerBl().getUserExtSources(sess, user)) {
-				if (!ues.equals(userExtSourceWithHighestPriority)) {
+				if (ues.getId() != userExtSourceWithHighestPriority.getId()) {
 					Attribute uesStoredAttributesAttr = getUserExtSourceStoredAttributesAttr(sess, ues);
 					if (uesStoredAttributesAttr != null && uesStoredAttributesAttr.valueAsString() != null) {
 						JSONObject storedAttributes = new JSONObject(uesStoredAttributesAttr.valueAsString());
