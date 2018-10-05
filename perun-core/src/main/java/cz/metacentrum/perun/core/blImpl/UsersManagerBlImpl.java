@@ -2253,18 +2253,18 @@ public class UsersManagerBlImpl implements UsersManagerBl {
 			}
 		}
 		if (ues != null) {
-			try {
-				UserExtSource userExtSourceFromPerun = getPerunBl().getUsersManagerBl().getUserExtSourceByExtLogin(sess, ues.getExtSource(), ues.getLogin());
-				// Update user attributes and if this userExtSource has highest priority update also user core attributes
-				boolean hasHighestPriority = hasHighestPriority(sess, user, userExtSourceFromPerun);
-				if (hasHighestPriority) {
-					updateUserCoreAttributes(sess, user, candidate);
-				}
-				//updateUserAttributes(sess, user, candidate, userExtSourceFromPerun, overwriteUserAttributeList);
+//			try {
+//				UserExtSource userExtSourceFromPerun = getPerunBl().getUsersManagerBl().getUserExtSourceByExtLogin(sess, ues.getExtSource(), ues.getLogin());
+//				// Update user attributes and if this userExtSource has highest priority update also user core attributes
+//				boolean hasHighestPriority = hasHighestPriority(sess, user, userExtSourceFromPerun);
+//				if (hasHighestPriority) {
+//					updateUserCoreAttributes(sess, user, candidate);
+//				}
+//				updateUserAttributes(sess, user, candidate, userExtSourceFromPerun, overwriteUserAttributeList);
 				updateUserAttributesAfterUesChanged(sess, user);
-			} catch (UserExtSourceNotExistsException e) {
-				throw new InternalErrorException("UserExtSource not exist in Perun");
-			}
+//			} catch (UserExtSourceNotExistsException e) {
+//				throw new InternalErrorException("UserExtSource not exist in Perun");
+//			}
 		}
 	}
 
