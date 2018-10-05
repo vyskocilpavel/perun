@@ -2468,48 +2468,6 @@ public class UsersManagerBlImpl implements UsersManagerBl {
 	}
 
 	/**
-	 * Returns list of attributesName which values can be overwriten during synchronization
-	 * @param sess PerunSession
-	 * @param userExtSource UserExtSource
-	 * @return List of attributeNames
-	 */
-	/*private List<String> getOverwriteAttributeList(PerunSession sess, UserExtSource userExtSource){
-		try {
-			Attribute overwriteUserAttributeList_attr = getPerunBl().getAttributesManagerBl().getAttribute(sess, userExtSource, UsersManager.USEREXTSOURCEOVERWRITEUSERATTRIBUTELIST_ATTRNAME);
-			if (overwriteUserAttributeList_attr != null && overwriteUserAttributeList_attr.getValue() != null) {
-				List<String> overwriteUserAttributeList = overwriteUserAttributeList_attr.valueAsList();
-				if (!overwriteUserAttributeList.isEmpty()) {
-					return overwriteUserAttributeList;
-				}
-			}
-		} catch (WrongAttributeAssignmentException e) {
-			e.printStackTrace();
-		} catch (InternalErrorException e) {
-			e.printStackTrace();
-		} catch (AttributeNotExistsException e) {
-			e.printStackTrace();
-		}
-
-		return new ArrayList<>();
-	}*/
-
-	/**
-	 * Returns list of attributesName which was synchronized from userExtSource
-	 * @param sess PerunSession
-	 * @param userExtSource UserExtSource
-	 * @return List of attributeNames
-	 */
-	/*private List<String> getSynchronizeAttributeList(PerunSession sess, UserExtSource userExtSource) throws WrongAttributeAssignmentException, InternalErrorException, AttributeNotExistsException {
-		Attribute synchronizedAttributeList_attr = getPerunBl().getAttributesManagerBl().getAttribute(sess, userExtSource, UsersManager.USEREXTSOURCESYNCHRONIZEDATTRIBUTELIST_ATTRNAME);
-		if (synchronizedAttributeList_attr != null && synchronizedAttributeList_attr.getValue() != null) {
-			List<String> synchronizedAttributeList = synchronizedAttributeList_attr.valueAsList();
-			return synchronizedAttributeList;
-		} else {
-			return new ArrayList<>();
-		}
-	}*/
-
-	/**
 	 * Returns the new lowest priority for user
 	 * @param sess PerunSession
 	 * @param user User
@@ -2724,11 +2682,11 @@ public class UsersManagerBlImpl implements UsersManagerBl {
 								try {
 									//Choose set or merge by extSource attribute overwriteUserAttributes (if contains this one)
 									if(overwriteUserAttributesList.contains(userAttribute.getName())) {
-										getPerunBl().getAttributesManagerBl().setAttributeInNestedTransaction(sess, user, userAttribute);
+										getPerunBl().getAttributesManagerBl().setAttribute(sess, user, userAttribute);
 										log.debug("User synchronization: value of the attribute {} for userId {} was changed. Old value {} was replaced with new value {}.",
 												userAttribute, richUser.getId(), oldValue, subjectAttributeValue);
 									} else {
-										getPerunBl().getAttributesManagerBl().mergeAttributeValueInNestedTransaction(sess, user, userAttribute);
+										getPerunBl().getAttributesManagerBl().mergeAttributeValue(sess, user, userAttribute);
 										log.debug("User synchronization: value of the attribute {} for userId {} was changed. Old value {} was merged with new value {}.",
 												userAttribute, richUser.getId(), oldValue, subjectAttributeValue);
 									}
