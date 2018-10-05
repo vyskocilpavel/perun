@@ -2222,6 +2222,7 @@ public class UsersManagerBlImpl implements UsersManagerBl {
 		// If user hasn't been found, then create him
 		if (user == null) {
 			user = createUser(sess, candidate);
+			log.debug("User was created.");
 		}
 
 		// Assign missing userExtSource and update LoA
@@ -2249,6 +2250,7 @@ public class UsersManagerBlImpl implements UsersManagerBl {
 					Attribute userExtSourceStoredAttributesAttr = new Attribute(((PerunBl) sess.getPerun()).getAttributesManagerBl().getAttributeDefinition(sess, UsersManager.USEREXTSOURCESTOREDATTRIBUTES_ATTRNAME));
 					userExtSourceStoredAttributesAttr.setValue(candidate.convertAttributesToJSON().toString());
 					getPerunBl().getAttributesManagerBl().setAttribute(sess, uesFromPerun, userExtSourceStoredAttributesAttr);
+				log.debug("UserExtSource attribute was stored.");
 
 			}
 		}
