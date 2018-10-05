@@ -485,8 +485,12 @@ public class ExtSourcesManagerBlImpl implements ExtSourcesManagerBl {
 
 	public void forceExtSourceSynchronization(PerunSession sess, ExtSource extSource) throws InternalErrorException {
 		initializeNewSynchronizationThreads(sess);
-		poolOfExtSourcesToBeSynchronized.putJobIfAbsent(extSource, true);
-		log.info("Force synchronization for ExtSource {} started.", extSource);
+		if (extSourcesManagerImpl.getExtSourcesToSynchronize(sess).contains(extSource)) {
+			poolOfExtSourcesToBeSynchronized.putJobIfAbsent(extSource, true);
+			log.info("Force synchronization for ExtSource: {} started.", extSource);
+		} else {
+			log.info("Synchronization for ExtSource: {} wasn't enable.", extSource);
+		}
 	}
 
 	private int initializeNewSynchronizationThreads(PerunSession sess) throws InternalErrorException {
