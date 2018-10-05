@@ -2247,8 +2247,6 @@ public class UsersManagerBlImpl implements UsersManagerBl {
 				} catch (UserExtSourceExistsException e1) {
 					throw new ConsistencyErrorException("Updating login of userExtSource to value which already exists: " + userExtSource);
 				}
-					//Store or update Stored attributes
-//					Attribute userExtSourceStoredAttributesAttr = getPerunBl().getAttributesManagerBl().getAttribute(sess, uesFromPerun, UsersManager.USEREXTSOURCESTOREDATTRIBUTES_ATTRNAME);
 					Attribute userExtSourceStoredAttributesAttr = new Attribute(((PerunBl) sess.getPerun()).getAttributesManagerBl().getAttributeDefinition(sess, UsersManager.USEREXTSOURCESTOREDATTRIBUTES_ATTRNAME));
 					userExtSourceStoredAttributesAttr.setValue(candidate.convertAttributesToJSON().toString());
 					getPerunBl().getAttributesManagerBl().setAttribute(sess, uesFromPerun, userExtSourceStoredAttributesAttr);
@@ -2257,18 +2255,7 @@ public class UsersManagerBlImpl implements UsersManagerBl {
 			}
 		}
 		if (ues != null) {
-//			try {
-//				UserExtSource userExtSourceFromPerun = getPerunBl().getUsersManagerBl().getUserExtSourceByExtLogin(sess, ues.getExtSource(), ues.getLogin());
-//				// Update user attributes and if this userExtSource has highest priority update also user core attributes
-//				boolean hasHighestPriority = hasHighestPriority(sess, user, userExtSourceFromPerun);
-//				if (hasHighestPriority) {
-//					updateUserCoreAttributes(sess, user, candidate);
-//				}
-//				updateUserAttributes(sess, user, candidate, userExtSourceFromPerun, overwriteUserAttributeList);
-				updateUserAttributesAfterUesChanged(sess, user);
-//			} catch (UserExtSourceNotExistsException e) {
-//				throw new InternalErrorException("UserExtSource not exist in Perun");
-//			}
+			updateUserAttributesAfterUesChanged(sess, user);
 		}
 	}
 
