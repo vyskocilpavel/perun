@@ -2238,6 +2238,8 @@ public class UsersManagerBlImpl implements UsersManagerBl {
 					// Create userExtSource
 					try {
 						uesFromPerun = getPerunBl().getUsersManagerBl().addUserExtSource(sess, user, userExtSource);
+						log.debug("UserExtSource was added.");
+
 
 					} catch (UserExtSourceExistsException e1) {
 						throw new ConsistencyErrorException("Adding userExtSource which already exists: " + userExtSource);
