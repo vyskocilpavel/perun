@@ -2240,7 +2240,8 @@ public class UsersManagerBlImpl implements UsersManagerBl {
 				}
 				try {
 					//Store or update Stored attributes
-					Attribute userExtSourceStoredAttributesAttr = getPerunBl().getAttributesManagerBl().getAttribute(sess, uesFromPerun, UsersManager.USEREXTSOURCESTOREDATTRIBUTES_ATTRNAME);
+//					Attribute userExtSourceStoredAttributesAttr = getPerunBl().getAttributesManagerBl().getAttribute(sess, uesFromPerun, UsersManager.USEREXTSOURCESTOREDATTRIBUTES_ATTRNAME);
+					Attribute userExtSourceStoredAttributesAttr = new Attribute(((PerunBl) sess.getPerun()).getAttributesManagerBl().getAttributeDefinition(sess, UsersManager.USEREXTSOURCESTOREDATTRIBUTES_ATTRNAME));
 					userExtSourceStoredAttributesAttr.setValue(candidate.convertAttributesToJSON().toString());
 					getPerunBl().getAttributesManagerBl().setAttribute(sess, uesFromPerun, userExtSourceStoredAttributesAttr);
 				} catch (WrongAttributeValueException | WrongReferenceAttributeValueException
