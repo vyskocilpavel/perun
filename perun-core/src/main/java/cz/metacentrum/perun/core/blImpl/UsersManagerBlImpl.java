@@ -2789,10 +2789,10 @@ public class UsersManagerBlImpl implements UsersManagerBl {
 
 					log.debug("Synchronization thread started synchronization for user with subject {}.", candidate);
 
-					synchronizeUser(sess, candidate);
+					perunBl.getUsersManagerBl().synchronizeUser(sess, candidate);
 
 					log.debug("Synchronization thread for candidate {} has finished in {} ms.", candidate, System.currentTimeMillis() - startTime);
-				} catch (InternalErrorException | AttributeNotExistsException | WrongAttributeAssignmentException | WrongAttributeValueException | WrongReferenceAttributeValueException e) {
+				} catch (InternalErrorException | AttributeNotExistsException | WrongAttributeAssignmentException | WrongAttributeValueException | WrongReferenceAttributeValueException | UserExtSourceNotExistsException | ExtSourceNotExistsException e) {
 					failedDueToException = true;
 					exceptionMessage = "Cannot synchronize user with candidate ";
 					log.error(exceptionMessage + candidate, e);
