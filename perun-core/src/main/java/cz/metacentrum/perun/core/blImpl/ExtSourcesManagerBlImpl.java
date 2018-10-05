@@ -15,7 +15,6 @@ import cz.metacentrum.perun.core.api.ExtSourcesManager;
 import cz.metacentrum.perun.core.api.PerunBeanProcessingPool;
 import cz.metacentrum.perun.core.api.PerunClient;
 import cz.metacentrum.perun.core.api.PerunPrincipal;
-import cz.metacentrum.perun.core.api.exceptions.AttributeNotExistsException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -484,13 +483,24 @@ public class ExtSourcesManagerBlImpl implements ExtSourcesManagerBl {
 	}
 
 	public void forceExtSourceSynchronization(PerunSession sess, ExtSource extSource) throws InternalErrorException {
-		initializeNewSynchronizationThreads(sess);
+		int numberOfNewlyRemovedThreads = removeInteruptedThreads();
+		int numberOfNewlyCreatedThreads = initializeNewSynchronizationThreads(sess);
+		int numberOfNewlyAddedExtSource = 0;
 		if (extSourcesManagerImpl.getExtSourcesToSynchronize(sess).contains(extSource)) {
 			poolOfExtSourcesToBeSynchronized.putJobIfAbsent(extSource, true);
-			log.info("Force synchronization for ExtSource: {} started.", extSource);
+			numberOfNewlyAddedExtSource++;
+			log.debug("Force synchronization for ExtSource: {} started.", extSource);
 		} else {
-			log.info("Synchronization for ExtSource: {} wasn't enable.", extSource);
+			log.debug("Synchronization for ExtSource: {} wasn't enable.", extSource);
 		}
+
+		// Save state of synchronization to the info log
+		log.info("Force ExtSource synchronization method ends with these states: " +
+				"'number of newly removed threads'='" + numberOfNewlyRemovedThreads + "', " +
+				"'number of newly created threads'='" + numberOfNewlyCreatedThreads + "', " +
+				"'number of newly added extSources to the pool'='" + numberOfNewlyAddedExtSource + "', " +
+				"'right now synchronized extSources'='" + poolOfExtSourcesToBeSynchronized.getRunningJobs() + "', " +
+				"'right now waiting extSources'='" + poolOfExtSourcesToBeSynchronized.getWaitingJobs() + "'.");
 	}
 
 	private int initializeNewSynchronizationThreads(PerunSession sess) throws InternalErrorException {
@@ -512,7 +522,7 @@ public class ExtSourcesManagerBlImpl implements ExtSourcesManagerBl {
 		LocalDateTime localDateTime = LocalDateTime.now();
 		String pattern = "^(([0-1][0-9])|(2[0-3])):[0-5][0,5]$";
 
-		int numberOfNewlyRemovedThreads = removeInteruptedExtSources();
+		int numberOfNewlyRemovedThreads = removeInteruptedThreads();
 
 		int numberOfNewlyCreatedThreads = initializeNewSynchronizationThreads(sess);
 
@@ -588,7 +598,7 @@ public class ExtSourcesManagerBlImpl implements ExtSourcesManagerBl {
 	 *
 	 * @return Number of removed threads
 	 */
-	private int removeInteruptedExtSources() {
+	private int removeInteruptedThreads() {
 		int numberOfNewlyRemovedThreads = 0;
 
 		// Get the default synchronization timeout from the configuration file
