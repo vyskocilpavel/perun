@@ -1261,6 +1261,8 @@ public interface UsersManagerBl {
 	 */
 	int getUserExtSourcePriority(PerunSession sess, UserExtSource userExtSource) throws WrongAttributeAssignmentException, InternalErrorException, AttributeNotExistsException;
 
+	void storePriorityInNestedTransaction(PerunSession sess, Candidate candidate, UserExtSource userExtSource) throws AttributeNotExistsException, InternalErrorException, WrongAttributeAssignmentException, WrongAttributeValueException, WrongReferenceAttributeValueException;
+
 	/**
 	 * Updates all user attributes after UserExtSource was changed or removed
 	 * @param sess PerunSession
