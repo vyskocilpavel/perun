@@ -556,8 +556,7 @@ public class UsersManagerBlImpl implements UsersManagerBl {
 
 	public UserExtSource updateUserExtSource2(PerunSession sess, UserExtSource userExtSource) throws InternalErrorException, UserExtSourceExistsException {
 		getPerunBl().getAuditer().log(sess, "{} updated.", userExtSource);
-		UserExtSource updatedUserExtSource = getUsersManagerImpl().updateUserExtSource(sess, userExtSource);
-		return updatedUserExtSource;
+		return getUsersManagerImpl().updateUserExtSource(sess, userExtSource);
 	}
 
 	public void updateUserExtSourceLastAccess(PerunSession sess, UserExtSource userExtSource) throws InternalErrorException {
@@ -2220,7 +2219,7 @@ public class UsersManagerBlImpl implements UsersManagerBl {
 			ues.getExtSource().setId(tmpExtSource.getId());
 			try {
 				// Try to find the user by userExtSource
-				user = getPerunBl().getUsersManagerBl().getUserByExtSourceNameAndExtLogin(sess, ues.getExtSource().getName(), ues.getLogin());
+				user = getUserByExtSourceNameAndExtLogin(sess, ues.getExtSource().getName(), ues.getLogin());
 			} catch (UserExtSourceNotExistsException e) {
 				// This is OK, non-existent userExtSource will be assigned later
 			} catch (UserNotExistsException | ExtSourceNotExistsException e) {

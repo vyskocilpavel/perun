@@ -131,6 +131,10 @@ public class ExtSourcesManagerBlImpl implements ExtSourcesManagerBl {
 		}
 	}
 
+	public ExtSource checkOrCreateExtSourceInNestedTransaction(PerunSession sess, String extSourceName, String extSourceType) throws InternalErrorException {
+		return checkOrCreateExtSource(sess, extSourceName, extSourceType);
+	}
+
 	public void removeExtSource(PerunSession sess, Vo vo, ExtSource source) throws InternalErrorException, ExtSourceNotAssignedException, ExtSourceAlreadyRemovedException {
 		List<Group> groupsWithAssignedExtSource = getPerunBl().getGroupsManagerBl().getGroupsWithAssignedExtSourceInVo(sess, source, vo);
 		for(Group group: groupsWithAssignedExtSource) {
