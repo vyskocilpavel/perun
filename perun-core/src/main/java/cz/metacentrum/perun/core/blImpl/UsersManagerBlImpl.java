@@ -390,6 +390,10 @@ public class UsersManagerBlImpl implements UsersManagerBl {
 		return user;
 	}
 
+	public User createUserInNestedTransaction(PerunSession sess, Candidate candidate) throws InternalErrorException {
+		return createUser(sess,candidate);
+	}
+
 	public void deleteUser(PerunSession sess, User user) throws InternalErrorException, RelationExistsException, MemberAlreadyRemovedException, UserAlreadyRemovedException, SpecificUserAlreadyRemovedException {
 		this.deleteUser(sess, user, false);
 	}
@@ -607,6 +611,10 @@ public class UsersManagerBlImpl implements UsersManagerBl {
 		}
 		getPerunBl().getAuditer().log(sess, "{} added to {}.", userExtSource, user);
 		return userExtSource;
+	}
+
+	public UserExtSource addUserExtSourceInNestedTransaction(PerunSession sess, User user, UserExtSource userExtSource) throws InternalErrorException, UserExtSourceExistsException {
+		return addUserExtSource(sess, user, userExtSource);
 	}
 
 	public void removeUserExtSource(PerunSession sess, User user, UserExtSource userExtSource) throws InternalErrorException, UserExtSourceAlreadyRemovedException {
@@ -2221,7 +2229,7 @@ public class UsersManagerBlImpl implements UsersManagerBl {
 		}
 		// If user hasn't been found, then create him
 		if (user == null) {
-			user = createUser(sess, candidate);
+			user = createUserInNestedTransaction(sess, candidate);
 			log.debug("User was created.");
 		}
 
@@ -2230,14 +2238,14 @@ public class UsersManagerBlImpl implements UsersManagerBl {
 			for (UserExtSource userExtSource : candidate.getUserExtSources()) {
 				UserExtSource uesFromPerun;
 				try {
-					uesFromPerun = getPerunBl().getUsersManagerBl().getUserExtSourceByExtLogin(sess, userExtSource.getExtSource(), userExtSource.getLogin());
+					uesFromPerun = getUserExtSourceByExtLogin(sess, userExtSource.getExtSource(), userExtSource.getLogin());
 					// Update LoA
 					uesFromPerun.setLoa(userExtSource.getLoa());
 					getPerunBl().getUsersManagerBl().updateUserExtSource2(sess, uesFromPerun);
 				} catch (UserExtSourceNotExistsException e) {
 					// Create userExtSource
 					try {
-						uesFromPerun = getPerunBl().getUsersManagerBl().addUserExtSource(sess, user, userExtSource);
+						uesFromPerun = addUserExtSourceInNestedTransaction(sess, user, userExtSource);
 						log.debug("UserExtSource was added.");
 
 
