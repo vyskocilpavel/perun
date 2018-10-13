@@ -1064,7 +1064,7 @@ public class UsersManagerEntryIntegrationTest extends AbstractPerunIntegrationTe
 		assertNotNull(usersManager.addUserExtSource(sess, user, userExtSource));
 		// create new user ext source in database
 
-		perun.getUsersManagerBl().setLowestPriorityInNestedTransaction(sess, user, userExtSource);
+		perun.getUsersManagerBl().setLowestPriority(sess, user, userExtSource);
 
 		Attribute storedAttributesAttr = attributesManager.getAttribute(sess, userExtSource, STORED_ATTRIBUTES_ATTR_NAME);
 		attributesManager.setAttribute(sess, userExtSource, storedAttributesAttr);

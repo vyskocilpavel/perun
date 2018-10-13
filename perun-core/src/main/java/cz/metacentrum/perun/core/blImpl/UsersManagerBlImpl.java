@@ -614,7 +614,7 @@ public class UsersManagerBlImpl implements UsersManagerBl {
 
 		userExtSource = getUsersManagerImpl().addUserExtSource(sess, user, userExtSource);
 		try {
-			setLowestPriorityInNestedTransaction(sess, user, userExtSource);
+			setLowestPriority(sess, user, userExtSource);
 			log.debug("Priority was stored for userExtSource");
 		} catch (WrongAttributeValueException e) {
 			e.printStackTrace();
@@ -2252,22 +2252,22 @@ public class UsersManagerBlImpl implements UsersManagerBl {
 				try {
 					uesFromPerun = getUserExtSourceByExtLogin(sess, userExtSource.getExtSource(), userExtSource.getLogin());
 					// Update LoA
-					uesFromPerun.setLoa(userExtSource.getLoa());
-					getPerunBl().getUsersManagerBl().updateUserExtSource2(sess, uesFromPerun);
+					if (uesFromPerun.getLoa() != userExtSource.getLoa()) {
+						uesFromPerun.setLoa(userExtSource.getLoa());
+						getPerunBl().getUsersManagerBl().updateUserExtSource2(sess, uesFromPerun);
+					}
 				} catch (UserExtSourceNotExistsException e) {
 					// Create userExtSource
 					try {
 						uesFromPerun = addUserExtSource(sess, user, userExtSource);
 						log.debug("UserExtSource was added.");
-
-
 					} catch (UserExtSourceExistsException e1) {
 						throw new ConsistencyErrorException("Adding userExtSource which already exists: " + userExtSource);
 					}
 				} catch (UserExtSourceExistsException e1) {
 					throw new ConsistencyErrorException("Updating login of userExtSource to value which already exists: " + userExtSource);
 				}
-				storeUserExtSourceStoredAttributesInNestedTransaction(sess, candidate, uesFromPerun);
+				storeUserExtSourceStoredAttributes(sess, candidate, uesFromPerun);
 				log.debug("UserExtSource attribute was stored.");
 
 			}
@@ -2277,7 +2277,7 @@ public class UsersManagerBlImpl implements UsersManagerBl {
 		}
 	}
 
-	public void storeUserExtSourceStoredAttributesInNestedTransaction(PerunSession sess, Candidate candidate, UserExtSource userExtSource) throws AttributeNotExistsException, InternalErrorException, WrongAttributeAssignmentException, WrongAttributeValueException, WrongReferenceAttributeValueException {
+	public void storeUserExtSourceStoredAttributes(PerunSession sess, Candidate candidate, UserExtSource userExtSource) throws AttributeNotExistsException, InternalErrorException, WrongAttributeAssignmentException, WrongAttributeValueException, WrongReferenceAttributeValueException {
 		Attribute userExtSourceStoredAttributesAttr = new Attribute(((PerunBl) sess.getPerun()).getAttributesManagerBl().getAttributeDefinition(sess, UsersManager.USEREXTSOURCESTOREDATTRIBUTES_ATTRNAME));
 		userExtSourceStoredAttributesAttr.setValue(candidate.convertAttributesToJSON().toString());
 		getPerunBl().getAttributesManagerBl().setAttribute(sess, userExtSource, userExtSourceStoredAttributesAttr);
@@ -2327,7 +2327,7 @@ public class UsersManagerBlImpl implements UsersManagerBl {
 
 	}
 
-	public int setLowestPriorityInNestedTransaction(PerunSession sess, User user, UserExtSource userExtSource) throws WrongAttributeAssignmentException, WrongAttributeValueException, WrongReferenceAttributeValueException, InternalErrorException, AttributeNotExistsException {
+	public int setLowestPriority(PerunSession sess, User user, UserExtSource userExtSource) throws WrongAttributeAssignmentException, WrongAttributeValueException, WrongReferenceAttributeValueException, InternalErrorException, AttributeNotExistsException {
 		int priority = -1;
 
 		Attribute priorityAttribute = getPerunBl().getAttributesManagerBl().getAttribute(sess, userExtSource, UsersManager.USEREXTSOURCEPRIORITY_ATTRNAME);
@@ -2456,7 +2456,7 @@ public class UsersManagerBlImpl implements UsersManagerBl {
 	private boolean hasHighestPriority(PerunSession sess, User user, UserExtSource userExtSource) throws WrongAttributeAssignmentException, InternalErrorException, AttributeNotExistsException, WrongAttributeValueException, WrongReferenceAttributeValueException {
 		int actualPriority = getUserExtSourcePriority(sess, userExtSource);
 		if (actualPriority == 0) {
-			actualPriority = setLowestPriorityInNestedTransaction(sess, user, userExtSource);
+			actualPriority = setLowestPriority(sess, user, userExtSource);
 		}
 		if (getUserExtSourceStoredAttributesAttr(sess, userExtSource) == null) {
 			return false;
