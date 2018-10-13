@@ -27,8 +27,8 @@ public class urn_perun_ues_attribute_def_def_priority extends UserExtSourceAttri
 		if (attribute.getValue() == null) {
 			return;
 		}
-		if ((Integer)attribute.getValue() < 1 ) {
-			throw new WrongAttributeValueException("Value must be bigger than 0.");
+		if ((Integer)attribute.getValue() < 0 ) {
+			throw new WrongAttributeValueException("Value can not be negative.");
 		}
 		try {
 			User user = sess.getPerunBl().getUsersManagerBl().getUserById(sess, userExtSource.getUserId());

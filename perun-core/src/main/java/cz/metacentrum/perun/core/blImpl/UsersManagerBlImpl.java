@@ -345,8 +345,17 @@ public class UsersManagerBlImpl implements UsersManagerBl {
 		UserExtSource ues = new UserExtSource(es, 0, String.valueOf(user.getId()));
 		try {
 			this.addUserExtSource(sess, user, ues);
+			setPriorityForPerunExtSource(sess,ues);
 		} catch (UserExtSourceExistsException e) {
 			throw new ConsistencyErrorException(e);
+		} catch (WrongAttributeValueException e) {
+			e.printStackTrace();
+		} catch (WrongAttributeAssignmentException e) {
+			e.printStackTrace();
+		} catch (AttributeNotExistsException e) {
+			e.printStackTrace();
+		} catch (WrongReferenceAttributeValueException e) {
+			e.printStackTrace();
 		}
 
 		return user;
@@ -381,8 +390,17 @@ public class UsersManagerBlImpl implements UsersManagerBl {
 		UserExtSource ues = new UserExtSource(es, 0, String.valueOf(user.getId()));
 		try {
 			this.addUserExtSource(sess, user, ues);
+			setPriorityForPerunExtSource(sess,ues);
 		} catch (UserExtSourceExistsException e) {
 			throw new ConsistencyErrorException(e);
+		} catch (WrongAttributeValueException e) {
+			e.printStackTrace();
+		} catch (WrongAttributeAssignmentException e) {
+			e.printStackTrace();
+		} catch (AttributeNotExistsException e) {
+			e.printStackTrace();
+		} catch (WrongReferenceAttributeValueException e) {
+			e.printStackTrace();
 		}
 
 		return user;
@@ -597,6 +615,7 @@ public class UsersManagerBlImpl implements UsersManagerBl {
 		userExtSource = getUsersManagerImpl().addUserExtSource(sess, user, userExtSource);
 		try {
 			setLowestPriorityInNestedTransaction(sess, user, userExtSource);
+			log.debug("Priority was stored for userExtSource");
 		} catch (WrongAttributeValueException e) {
 			e.printStackTrace();
 		} catch (WrongAttributeAssignmentException e) {
@@ -2204,10 +2223,6 @@ public class UsersManagerBlImpl implements UsersManagerBl {
 	public synchronized void synchronizeUser(PerunSession sess, Candidate candidate) throws InternalErrorException, AttributeNotExistsException, WrongAttributeAssignmentException, WrongAttributeValueException, WrongReferenceAttributeValueException {
 		log.info("User synchronization started for candidate: {}", candidate);
 
-		Map<String, String> extSourceAttributes = getPerunBl().getExtSourcesManagerBl().getAttributes(candidate.getUserExtSource().getExtSource());
-		String[] overwriteUserAttributes = extSourceAttributes.get(ExtSourcesManager.USEROVERWRITEATTRIBUTES_ATTRNAME).split(",");
-		List<String> overwriteUserAttributeList = Arrays.asList(overwriteUserAttributes);
-
 		User user = null;
 		UserExtSource ues;
 		if ((ues = candidate.getUserExtSource()) != null) {
@@ -2300,13 +2315,20 @@ public class UsersManagerBlImpl implements UsersManagerBl {
 		if (priorityAttribute != null && priorityAttribute.getValue() != null ) {
 			return priorityAttribute.valueAsInteger();
 		} else {
-			return 0;
+			return -1;
 		}
 	}
 
 
+	public void setPriorityForPerunExtSource(PerunSession sess, UserExtSource userExtSource) throws AttributeNotExistsException, InternalErrorException, WrongAttributeAssignmentException, WrongAttributeValueException, WrongReferenceAttributeValueException {
+		Attribute priorityAttribute = new Attribute(perunBl.getAttributesManagerBl().getAttributeDefinition(sess, UsersManager.USEREXTSOURCEPRIORITY_ATTRNAME));
+		priorityAttribute.setValue(0);
+		getPerunBl().getAttributesManagerBl().setAttributeInNestedTransaction(sess, userExtSource, priorityAttribute);
+
+	}
+
 	public int setLowestPriorityInNestedTransaction(PerunSession sess, User user, UserExtSource userExtSource) throws WrongAttributeAssignmentException, WrongAttributeValueException, WrongReferenceAttributeValueException, InternalErrorException, AttributeNotExistsException {
-		int priority = 0;
+		int priority = -1;
 
 		Attribute priorityAttribute = getPerunBl().getAttributesManagerBl().getAttribute(sess, userExtSource, UsersManager.USEREXTSOURCEPRIORITY_ATTRNAME);
 		if (priorityAttribute.getValue() == null ) {
@@ -2476,7 +2498,7 @@ public class UsersManagerBlImpl implements UsersManagerBl {
 	 * @throws InternalErrorException
 	 */
 	private int getNewLowestPriority(PerunSession sess, User user) throws InternalErrorException, AttributeNotExistsException, WrongAttributeAssignmentException {
-		int lowestPriority = 0;
+		int lowestPriority = 1;
 		List<UserExtSource> userExtSourceList = getPerunBl().getUsersManagerBl().getUserExtSources(sess,user);
 
 		for (UserExtSource userExtSource : userExtSourceList) {
