@@ -2241,7 +2241,7 @@ public class UsersManagerBlImpl implements UsersManagerBl {
 				} catch (UserExtSourceNotExistsException e) {
 					// Create userExtSource
 					try {
-						uesFromPerun = addUserExtSource(sess, user, userExtSource);
+						uesFromPerun = addUserExtSourceWithPriority(sess, user, userExtSource);
 						log.debug("UserExtSource was added.");
 					} catch (UserExtSourceExistsException e1) {
 						throw new ConsistencyErrorException("Adding userExtSource which already exists: " + userExtSource);
@@ -2513,7 +2513,7 @@ public class UsersManagerBlImpl implements UsersManagerBl {
 	 * @throws ConsistencyErrorException
 	 */
 	private void updateUserCoreAttributesByHighestPriority(PerunSession sess, User user) throws InternalErrorException {
-		UserExtSource uesWithHighestPriority = getUserExtSourceWithHighestPriority(sess, user);
+		UserExtSource uesWithHighestPriority = getUserExtSourceWithHighestPositivePriority(sess, user);
 		Attribute storedAttribute = getUserExtSourceStoredAttributesAttr(sess, uesWithHighestPriority);
 
 		if (storedAttribute != null && storedAttribute.valueAsString() != null) {
@@ -2589,7 +2589,7 @@ public class UsersManagerBlImpl implements UsersManagerBl {
 		//Get userExtSource and attribute with highest priority
 		for (UserExtSource userExtSource: getPerunBl().getUsersManagerBl().getUserExtSources(sess, user)) {
 			int priority = getUserExtSourcePriority(sess, userExtSource);
-			if ( priority > 0 && priority < highestPriority) {
+			if ( priority >= 0 && priority < highestPriority) {
 				Attribute uesStoredAttributesAttr = getUserExtSourceStoredAttributesAttr(sess, userExtSource);
 
 				if (uesStoredAttributesAttr != null && uesStoredAttributesAttr.valueAsString() != null) {
@@ -2636,7 +2636,7 @@ public class UsersManagerBlImpl implements UsersManagerBl {
 	 * @param user User
 	 * @return UserExtSource
 	 */
-	private UserExtSource getUserExtSourceWithHighestPriority(PerunSession sess, User user) throws InternalErrorException {
+	private UserExtSource getUserExtSourceWithHighestPositivePriority(PerunSession sess, User user) throws InternalErrorException {
 		int priority = Integer.MAX_VALUE;
 		UserExtSource userExtSource = null;
 		for (UserExtSource ues : getPerunBl().getUsersManagerBl().getUserExtSources(sess, user)) {
