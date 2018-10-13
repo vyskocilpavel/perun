@@ -276,8 +276,6 @@ public interface UsersManagerBl {
 	 */
 	User createUser(PerunSession perunSession, Candidate candidate) throws InternalErrorException;
 
-
-	User createUserInNestedTransaction(PerunSession sess, Candidate candidate) throws InternalErrorException;
 	/**
 	 * Deletes user.
 	 *
@@ -420,9 +418,6 @@ public interface UsersManagerBl {
 	 * @throws UserExtSourceExistsException
 	 */
 	UserExtSource addUserExtSource(PerunSession perunSession, User user, UserExtSource userExtSource) throws InternalErrorException, UserExtSourceExistsException;
-
-
-	UserExtSource addUserExtSourceInNestedTransaction(PerunSession sess, User user, UserExtSource userExtSource) throws InternalErrorException, UserExtSourceExistsException;
 
 	/**
 	 * Removes user's external sources.

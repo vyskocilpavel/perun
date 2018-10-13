@@ -57,7 +57,7 @@ public class urn_perun_ues_attribute_def_def_priority extends UserExtSourceAttri
 		attr.setDescription("Priority of UserExtSource. Priority must be bigger than 0.");
 		return attr;
 	}
-
+/*
 	@Override
 	public void changedAttributeHook(PerunSessionImpl sess, UserExtSource userExtSource, Attribute attribute) throws InternalErrorException, WrongReferenceAttributeValueException {
 		try {
@@ -73,4 +73,5 @@ public class urn_perun_ues_attribute_def_def_priority extends UserExtSourceAttri
 			e.printStackTrace();
 		}
 	}
+	*/
 }

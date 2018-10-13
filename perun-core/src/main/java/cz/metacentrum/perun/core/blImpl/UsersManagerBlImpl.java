@@ -613,6 +613,7 @@ public class UsersManagerBlImpl implements UsersManagerBl {
 		}
 
 		userExtSource = getUsersManagerImpl().addUserExtSource(sess, user, userExtSource);
+		/*
 		try {
 			setLowestPriority(sess, user, userExtSource);
 			log.debug("Priority was stored for userExtSource");
@@ -625,12 +626,9 @@ public class UsersManagerBlImpl implements UsersManagerBl {
 		} catch (WrongReferenceAttributeValueException e) {
 			e.printStackTrace();
 		}
+		*/
 		getPerunBl().getAuditer().log(sess, "{} added to {}.", userExtSource, user);
 		return userExtSource;
-	}
-
-	public UserExtSource addUserExtSourceInNestedTransaction(PerunSession sess, User user, UserExtSource userExtSource) throws InternalErrorException, UserExtSourceExistsException {
-		return addUserExtSource(sess, user, userExtSource);
 	}
 
 	public void removeUserExtSource(PerunSession sess, User user, UserExtSource userExtSource) throws InternalErrorException, UserExtSourceAlreadyRemovedException {
