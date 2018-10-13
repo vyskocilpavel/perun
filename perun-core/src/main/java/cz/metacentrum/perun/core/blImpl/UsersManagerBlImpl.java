@@ -2266,29 +2266,46 @@ public class UsersManagerBlImpl implements UsersManagerBl {
 	}
 
 	public void updateUserAttributesAfterUesChangedInNestedTransaction(PerunSession sess, User user) throws InternalErrorException {
-		try {
-			updateUserCoreAttributesByHighestPriority(sess, user);
 
-			RichUser richUser = getRichUserWithAllAttributes(sess, user);
+		updateUserCoreAttributesByHighestPriority(sess, user);
 
-			//Update UserAttributes
-			for (Attribute userAttribute : richUser.getUserAttributes()) {
-				if (userAttribute.getNamespace().equals(AttributesManager.NS_USER_ATTR_DEF)) {
-					try {
-						Attribute attribute = getUserAttributeFromUserExtSourcesWithHighestPriority(sess, user, userAttribute.getName());
-						if ((userAttribute.getValue() != null && !userAttribute.getValue().equals(attribute.getValue()))
-								|| (userAttribute.getValue() == null && attribute.getValue() != null)) {
-							userAttribute.setValue(attribute.getValue());
-							getPerunBl().getAttributesManagerBl().setAttribute(sess, user, userAttribute);
-						}
-					} catch (WrongAttributeValueException | WrongReferenceAttributeValueException
-							| WrongAttributeAssignmentException | AttributeNotExistsException e) {
-						throw new InternalErrorException(e);
+		List<String> synchronizedAttributes = getSynchronizedAttributeListForUser(sess, user);
+		log.debug("Synchronized attributes for user: " + synchronizedAttributes);
+		/*
+		RichUser richUser = getRichUserWithAllAttributes(sess, user);
+
+		//Update UserAttributes
+		for (Attribute userAttribute : richUser.getUserAttributes()) {
+			if (userAttribute.getNamespace().equals(AttributesManager.NS_USER_ATTR_DEF)) {
+				try {
+					Attribute attribute = getUserAttributeFromUserExtSourcesWithHighestPriority(sess, user, userAttribute.getName());
+					if ((userAttribute.getValue() != null && !userAttribute.getValue().equals(attribute.getValue()))
+							|| (userAttribute.getValue() == null && attribute.getValue() != null)) {
+						userAttribute.setValue(attribute.getValue());
+						getPerunBl().getAttributesManagerBl().setAttribute(sess, user, userAttribute);
 					}
+				} catch (WrongAttributeValueException | WrongReferenceAttributeValueException
+						| WrongAttributeAssignmentException | AttributeNotExistsException e) {
+					throw new InternalErrorException(e);
 				}
 			}
-		}catch (UserNotExistsException e) {
-			throw new InternalErrorException("User not exist in Perun!");
+		}
+		*/
+
+		for (String attrName : synchronizedAttributes) {
+			if (attrName.startsWith(AttributesManager.NS_USER_ATTR_DEF)) {
+				try {
+					Attribute userAttribute = getPerunBl().getAttributesManagerBl().getAttribute(sess, user, attrName);
+					Attribute attribute = getUserAttributeFromUserExtSourcesWithHighestPriority(sess, user, attrName);
+					if ((userAttribute.getValue() != null && !userAttribute.getValue().equals(attribute.getValue()))
+							|| (userAttribute.getValue() == null && attribute.getValue() != null)) {
+						getPerunBl().getAttributesManagerBl().setAttribute(sess, user, attribute);
+					}
+				} catch (WrongAttributeValueException | WrongReferenceAttributeValueException
+						| WrongAttributeAssignmentException | AttributeNotExistsException e) {
+					throw new InternalErrorException(e);
+				}
+			}
 		}
 	}
 
@@ -2383,6 +2400,19 @@ public class UsersManagerBlImpl implements UsersManagerBl {
 
 
 	//----------- PRIVATE METHODS
+
+	private List<String> getSynchronizedAttributeListForUser(PerunSession sess, User user) throws InternalErrorException {
+		Collection<String> synchronizedAttributes = new HashSet<>();
+
+		for (UserExtSource userExtSource : perunBl.getUsersManagerBl().getUserExtSources(sess, user) ) {
+			Attribute uesStoredAttributesAttr = getUserExtSourceStoredAttributesAttr(sess, userExtSource);
+			if (uesStoredAttributesAttr != null && uesStoredAttributesAttr.valueAsString() != null) {
+				JSONObject storedAttributes = new JSONObject(uesStoredAttributesAttr.valueAsString());
+				synchronizedAttributes.addAll(storedAttributes.keySet());
+			}
+		}
+		return new ArrayList<>(synchronizedAttributes);
+	}
 
 	/**
 	 *
