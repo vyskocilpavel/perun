@@ -2271,26 +2271,7 @@ public class UsersManagerBlImpl implements UsersManagerBl {
 
 		List<String> synchronizedAttributes = getSynchronizedAttributeListForUser(sess, user);
 		log.debug("Synchronized attributes for user: " + synchronizedAttributes);
-		/*
-		RichUser richUser = getRichUserWithAllAttributes(sess, user);
 
-		//Update UserAttributes
-		for (Attribute userAttribute : richUser.getUserAttributes()) {
-			if (userAttribute.getNamespace().equals(AttributesManager.NS_USER_ATTR_DEF)) {
-				try {
-					Attribute attribute = getUserAttributeFromUserExtSourcesWithHighestPriority(sess, user, userAttribute.getName());
-					if ((userAttribute.getValue() != null && !userAttribute.getValue().equals(attribute.getValue()))
-							|| (userAttribute.getValue() == null && attribute.getValue() != null)) {
-						userAttribute.setValue(attribute.getValue());
-						getPerunBl().getAttributesManagerBl().setAttribute(sess, user, userAttribute);
-					}
-				} catch (WrongAttributeValueException | WrongReferenceAttributeValueException
-						| WrongAttributeAssignmentException | AttributeNotExistsException e) {
-					throw new InternalErrorException(e);
-				}
-			}
-		}
-		*/
 
 		for (String attrName : synchronizedAttributes) {
 			if (attrName.startsWith(AttributesManager.NS_USER_ATTR_DEF)) {
