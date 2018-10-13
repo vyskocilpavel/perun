@@ -419,6 +419,8 @@ public interface UsersManagerBl {
 	 */
 	UserExtSource addUserExtSource(PerunSession perunSession, User user, UserExtSource userExtSource) throws InternalErrorException, UserExtSourceExistsException;
 
+	UserExtSource addUserExtSourceWithPriority(PerunSession sess, User user, UserExtSource userExtSource) throws InternalErrorException, UserExtSourceExistsException;
+
 	/**
 	 * Removes user's external sources.
 	 * It also means removing all it's attributes.
