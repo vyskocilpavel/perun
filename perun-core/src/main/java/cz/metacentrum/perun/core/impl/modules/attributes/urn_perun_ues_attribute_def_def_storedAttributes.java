@@ -27,8 +27,7 @@ public class urn_perun_ues_attribute_def_def_storedAttributes extends UserExtSou
 			return;
 		}
 		try {
-
-			JSONObject.testValidity(new JSONObject(attribute.getValue()));
+			new JSONObject(attribute.valueAsString());
 		} catch (JSONException e) {
 			throw new WrongAttributeValueException("Value is not a valid JSON");
 		}
