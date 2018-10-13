@@ -1261,7 +1261,7 @@ public interface UsersManagerBl {
 	 */
 	int getUserExtSourcePriority(PerunSession sess, UserExtSource userExtSource) throws WrongAttributeAssignmentException, InternalErrorException, AttributeNotExistsException;
 
-	void storePriorityInNestedTransaction(PerunSession sess, Candidate candidate, UserExtSource userExtSource) throws AttributeNotExistsException, InternalErrorException, WrongAttributeAssignmentException, WrongAttributeValueException, WrongReferenceAttributeValueException;
+	void storeUserExtSourceStoredAttributesInNestedTransaction(PerunSession sess, Candidate candidate, UserExtSource userExtSource) throws AttributeNotExistsException, InternalErrorException, WrongAttributeAssignmentException, WrongAttributeValueException, WrongReferenceAttributeValueException;
 
 	/**
 	 * Updates all user attributes after UserExtSource was changed or removed
@@ -1288,7 +1288,7 @@ public interface UsersManagerBl {
 	 * @throws InternalErrorException
 	 * @throws AttributeNotExistsException
 	 */
-	int setLowestPriority(PerunSession sess, User user, UserExtSource userExtSource) throws WrongAttributeAssignmentException, WrongAttributeValueException, WrongReferenceAttributeValueException, InternalErrorException, AttributeNotExistsException;
+	int setLowestPriorityInNestedTransaction(PerunSession sess, User user, UserExtSource userExtSource) throws WrongAttributeAssignmentException, WrongAttributeValueException, WrongReferenceAttributeValueException, InternalErrorException, AttributeNotExistsException;
 
 
 	/**

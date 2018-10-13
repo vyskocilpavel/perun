@@ -28,7 +28,8 @@ http://www.springframework.org/schema/context http://www.springframework.org/sch
 		<aop:advisor advice-ref="txAdviceNestedTransaction" pointcut="execution(* cz.metacentrum.perun.core.blImpl.GroupsManagerBlImpl.synchronizeGroup(..))"/>
 		<aop:advisor advice-ref="txAdviceNestedTransaction" pointcut="execution(* cz.metacentrum.perun.core.blImpl.UsersManagerBlImpl.createUserInNestedTransaction(..))"/>
 		<aop:advisor advice-ref="txAdviceNestedTransaction" pointcut="execution(* cz.metacentrum.perun.core.blImpl.UsersManagerBlImpl.addUserExtSourceInNestedTransaction(..))"/>
-		<aop:advisor advice-ref="txAdviceNestedTransaction" pointcut="execution(* cz.metacentrum.perun.core.blImpl.UsersManagerBlImpl.storePriorityInNestedTransaction(..))"/>
+		<aop:advisor advice-ref="txAdviceNestedTransaction" pointcut="execution(* cz.metacentrum.perun.core.blImpl.UsersManagerBlImpl.storeUserExtSourceStoredAttributesInNestedTransaction(..))"/>
+		<aop:advisor advice-ref="txAdviceNestedTransaction" pointcut="execution(* cz.metacentrum.perun.core.blImpl.UsersManagerBlImpl.setLowestPriorityInNestedTransaction(..))"/>
 		<aop:advisor advice-ref="txAdviceNestedTransaction" pointcut="execution(* cz.metacentrum.perun.core.blImpl.ExtSourcesManagerBlImpl.checkOrCreateExtSourceInNestedTransaction(..))"/>
 		<!--<aop:advisor advice-ref="txAdviceNestedTransaction" pointcut="execution(* cz.metacentrum.perun.core.blImpl.UsersManagerBlImpl.synchronizeUser(..))"/>-->
 		<!--<aop:advisor advice-ref="txAdviceNestedTransaction" pointcut="execution(* cz.metacentrum.perun.core.blImpl.UsersManagerBlImpl.updateUserAttributesAfterUesChanged(..))"/>-->
