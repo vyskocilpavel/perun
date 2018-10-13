@@ -1274,7 +1274,7 @@ public interface UsersManagerBl {
 	 * @throws AttributeNotExistsException
 	 * @throws UserNotExistsException
 	 */
-	void updateUserAttributesAfterUesChanged(PerunSession sess, User user) throws WrongAttributeAssignmentException, WrongAttributeValueException, WrongReferenceAttributeValueException, InternalErrorException, AttributeNotExistsException, UserNotExistsException;
+	void updateUserAttributesAfterUesChangedInNestedTransaction(PerunSession sess, User user) throws WrongAttributeAssignmentException, WrongAttributeValueException, WrongReferenceAttributeValueException, InternalErrorException, AttributeNotExistsException, UserNotExistsException;
 
 	/**
 	 * This method set the lowest priority for userExtSource or return the priority if the priority was already setted

@@ -563,7 +563,7 @@ public class UsersManagerBlImpl implements UsersManagerBl {
 		getPerunBl().getAuditer().log(sess, "{} updated.", userExtSource);
 		UserExtSource updatedUserExtSource = getUsersManagerImpl().updateUserExtSource(sess, userExtSource);
 		try {
-			updateUserAttributesAfterUesChanged(sess, getPerunBl().getUsersManagerBl().getUserByUserExtSource(sess,userExtSource));
+			updateUserAttributesAfterUesChangedInNestedTransaction(sess, getPerunBl().getUsersManagerBl().getUserByUserExtSource(sess,userExtSource));
 		} catch (UserNotExistsException e) {
 			throw new ConsistencyErrorException("User from perun not exists when should - removed during sync.", e);
 		}
@@ -646,7 +646,7 @@ public class UsersManagerBlImpl implements UsersManagerBl {
 		getPerunBl().getAuditer().log(sess, "{} removed from {}.", userExtSource, user);
 
 		//UpdateUserAttributes
-		updateUserAttributesAfterUesChanged(sess, user);
+		updateUserAttributesAfterUesChangedInNestedTransaction(sess, user);
 	}
 
 	public void moveUserExtSource(PerunSession sess, User sourceUser, User targetUser, UserExtSource userExtSource) throws InternalErrorException {
@@ -2241,7 +2241,7 @@ public class UsersManagerBlImpl implements UsersManagerBl {
 		}
 		// If user hasn't been found, then create him
 		if (user == null) {
-			user = createUserInNestedTransaction(sess, candidate);
+			user = createUser(sess, candidate);
 			log.debug("User was created.");
 		}
 
@@ -2257,7 +2257,7 @@ public class UsersManagerBlImpl implements UsersManagerBl {
 				} catch (UserExtSourceNotExistsException e) {
 					// Create userExtSource
 					try {
-						uesFromPerun = addUserExtSourceInNestedTransaction(sess, user, userExtSource);
+						uesFromPerun = addUserExtSource(sess, user, userExtSource);
 						log.debug("UserExtSource was added.");
 
 
@@ -2273,7 +2273,7 @@ public class UsersManagerBlImpl implements UsersManagerBl {
 			}
 		}
 		if (ues != null) {
-			updateUserAttributesAfterUesChanged(sess, user);
+			updateUserAttributesAfterUesChangedInNestedTransaction(sess, user);
 		}
 	}
 
@@ -2283,7 +2283,7 @@ public class UsersManagerBlImpl implements UsersManagerBl {
 		getPerunBl().getAttributesManagerBl().setAttribute(sess, userExtSource, userExtSourceStoredAttributesAttr);
 	}
 
-	public void updateUserAttributesAfterUesChanged(PerunSession sess, User user) throws InternalErrorException {
+	public void updateUserAttributesAfterUesChangedInNestedTransaction(PerunSession sess, User user) throws InternalErrorException {
 		try {
 			updateUserCoreAttributesByHighestPriority(sess, user);
 
