@@ -11,6 +11,7 @@ import cz.metacentrum.perun.core.api.exceptions.UserNotExistsException;
 import cz.metacentrum.perun.core.api.exceptions.WrongAttributeAssignmentException;
 import cz.metacentrum.perun.core.api.exceptions.WrongAttributeValueException;
 import cz.metacentrum.perun.core.api.exceptions.WrongReferenceAttributeValueException;
+import cz.metacentrum.perun.core.api.exceptions.rt.WrongAttributeAssignmentRuntimeException;
 import cz.metacentrum.perun.core.impl.PerunSessionImpl;
 import cz.metacentrum.perun.core.implApi.modules.attributes.UserExtSourceAttributesModuleAbstract;
 import cz.metacentrum.perun.core.implApi.modules.attributes.UserExtSourceAttributesModuleImplApi;
@@ -31,15 +32,6 @@ public class urn_perun_ues_attribute_def_def_storedAttributes extends UserExtSou
 		} catch (JSONException e) {
 			throw new WrongAttributeValueException("Value is not a valid JSON");
 		}
-
-		try {
-			User user = sess.getPerunBl().getUsersManagerBl().getUserById(sess, userExtSource.getUserId());
-			sess.getPerunBl().getUsersManagerBl().updateUserAttributesAfterUesChangedInNestedTransaction(sess, user);
-		} catch (UserNotExistsException e) {
-			e.printStackTrace();
-		} catch (AttributeNotExistsException e) {
-			e.printStackTrace();
-		}
 	}
 
 	public AttributeDefinition getAttributeDefinition() {
@@ -50,5 +42,15 @@ public class urn_perun_ues_attribute_def_def_storedAttributes extends UserExtSou
 		attr.setType(String.class.getName());
 		attr.setDescription("Stored attributes during synchronization.");
 		return attr;
+	}
+
+	@Override
+	public void changedAttributeHook(PerunSessionImpl sess, UserExtSource userExtSource, Attribute attribute) throws InternalErrorException, WrongReferenceAttributeValueException {
+		try {
+			User user = sess.getPerunBl().getUsersManagerBl().getUserById(sess, userExtSource.getUserId());
+			sess.getPerunBl().getUsersManagerBl().updateUserAttributesAfterUesChangedInNestedTransaction(sess, user);
+		} catch (UserNotExistsException | WrongAttributeValueException | WrongAttributeAssignmentException | AttributeNotExistsException e) {
+			throw new InternalErrorException(e);
+		}
 	}
 }

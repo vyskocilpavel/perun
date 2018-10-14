@@ -2182,7 +2182,7 @@ public class UsersManagerBlImpl implements UsersManagerBl {
 	}
 
 	public synchronized void reinitializeUserSynchronizerThreads(PerunSession sess) throws InternalErrorException {
-		int numberOfNewlyRemovedThreads = removeInteruptedUsers();
+		int numberOfNewlyRemovedThreads = removeInteruptedThreads();
 		int numberOfNewlyCreatedThreads = 0;
 
 		// Start new threads if there is place for them
@@ -2300,15 +2300,10 @@ public class UsersManagerBlImpl implements UsersManagerBl {
 	}
 
 	public int setLowestPriority(PerunSession sess, User user, UserExtSource userExtSource) throws WrongAttributeAssignmentException, WrongAttributeValueException, WrongReferenceAttributeValueException, InternalErrorException, AttributeNotExistsException {
-//		Attribute priorityAttribute = getPerunBl().getAttributesManagerBl().getAttribute(sess, userExtSource, UsersManager.USEREXTSOURCEPRIORITY_ATTRNAME);
 		Attribute priorityAttribute = new Attribute(perunBl.getAttributesManagerBl().getAttributeDefinition(sess, UsersManager.USEREXTSOURCEPRIORITY_ATTRNAME));
-//		Attribute userExtSourceStoredAttributesAttr = getPerunBl().getAttributesManagerBl().getAttribute(sess, userExtSource, UsersManager.USEREXTSOURCESTOREDATTRIBUTES_ATTRNAME);
-//		if (userExtSourceStoredAttributesAttr.getValue() != null) {
 		int priority = getNewLowestPriority(sess, user);
 		priorityAttribute.setValue(priority);
 		getPerunBl().getAttributesManagerBl().setAttributeInNestedTransaction(sess, userExtSource, priorityAttribute);
-		log.debug("Priority: {} was stored for UserExtSource: {} .", priority, userExtSource);
-//		}
 		return priority;
 	}
 
@@ -2395,77 +2390,18 @@ public class UsersManagerBlImpl implements UsersManagerBl {
 		return new ArrayList<>(synchronizedAttributes);
 	}
 
-	/**
-	 *
-	 * @param sess
-	 * @param candidate
-	 * @param user
-	 * @param candidate
-	 * @param overwriteAttributeList
-	 * @return
-	 */
-	private List<String> getActualAttributeListForSynchronizationForExtSource(PerunSession sess, Candidate candidate, User user, UserExtSource userExtSource, List<String> overwriteAttributeList) throws WrongAttributeAssignmentException, InternalErrorException, AttributeNotExistsException {
-		int actualPriority = getUserExtSourcePriority(sess, userExtSource);
-		List<String> userAttributeListForSynchronization = new ArrayList<>(candidate.getAttributes().keySet());
-		List<UserExtSource> userExtSourceList = getPerunBl().getUsersManagerBl().getUserExtSources(sess, user);
-		for (UserExtSource ues : userExtSourceList) {
-			if (!ues.equals(userExtSource)) {
-				int priority = getUserExtSourcePriority(sess, ues);
-				if (priority > 0 && priority < actualPriority) {
-//					List<String> uesSynchronizedAttrList = getSynchronizeAttributeList(sess, userExtSource);
-					List<String> synchronizedUserAttrList = getPerunBl().getExtSourcesManagerBl().getSynchronizedUserAttributeList(userExtSource.getExtSource());
-					for (String attrName : synchronizedUserAttrList) {
-						if (overwriteAttributeList.contains(attrName)) {
-							userAttributeListForSynchronization.remove(attrName);
-						}
-					}
-				}
-			}
-		}
-		return userAttributeListForSynchronization;
-	}
-
-	/**
-	 * Check if the userExtSource for user hasHighestPriority. If the priority for userExtSource was null, the priority will be setted to lowest value.
-	 * @param sess PerunSession
-	 * @param user User
-	 * @param userExtSource UserExtSource
-	 * @return TRUE if the priority of userExtSource is highest for user, FALSE otherwise
-	 */
-	/*
-	private boolean hasHighestPriority(PerunSession sess, User user, UserExtSource userExtSource) throws WrongAttributeAssignmentException, InternalErrorException, AttributeNotExistsException, WrongAttributeValueException, WrongReferenceAttributeValueException {
-		int actualPriority = getUserExtSourcePriority(sess, userExtSource);
-		if (actualPriority == 0) {
-			actualPriority = setLowestPriority(sess, user, userExtSource);
-		}
-		if (getUserExtSourceStoredAttributesAttr(sess, userExtSource) == null) {
-			return false;
-		}
-		List<UserExtSource> userExtSourceList = getPerunBl().getUsersManagerBl().getUserExtSources(sess,user);
-		for (UserExtSource ues : userExtSourceList) {
-			int priority = getUserExtSourcePriority(sess, ues);
-			Attribute storedAttributesAttr = getUserExtSourceStoredAttributesAttr(sess, ues);
-			if (storedAttributesAttr != null && storedAttributesAttr.getValue() != null
-					&& ( priority > 0 && priority < actualPriority)) {
-				return false;
-			}
-		}
-		return true;
-
-	}
-*/
 
 	/**
 	 * Returns attribute with storedAttributes(attributeName and attributeValue in JSON format) for userExtSource stored during the last successfully synchronization.
 	 * @param sess PerunSession
 	 * @param userExtSource UserExtSource
 	 * @return Attribute
+	 * @throws InternalErrorException
 	 */
-	private Attribute getUserExtSourceStoredAttributesAttr (PerunSession sess, UserExtSource userExtSource) {
+	private Attribute getUserExtSourceStoredAttributesAttr(PerunSession sess, UserExtSource userExtSource)  throws InternalErrorException {
 		try {
 			return getPerunBl().getAttributesManagerBl().getAttribute(sess, userExtSource, UsersManager.USEREXTSOURCESTOREDATTRIBUTES_ATTRNAME);
-		} catch (Exception e) {
-			log.error("getUserExtSourceStoredAttributesAttr returns null");
+		} catch (WrongAttributeAssignmentException | AttributeNotExistsException e) {
 			return null;
 		}
 	}
@@ -2498,23 +2434,23 @@ public class UsersManagerBlImpl implements UsersManagerBl {
 	 * @param candidate Candidate
 	 * @throws ConsistencyErrorException
 	 */
-	private void updateUserCoreAttributes(PerunSession sess, User user, Candidate candidate) throws ConsistencyErrorException {
-		// try to find user core attributes and update user -> update name and titles
-		user.setFirstName(candidate.getFirstName());
-		user.setMiddleName(candidate.getMiddleName());
-		user.setLastName(candidate.getLastName());
-		user.setTitleBefore(candidate.getTitleBefore());
-		user.setTitleAfter(candidate.getTitleAfter());
-
-		try {
-			perunBl.getUsersManagerBl().updateUser(sess, user);
-			log.debug("User: {} was successfully updated.", user);
-		} catch (UserNotExistsException e) {
-			throw new ConsistencyErrorException("User from perun not exists when should - removed during sync.", e);
-		} catch (InternalErrorException e) {
-			log.error("User core attributes wasn't updated.");
-		}
-	}
+//	private void updateUserCoreAttributes(PerunSession sess, User user, Candidate candidate) throws ConsistencyErrorException {
+//		// try to find user core attributes and update user -> update name and titles
+//		user.setFirstName(candidate.getFirstName());
+//		user.setMiddleName(candidate.getMiddleName());
+//		user.setLastName(candidate.getLastName());
+//		user.setTitleBefore(candidate.getTitleBefore());
+//		user.setTitleAfter(candidate.getTitleAfter());
+//
+//		try {
+//			perunBl.getUsersManagerBl().updateUser(sess, user);
+//			log.debug("User: {} was successfully updated.", user);
+//		} catch (UserNotExistsException e) {
+//			throw new ConsistencyErrorException("User from perun not exists when should - removed during sync.", e);
+//		} catch (InternalErrorException e) {
+//			log.error("User core attributes wasn't updated.");
+//		}
+//	}
 
 	/**
 	 * Updates all user core attributes with userCoreAttributes from userExtSource with highest priority
@@ -2665,58 +2601,59 @@ public class UsersManagerBlImpl implements UsersManagerBl {
 		return userExtSource;
 	}
 
-	private void updateUserAttributes(PerunSession sess, User user, Candidate candidate, UserExtSource userExtSource, List<String> overwriteUserAttributesList) throws InternalErrorException, AttributeNotExistsException, WrongAttributeAssignmentException {
-		List<String> attributeListForSynchronization = getActualAttributeListForSynchronizationForExtSource(sess, candidate, user, userExtSource, overwriteUserAttributesList);
-		if (attributeListForSynchronization.isEmpty()) {
-			return;
-		}
-		for (String attributeName : candidate.getAttributes().keySet()) {
-			if(attributeName.startsWith(AttributesManager.NS_USER_ATTR) && attributeListForSynchronization.contains(attributeName)) {
-				RichUser richUser;
-
-				try {
-					richUser = getRichUserWithAllAttributes(sess, user);
-					for (Attribute userAttribute: richUser.getUserAttributes()) {
-						if(userAttribute.getName().equals(attributeName)) {
-							Object subjectAttributeValue = getPerunBl().getAttributesManagerBl().stringToAttributeValue(candidate.getAttributes().get(attributeName), userAttribute.getType());
-							if (!Objects.equals(userAttribute.getValue(), subjectAttributeValue)) {
-								Object oldValue = userAttribute.getValue();
-								userAttribute.setValue(subjectAttributeValue);
-								try {
-									//Choose set or merge by extSource attribute overwriteUserAttributes (if contains this one)
-									if(overwriteUserAttributesList.contains(userAttribute.getName())) {
-										getPerunBl().getAttributesManagerBl().setAttribute(sess, user, userAttribute);
-										log.debug("User synchronization: value of the attribute {} for userId {} was changed. Old value {} was replaced with new value {}.",
-												userAttribute, richUser.getId(), oldValue, subjectAttributeValue);
-									} else {
-										getPerunBl().getAttributesManagerBl().mergeAttributeValue(sess, user, userAttribute);
-										log.debug("User synchronization: value of the attribute {} for userId {} was changed. Old value {} was merged with new value {}.",
-												userAttribute, richUser.getId(), oldValue, subjectAttributeValue);
-									}
-								} catch (AttributeValueException e) {
-									log.error("Problem with store new attribute value {} of attribute {} for userId {} ." , userAttribute.getValue(), userAttribute.getName(), richUser.getId());
-								} catch (WrongAttributeAssignmentException e) {
-									throw new ConsistencyErrorException(e);
-								}
-							} else {
-								log.debug("User synchronization: Attribute value wasn't changed because the new value of the attribute {} is the same as the original value.", userAttribute);
-								//we found it, but there is no change
-							}
-						}
-					}
-				} catch (UserNotExistsException e) {
-					e.printStackTrace();
-				}
-			}
-		}
-	}
+//
+//	private void updateUserAttributes(PerunSession sess, User user, Candidate candidate, UserExtSource userExtSource, List<String> overwriteUserAttributesList) throws InternalErrorException, AttributeNotExistsException, WrongAttributeAssignmentException {
+//		List<String> attributeListForSynchronization = getActualAttributeListForSynchronizationForExtSource(sess, candidate, user, userExtSource, overwriteUserAttributesList);
+//		if (attributeListForSynchronization.isEmpty()) {
+//			return;
+//		}
+//		for (String attributeName : candidate.getAttributes().keySet()) {
+//			if(attributeName.startsWith(AttributesManager.NS_USER_ATTR) && attributeListForSynchronization.contains(attributeName)) {
+//				RichUser richUser;
+//
+//				try {
+//					richUser = getRichUserWithAllAttributes(sess, user);
+//					for (Attribute userAttribute: richUser.getUserAttributes()) {
+//						if(userAttribute.getName().equals(attributeName)) {
+//							Object subjectAttributeValue = getPerunBl().getAttributesManagerBl().stringToAttributeValue(candidate.getAttributes().get(attributeName), userAttribute.getType());
+//							if (!Objects.equals(userAttribute.getValue(), subjectAttributeValue)) {
+//								Object oldValue = userAttribute.getValue();
+//								userAttribute.setValue(subjectAttributeValue);
+//								try {
+//									//Choose set or merge by extSource attribute overwriteUserAttributes (if contains this one)
+//									if(overwriteUserAttributesList.contains(userAttribute.getName())) {
+//										getPerunBl().getAttributesManagerBl().setAttribute(sess, user, userAttribute);
+//										log.debug("User synchronization: value of the attribute {} for userId {} was changed. Old value {} was replaced with new value {}.",
+//												userAttribute, richUser.getId(), oldValue, subjectAttributeValue);
+//									} else {
+//										getPerunBl().getAttributesManagerBl().mergeAttributeValue(sess, user, userAttribute);
+//										log.debug("User synchronization: value of the attribute {} for userId {} was changed. Old value {} was merged with new value {}.",
+//												userAttribute, richUser.getId(), oldValue, subjectAttributeValue);
+//									}
+//								} catch (AttributeValueException e) {
+//									log.error("Problem with store new attribute value {} of attribute {} for userId {} ." , userAttribute.getValue(), userAttribute.getName(), richUser.getId());
+//								} catch (WrongAttributeAssignmentException e) {
+//									throw new ConsistencyErrorException(e);
+//								}
+//							} else {
+//								log.debug("User synchronization: Attribute value wasn't changed because the new value of the attribute {} is the same as the original value.", userAttribute);
+//								//we found it, but there is no change
+//							}
+//						}
+//					}
+//				} catch (UserNotExistsException e) {
+//					e.printStackTrace();
+//				}
+//			}
+//		}
+//	}
 
 	/**
 	 * This function removed interupted threads
 	 *
 	 * @return Number of removed threads
 	 */
-	private int removeInteruptedUsers() {
+	private int removeInteruptedThreads() {
 		int numberOfNewlyRemovedThreads = 0;
 
 		// Get the default synchronization timeout from the configuration file
@@ -2807,7 +2744,7 @@ public class UsersManagerBlImpl implements UsersManagerBl {
 					try {
 						perunBl.getUsersManagerBl().saveInformationAboutUserSynchronization(sess, candidate, failedDueToException, exceptionMessage);
 					} catch (Exception ex) {
-						log.error("When synchronization user with candidate {}, exception was thrown.",candidate, ex);
+						log.error("When synchronization user with candidate {}, exception was thrown.", candidate, ex);
 					}
 					//Remove job from running jobs
 					if(!poolOfCandidatesToBeSynchronized.removeJob(candidate)) {

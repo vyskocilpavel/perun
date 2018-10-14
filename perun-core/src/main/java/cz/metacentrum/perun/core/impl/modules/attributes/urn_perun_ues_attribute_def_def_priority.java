@@ -63,14 +63,8 @@ public class urn_perun_ues_attribute_def_def_priority extends UserExtSourceAttri
 		try {
 			User user = sess.getPerunBl().getUsersManagerBl().getUserById(sess, userExtSource.getUserId());
 			sess.getPerunBl().getUsersManagerBl().updateUserAttributesAfterUesChangedInNestedTransaction(sess, user);
-		} catch (UserNotExistsException e) {
-			e.printStackTrace();
-		} catch (WrongAttributeValueException e) {
-			e.printStackTrace();
-		} catch (WrongAttributeAssignmentException e) {
-			e.printStackTrace();
-		} catch (AttributeNotExistsException e) {
-			e.printStackTrace();
+		} catch (UserNotExistsException | WrongAttributeValueException | WrongAttributeAssignmentException | AttributeNotExistsException e) {
+			throw new InternalErrorException(e);
 		}
 	}
 
