@@ -37,7 +37,7 @@ public class urn_perun_ues_attribute_def_def_priority extends UserExtSourceAttri
 				if (!ues.equals(userExtSource)) {
 					int priority = sess.getPerunBl().getUsersManagerBl().getUserExtSourcePriority(sess, ues);
 					if (priority > 0 && (Integer) attribute.getValue() == priority) {
-						throw new WrongAttributeValueException("This value " +  (Integer) attribute.getValue() + " for user ext source: " + ues + " is already used and you cannot used it again.");
+						throw new WrongAttributeValueException("This value " +  attribute.valueAsInteger() + " for user ext source: " + ues + " is already used and you cannot used it again.");
 					}
 				}
 			}
@@ -46,6 +46,13 @@ public class urn_perun_ues_attribute_def_def_priority extends UserExtSourceAttri
 		} catch (AttributeNotExistsException e) {
 			throw new ConsistencyErrorException("");
 		}
+		try {
+			User user = sess.getPerunBl().getUsersManagerBl().getUserById(sess, userExtSource.getUserId());
+			sess.getPerunBl().getUsersManagerBl().updateUserAttributesAfterUesChangedInNestedTransaction(sess, user);
+		} catch (UserNotExistsException | WrongAttributeValueException | WrongAttributeAssignmentException | AttributeNotExistsException e) {
+			throw new InternalErrorException(e);
+		}
+
 	}
 
 	public AttributeDefinition getAttributeDefinition() {
@@ -58,14 +65,14 @@ public class urn_perun_ues_attribute_def_def_priority extends UserExtSourceAttri
 		return attr;
 	}
 
-	@Override
-	public void changedAttributeHook(PerunSessionImpl sess, UserExtSource userExtSource, Attribute attribute) throws InternalErrorException, WrongReferenceAttributeValueException {
-		try {
-			User user = sess.getPerunBl().getUsersManagerBl().getUserById(sess, userExtSource.getUserId());
-			sess.getPerunBl().getUsersManagerBl().updateUserAttributesAfterUesChangedInNestedTransaction(sess, user);
-		} catch (UserNotExistsException | WrongAttributeValueException | WrongAttributeAssignmentException | AttributeNotExistsException e) {
-			throw new InternalErrorException(e);
-		}
-	}
+//	@Override
+//	public void changedAttributeHook(PerunSessionImpl sess, UserExtSource userExtSource, Attribute attribute) throws InternalErrorException, WrongReferenceAttributeValueException {
+//		try {
+//			User user = sess.getPerunBl().getUsersManagerBl().getUserById(sess, userExtSource.getUserId());
+//			sess.getPerunBl().getUsersManagerBl().updateUserAttributesAfterUesChangedInNestedTransaction(sess, user);
+//		} catch (UserNotExistsException | WrongAttributeValueException | WrongAttributeAssignmentException | AttributeNotExistsException e) {
+//			throw new InternalErrorException(e);
+//		}
+//	}
 
 }

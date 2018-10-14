@@ -32,6 +32,13 @@ public class urn_perun_ues_attribute_def_def_storedAttributes extends UserExtSou
 		} catch (JSONException e) {
 			throw new WrongAttributeValueException("Value is not a valid JSON");
 		}
+
+		try {
+			User user = sess.getPerunBl().getUsersManagerBl().getUserById(sess, userExtSource.getUserId());
+			sess.getPerunBl().getUsersManagerBl().updateUserAttributesAfterUesChangedInNestedTransaction(sess, user);
+		} catch (UserNotExistsException | WrongAttributeValueException | WrongAttributeAssignmentException | AttributeNotExistsException e) {
+			throw new InternalErrorException(e);
+		}
 	}
 
 	public AttributeDefinition getAttributeDefinition() {
@@ -43,14 +50,14 @@ public class urn_perun_ues_attribute_def_def_storedAttributes extends UserExtSou
 		attr.setDescription("Stored attributes during synchronization.");
 		return attr;
 	}
-
-	@Override
-	public void changedAttributeHook(PerunSessionImpl sess, UserExtSource userExtSource, Attribute attribute) throws InternalErrorException, WrongReferenceAttributeValueException {
-		try {
-			User user = sess.getPerunBl().getUsersManagerBl().getUserById(sess, userExtSource.getUserId());
-			sess.getPerunBl().getUsersManagerBl().updateUserAttributesAfterUesChangedInNestedTransaction(sess, user);
-		} catch (UserNotExistsException | WrongAttributeValueException | WrongAttributeAssignmentException | AttributeNotExistsException e) {
-			throw new InternalErrorException(e);
-		}
-	}
+//
+//	@Override
+//	public void changedAttributeHook(PerunSessionImpl sess, UserExtSource userExtSource, Attribute attribute) throws InternalErrorException, WrongReferenceAttributeValueException {
+//		try {
+//			User user = sess.getPerunBl().getUsersManagerBl().getUserById(sess, userExtSource.getUserId());
+//			sess.getPerunBl().getUsersManagerBl().updateUserAttributesAfterUesChangedInNestedTransaction(sess, user);
+//		} catch (UserNotExistsException | WrongAttributeValueException | WrongAttributeAssignmentException | AttributeNotExistsException e) {
+//			throw new InternalErrorException(e);
+//		}
+//	}
 }

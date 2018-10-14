@@ -2307,16 +2307,12 @@ public class UsersManagerBlImpl implements UsersManagerBl {
 
 		for (String attrName : synchronizedAttributes) {
 			if (attrName.startsWith(AttributesManager.NS_USER_ATTR_DEF)) {
-					Attribute userAttribute = getPerunBl().getAttributesManagerBl().getAttribute(sess, user, attrName);
-					Attribute attribute = getUserAttributeFromUserExtSourcesWithHighestPriority(sess, user, attrName);
-					if ((userAttribute.getValue() != null && !userAttribute.getValue().equals(attribute.getValue()))
-							|| (userAttribute.getValue() == null && attribute.getValue() != null)) {
-						getPerunBl().getAttributesManagerBl().setAttribute(sess, user, attribute);
-					}
-//				} catch (WrongAttributeValueException | WrongReferenceAttributeValueException
-//						| WrongAttributeAssignmentException | AttributeNotExistsException e) {
-//					throw new InternalErrorException(e);
-//				}
+				Attribute userAttribute = getPerunBl().getAttributesManagerBl().getAttribute(sess, user, attrName);
+				Attribute attribute = getUserAttributeFromUserExtSourcesWithHighestPriority(sess, user, attrName);
+				if ((userAttribute.getValue() != null && !userAttribute.getValue().equals(attribute.getValue()))
+						|| (userAttribute.getValue() == null && attribute.getValue() != null)) {
+					getPerunBl().getAttributesManagerBl().setAttribute(sess, user, attribute);
+				}
 			}
 		}
 	}
@@ -2413,7 +2409,7 @@ public class UsersManagerBlImpl implements UsersManagerBl {
 
 		for (UserExtSource userExtSource : perunBl.getUsersManagerBl().getUserExtSources(sess, user) ) {
 			Attribute uesStoredAttributesAttr = getUserExtSourceStoredAttributesAttr(sess, userExtSource);
-			if (uesStoredAttributesAttr != null && uesStoredAttributesAttr.valueAsString() != null) {
+			if (uesStoredAttributesAttr != null && uesStoredAttributesAttr.getValue() != null && uesStoredAttributesAttr.valueAsString() != null) {
 				JSONObject storedAttributes = new JSONObject(uesStoredAttributesAttr.valueAsString());
 				synchronizedAttributes.addAll(storedAttributes.keySet());
 			}
