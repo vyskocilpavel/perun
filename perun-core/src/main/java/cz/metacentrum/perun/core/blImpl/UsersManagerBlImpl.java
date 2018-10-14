@@ -2427,32 +2427,6 @@ public class UsersManagerBlImpl implements UsersManagerBl {
 	}
 
 	/**
-	 * Updates all user core attributes
-	 *
-	 * @param sess PerunSession
-	 * @param user User
-	 * @param candidate Candidate
-	 * @throws ConsistencyErrorException
-	 */
-//	private void updateUserCoreAttributes(PerunSession sess, User user, Candidate candidate) throws ConsistencyErrorException {
-//		// try to find user core attributes and update user -> update name and titles
-//		user.setFirstName(candidate.getFirstName());
-//		user.setMiddleName(candidate.getMiddleName());
-//		user.setLastName(candidate.getLastName());
-//		user.setTitleBefore(candidate.getTitleBefore());
-//		user.setTitleAfter(candidate.getTitleAfter());
-//
-//		try {
-//			perunBl.getUsersManagerBl().updateUser(sess, user);
-//			log.debug("User: {} was successfully updated.", user);
-//		} catch (UserNotExistsException e) {
-//			throw new ConsistencyErrorException("User from perun not exists when should - removed during sync.", e);
-//		} catch (InternalErrorException e) {
-//			log.error("User core attributes wasn't updated.");
-//		}
-//	}
-
-	/**
 	 * Updates all user core attributes with userCoreAttributes from userExtSource with highest priority
 	 *
 	 * @param sess PerunSession
@@ -2600,53 +2574,6 @@ public class UsersManagerBlImpl implements UsersManagerBl {
 		}
 		return userExtSource;
 	}
-
-//
-//	private void updateUserAttributes(PerunSession sess, User user, Candidate candidate, UserExtSource userExtSource, List<String> overwriteUserAttributesList) throws InternalErrorException, AttributeNotExistsException, WrongAttributeAssignmentException {
-//		List<String> attributeListForSynchronization = getActualAttributeListForSynchronizationForExtSource(sess, candidate, user, userExtSource, overwriteUserAttributesList);
-//		if (attributeListForSynchronization.isEmpty()) {
-//			return;
-//		}
-//		for (String attributeName : candidate.getAttributes().keySet()) {
-//			if(attributeName.startsWith(AttributesManager.NS_USER_ATTR) && attributeListForSynchronization.contains(attributeName)) {
-//				RichUser richUser;
-//
-//				try {
-//					richUser = getRichUserWithAllAttributes(sess, user);
-//					for (Attribute userAttribute: richUser.getUserAttributes()) {
-//						if(userAttribute.getName().equals(attributeName)) {
-//							Object subjectAttributeValue = getPerunBl().getAttributesManagerBl().stringToAttributeValue(candidate.getAttributes().get(attributeName), userAttribute.getType());
-//							if (!Objects.equals(userAttribute.getValue(), subjectAttributeValue)) {
-//								Object oldValue = userAttribute.getValue();
-//								userAttribute.setValue(subjectAttributeValue);
-//								try {
-//									//Choose set or merge by extSource attribute overwriteUserAttributes (if contains this one)
-//									if(overwriteUserAttributesList.contains(userAttribute.getName())) {
-//										getPerunBl().getAttributesManagerBl().setAttribute(sess, user, userAttribute);
-//										log.debug("User synchronization: value of the attribute {} for userId {} was changed. Old value {} was replaced with new value {}.",
-//												userAttribute, richUser.getId(), oldValue, subjectAttributeValue);
-//									} else {
-//										getPerunBl().getAttributesManagerBl().mergeAttributeValue(sess, user, userAttribute);
-//										log.debug("User synchronization: value of the attribute {} for userId {} was changed. Old value {} was merged with new value {}.",
-//												userAttribute, richUser.getId(), oldValue, subjectAttributeValue);
-//									}
-//								} catch (AttributeValueException e) {
-//									log.error("Problem with store new attribute value {} of attribute {} for userId {} ." , userAttribute.getValue(), userAttribute.getName(), richUser.getId());
-//								} catch (WrongAttributeAssignmentException e) {
-//									throw new ConsistencyErrorException(e);
-//								}
-//							} else {
-//								log.debug("User synchronization: Attribute value wasn't changed because the new value of the attribute {} is the same as the original value.", userAttribute);
-//								//we found it, but there is no change
-//							}
-//						}
-//					}
-//				} catch (UserNotExistsException e) {
-//					e.printStackTrace();
-//				}
-//			}
-//		}
-//	}
 
 	/**
 	 * This function removed interupted threads
