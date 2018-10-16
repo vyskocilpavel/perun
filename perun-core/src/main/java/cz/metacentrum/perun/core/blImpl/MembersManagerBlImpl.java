@@ -371,9 +371,9 @@ public class MembersManagerBlImpl implements MembersManagerBl {
 			}
 		}
 
-		// If user hasn't been found, then create him
+		// If user hasn't been found, then synchronize him
 		if (user == null) {
-			user = new User();
+			/*user = new User();
 			user.setFirstName(candidate.getFirstName());
 			user.setLastName(candidate.getLastName());
 			user.setMiddleName(candidate.getMiddleName());
@@ -384,10 +384,22 @@ public class MembersManagerBlImpl implements MembersManagerBl {
 			// Store the user, this must be done in separate transaction
 			user = getPerunBl().getUsersManagerBl().createUser(sess, user);
 
-			log.debug("createMember: new user: {}", user);
+			log.debug("createMember: new user: {}", user);*/
+			try {
+				perunBl.getUsersManagerBl().synchronizeUser(sess, candidate);
+			} catch (UserExtSourceNotExistsException e) {
+				e.printStackTrace();
+			} catch (WrongAttributeAssignmentException e) {
+				e.printStackTrace();
+			} catch (ExtSourceNotExistsException e) {
+				e.printStackTrace();
+			} catch (AttributeNotExistsException e) {
+				e.printStackTrace();
+			}
 		}
 
 		// Assign missing userExtSource and update LoA
+		/*
 		if (candidate.getUserExtSources() != null) {
 			for (UserExtSource userExtSource : candidate.getUserExtSources()) {
 				try {
@@ -407,7 +419,7 @@ public class MembersManagerBlImpl implements MembersManagerBl {
 				}
 			}
 		}
-
+*/
 		try {
 			Member member = getMemberByUser(sess, vo, user);
 			throw new AlreadyMemberException(member);

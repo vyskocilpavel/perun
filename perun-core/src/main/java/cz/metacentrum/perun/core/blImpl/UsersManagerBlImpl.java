@@ -543,22 +543,16 @@ public class UsersManagerBlImpl implements UsersManagerBl {
 		getPerunBl().getAuditer().log(sess, "{} updated.", userExtSource);
 		UserExtSource updatedUserExtSource = getUsersManagerImpl().updateUserExtSource(sess, userExtSource);
 		try {
-			updateUserAttributesAfterUesChangedInNestedTransaction(sess, getPerunBl().getUsersManagerBl().getUserByUserExtSource(sess,userExtSource));
+			updateUserAttributesAfterUesChanged(sess, getPerunBl().getUsersManagerBl().getUserByUserExtSource(sess,userExtSource));
 		} catch (UserNotExistsException e) {
 			throw new ConsistencyErrorException("User from perun not exists when should - removed during sync.", e);
-		} catch (WrongAttributeValueException e) {
-			e.printStackTrace();
-		} catch (WrongAttributeAssignmentException e) {
-			e.printStackTrace();
-		} catch (AttributeNotExistsException e) {
-			e.printStackTrace();
-		} catch (WrongReferenceAttributeValueException e) {
+		} catch (WrongAttributeValueException | WrongAttributeAssignmentException | AttributeNotExistsException | WrongReferenceAttributeValueException e) {
 			e.printStackTrace();
 		}
 		return updatedUserExtSource;
 	}
 
-	public UserExtSource updateUserExtSource2(PerunSession sess, UserExtSource userExtSource) throws InternalErrorException, UserExtSourceExistsException {
+	public UserExtSource updateUserExtSourceWithoutUpdateUserAttributes(PerunSession sess, UserExtSource userExtSource) throws InternalErrorException, UserExtSourceExistsException {
 		getPerunBl().getAuditer().log(sess, "{} updated.", userExtSource);
 		return getUsersManagerImpl().updateUserExtSource(sess, userExtSource);
 	}
@@ -583,24 +577,6 @@ public class UsersManagerBlImpl implements UsersManagerBl {
 		return getUsersManagerImpl().getActiveUserExtSources(sess, user);
 	}
 
-	public UserExtSource addUserExtSourceWithPriority(PerunSession sess, User user, UserExtSource userExtSource) throws InternalErrorException, UserExtSourceExistsException {
-		UserExtSource ues = addUserExtSource(sess, user, userExtSource);
-		try {
-			setLowestPriority(sess, user, ues);
-			log.debug("Priority was stored for userExtSource");
-		} catch (WrongAttributeValueException e) {
-			e.printStackTrace();
-		} catch (WrongAttributeAssignmentException e) {
-			e.printStackTrace();
-		} catch (AttributeNotExistsException e) {
-			e.printStackTrace();
-		} catch (WrongReferenceAttributeValueException e) {
-			e.printStackTrace();
-		}
-
-		return ues;
-	}
-
 	public UserExtSource addUserExtSource(PerunSession sess, User user, UserExtSource userExtSource) throws InternalErrorException, UserExtSourceExistsException {
 		// Check if the userExtSource already exists
 		if (usersManagerImpl.userExtSourceExists(sess, userExtSource)) {
@@ -623,18 +599,23 @@ public class UsersManagerBlImpl implements UsersManagerBl {
 
 		//UpdateUserAttributes
 		try {
-			updateUserAttributesAfterUesChangedInNestedTransaction(sess, user);
-		} catch (AttributeNotExistsException e) {
-			e.printStackTrace();
-		} catch (WrongAttributeAssignmentException e) {
-			e.printStackTrace();
-		} catch (WrongAttributeValueException e) {
-			e.printStackTrace();
-		} catch (WrongReferenceAttributeValueException e) {
+			updateUserAttributesAfterUesChanged(sess, user);
+		} catch (AttributeNotExistsException | WrongAttributeAssignmentException | WrongAttributeValueException | WrongReferenceAttributeValueException e) {
 			e.printStackTrace();
 		}
 
 		return userExtSource;
+	}
+
+	public UserExtSource addUserExtSourceWithPriority(PerunSession sess, User user, UserExtSource userExtSource) throws InternalErrorException, UserExtSourceExistsException {
+		UserExtSource ues = addUserExtSource(sess, user, userExtSource);
+		try {
+			setLowestPriority(sess, user, ues);
+			log.debug("Priority was stored for userExtSource");
+		} catch (WrongAttributeValueException | WrongAttributeAssignmentException | AttributeNotExistsException | WrongReferenceAttributeValueException e) {
+			e.printStackTrace();
+		}
+		return ues;
 	}
 
 	public void removeUserExtSource(PerunSession sess, User user, UserExtSource userExtSource) throws InternalErrorException, UserExtSourceAlreadyRemovedException {
@@ -651,14 +632,8 @@ public class UsersManagerBlImpl implements UsersManagerBl {
 
 		//UpdateUserAttributes
 		try {
-			updateUserAttributesAfterUesChangedInNestedTransaction(sess, user);
-		} catch (AttributeNotExistsException e) {
-			e.printStackTrace();
-		} catch (WrongAttributeAssignmentException e) {
-			e.printStackTrace();
-		} catch (WrongAttributeValueException e) {
-			e.printStackTrace();
-		} catch (WrongReferenceAttributeValueException e) {
+			updateUserAttributesAfterUesChanged(sess, user);
+		} catch (WrongAttributeValueException | WrongAttributeAssignmentException | AttributeNotExistsException | WrongReferenceAttributeValueException e) {
 			e.printStackTrace();
 		}
 	}
@@ -2268,7 +2243,7 @@ public class UsersManagerBlImpl implements UsersManagerBl {
 					// Update LoA
 					if (uesFromPerun.getLoa() != userExtSource.getLoa()) {
 						uesFromPerun.setLoa(userExtSource.getLoa());
-						getPerunBl().getUsersManagerBl().updateUserExtSource2(sess, uesFromPerun);
+						getPerunBl().getUsersManagerBl().updateUserExtSourceWithoutUpdateUserAttributes(sess, uesFromPerun);
 					}
 				} catch (UserExtSourceNotExistsException e) {
 					// Create userExtSource
@@ -2287,7 +2262,7 @@ public class UsersManagerBlImpl implements UsersManagerBl {
 			}
 		}
 		if (ues != null) {
-			updateUserAttributesAfterUesChangedInNestedTransaction(sess, user);
+			updateUserAttributesAfterUesChanged(sess, user);
 		}
 	}
 
@@ -2297,7 +2272,7 @@ public class UsersManagerBlImpl implements UsersManagerBl {
 		getPerunBl().getAttributesManagerBl().setAttribute(sess, userExtSource, userExtSourceStoredAttributesAttr);
 	}
 
-	public void updateUserAttributesAfterUesChangedInNestedTransaction(PerunSession sess, User user) throws InternalErrorException, AttributeNotExistsException, WrongAttributeAssignmentException, WrongAttributeValueException, WrongReferenceAttributeValueException {
+	public void updateUserAttributesAfterUesChanged(PerunSession sess, User user) throws InternalErrorException, AttributeNotExistsException, WrongAttributeAssignmentException, WrongAttributeValueException, WrongReferenceAttributeValueException {
 
 		updateUserCoreAttributesByHighestPriority(sess, user);
 
@@ -2404,6 +2379,13 @@ public class UsersManagerBlImpl implements UsersManagerBl {
 
 	//----------- PRIVATE METHODS
 
+	/**
+	 * Returns list of synchronized attributes names for user
+	 * @param sess PerunSession
+	 * @param user User
+	 * @return List of synchronized attributes names
+	 * @throws InternalErrorException
+	 */
 	private List<String> getSynchronizedAttributeListForUser(PerunSession sess, User user) throws InternalErrorException {
 		Collection<String> synchronizedAttributes = new HashSet<>();
 
@@ -2420,6 +2402,7 @@ public class UsersManagerBlImpl implements UsersManagerBl {
 
 	/**
 	 * Returns attribute with storedAttributes(attributeName and attributeValue in JSON format) for userExtSource stored during the last successfully synchronization.
+	 *
 	 * @param sess PerunSession
 	 * @param userExtSource UserExtSource
 	 * @return Attribute
@@ -2435,6 +2418,7 @@ public class UsersManagerBlImpl implements UsersManagerBl {
 
 	/**
 	 * Returns the new lowest priority for user
+	 *
 	 * @param sess PerunSession
 	 * @param user User
 	 * @return New lowest priority
@@ -2580,6 +2564,7 @@ public class UsersManagerBlImpl implements UsersManagerBl {
 
 	/**
 	 * Returns userExtSource with highest priority for user
+	 *
 	 * @param sess PerunSession
 	 * @param user User
 	 * @return UserExtSource

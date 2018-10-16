@@ -11,7 +11,6 @@ import cz.metacentrum.perun.core.api.exceptions.UserNotExistsException;
 import cz.metacentrum.perun.core.api.exceptions.WrongAttributeAssignmentException;
 import cz.metacentrum.perun.core.api.exceptions.WrongAttributeValueException;
 import cz.metacentrum.perun.core.api.exceptions.WrongReferenceAttributeValueException;
-import cz.metacentrum.perun.core.api.exceptions.rt.WrongAttributeAssignmentRuntimeException;
 import cz.metacentrum.perun.core.impl.PerunSessionImpl;
 import cz.metacentrum.perun.core.implApi.modules.attributes.UserExtSourceAttributesModuleAbstract;
 import cz.metacentrum.perun.core.implApi.modules.attributes.UserExtSourceAttributesModuleImplApi;
@@ -35,7 +34,7 @@ public class urn_perun_ues_attribute_def_def_storedAttributes extends UserExtSou
 
 		try {
 			User user = sess.getPerunBl().getUsersManagerBl().getUserById(sess, userExtSource.getUserId());
-			sess.getPerunBl().getUsersManagerBl().updateUserAttributesAfterUesChangedInNestedTransaction(sess, user);
+			sess.getPerunBl().getUsersManagerBl().updateUserAttributesAfterUesChanged(sess, user);
 		} catch (UserNotExistsException | WrongAttributeValueException | WrongAttributeAssignmentException | AttributeNotExistsException e) {
 			throw new InternalErrorException(e);
 		}
@@ -55,7 +54,7 @@ public class urn_perun_ues_attribute_def_def_storedAttributes extends UserExtSou
 //	public void changedAttributeHook(PerunSessionImpl sess, UserExtSource userExtSource, Attribute attribute) throws InternalErrorException, WrongReferenceAttributeValueException {
 //		try {
 //			User user = sess.getPerunBl().getUsersManagerBl().getUserById(sess, userExtSource.getUserId());
-//			sess.getPerunBl().getUsersManagerBl().updateUserAttributesAfterUesChangedInNestedTransaction(sess, user);
+//			sess.getPerunBl().getUsersManagerBl().updateUserAttributesAfterUesChanged(sess, user);
 //		} catch (UserNotExistsException | WrongAttributeValueException | WrongAttributeAssignmentException | AttributeNotExistsException e) {
 //			throw new InternalErrorException(e);
 //		}

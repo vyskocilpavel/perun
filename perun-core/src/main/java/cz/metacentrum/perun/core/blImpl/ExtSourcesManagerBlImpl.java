@@ -510,19 +510,6 @@ public class ExtSourcesManagerBlImpl implements ExtSourcesManagerBl {
 				"'right now waiting extSources'='" + poolOfExtSourcesToBeSynchronized.getWaitingJobs() + "'.");
 	}
 
-	private int initializeNewSynchronizationThreads(PerunSession sess) throws InternalErrorException {
-		int numberOfNewlyCreatedThreads = 0;
-
-		// Start new threads if there is place for them
-		while(extSourceSynchronizerThreads.size() < maxConcurentExtSourcesToSynchronize) {
-			ExtSourceSynchronizerThread thread = new ExtSourceSynchronizerThread(sess);
-			thread.start();
-			extSourceSynchronizerThreads.add(thread);
-			numberOfNewlyCreatedThreads++;
-			log.debug("New thread for extSources synchronization started.");
-		}
-		return numberOfNewlyCreatedThreads;
-	}
 
 	public synchronized void synchronizeExtSources(PerunSession sess) throws InternalErrorException {
 		log.info("ExtSourceManagerBlImpl:  synchronizeExtSources started");
@@ -566,18 +553,7 @@ public class ExtSourcesManagerBlImpl implements ExtSourcesManagerBl {
 	public List<String> getOverwriteUserAttributeList(ExtSource extSource) throws InternalErrorException {
 		Map<String, String> extSourceAttributes = getPerunBl().getExtSourcesManagerBl().getAttributes(extSource);
 		String[] overwriteUserAttributes = extSourceAttributes.get(ExtSourcesManager.USEROVERWRITEATTRIBUTES_ATTRNAME).split(",");
-		List<String> overwriteUserAttributeList = Arrays.asList(overwriteUserAttributes);
-
-		return overwriteUserAttributeList;
-	}
-
-
-	public List<String> getSynchronizedUserAttributeList(ExtSource extSource) throws InternalErrorException {
-		Map<String, String> extSourceAttributes = getPerunBl().getExtSourcesManagerBl().getAttributes(extSource);
-		String[] synchronizedUserAttributes = extSourceAttributes.get(ExtSourcesManager.USEROVERWRITEATTRIBUTES_ATTRNAME).split(",");
-		List<String> synchronizedUserAttributeList = Arrays.asList(synchronizedUserAttributes);
-
-		return synchronizedUserAttributeList;
+		return  Arrays.asList(overwriteUserAttributes);
 	}
 
 
@@ -585,6 +561,7 @@ public class ExtSourcesManagerBlImpl implements ExtSourcesManagerBl {
 
 	/**
 	 * Returns all subjects from extSource
+	 *
 	 * @param extSource ExtSource
 	 * @return List of subjects from extSource
 	 * @throws InternalErrorException
@@ -598,6 +575,26 @@ public class ExtSourcesManagerBlImpl implements ExtSourcesManagerBl {
 			throw new InternalErrorException("ExtSource " + extSource.getName() + " doesn't support getSubjects", e);
 		}
 		return subjects;
+	}
+
+	/**
+	 * Starts new threads if there is place and retruns count of newly created threads
+	 * @param sess PerunSession
+	 * @return Count of newly started threads
+	 * @throws InternalErrorException
+	 */
+	private int initializeNewSynchronizationThreads(PerunSession sess) throws InternalErrorException {
+		int numberOfNewlyCreatedThreads = 0;
+
+		// Start new threads if there is place for them
+		while(extSourceSynchronizerThreads.size() < maxConcurentExtSourcesToSynchronize) {
+			ExtSourceSynchronizerThread thread = new ExtSourceSynchronizerThread(sess);
+			thread.start();
+			extSourceSynchronizerThreads.add(thread);
+			numberOfNewlyCreatedThreads++;
+			log.debug("New thread for extSources synchronization started.");
+		}
+		return numberOfNewlyCreatedThreads;
 	}
 
 	/**

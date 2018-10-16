@@ -349,7 +349,7 @@ public interface UsersManagerBl {
 	 * @throws InternalErrorException
 	 * @throws UserExtSourceExistsException When UES with same login/extSource already exists.
 	 */
-	UserExtSource updateUserExtSource2(PerunSession perunSession, UserExtSource userExtSource) throws InternalErrorException, UserExtSourceExistsException;
+	UserExtSource updateUserExtSourceWithoutUpdateUserAttributes(PerunSession perunSession, UserExtSource userExtSource) throws InternalErrorException, UserExtSourceExistsException;
 
 	/**
 	 * Updates user's userExtSource last access time in DB. We can get information which userExtSource has been used as a last one.
@@ -1252,16 +1252,30 @@ public interface UsersManagerBl {
 
 	/**
 	 * Returns priority of the userExtSource
+	 *
 	 * @param sess PerunSession
 	 * @param userExtSource UserExtSource
 	 * @return priority
 	 */
 	int getUserExtSourcePriority(PerunSession sess, UserExtSource userExtSource) throws WrongAttributeAssignmentException, InternalErrorException, AttributeNotExistsException;
 
+	/**
+	 * Store all attributes from candidate to UserExtSource attribute storedAttribibutes as JSON.
+	 *
+	 * @param sess PerunSession
+	 * @param candidate Candidate
+	 * @param userExtSource UserExtSource
+	 * @throws AttributeNotExistsException
+	 * @throws InternalErrorException
+	 * @throws WrongAttributeAssignmentException
+	 * @throws WrongAttributeValueException
+	 * @throws WrongReferenceAttributeValueException
+	 */
 	void storeUserExtSourceStoredAttributes(PerunSession sess, Candidate candidate, UserExtSource userExtSource) throws AttributeNotExistsException, InternalErrorException, WrongAttributeAssignmentException, WrongAttributeValueException, WrongReferenceAttributeValueException;
 
 	/**
 	 * Updates all user attributes after UserExtSource was changed or removed
+	 *
 	 * @param sess PerunSession
 	 * @param user User
 	 * @throws WrongAttributeAssignmentException
@@ -1271,10 +1285,11 @@ public interface UsersManagerBl {
 	 * @throws AttributeNotExistsException
 	 * @throws UserNotExistsException
 	 */
-	void updateUserAttributesAfterUesChangedInNestedTransaction(PerunSession sess, User user) throws WrongAttributeAssignmentException, WrongAttributeValueException, WrongReferenceAttributeValueException, InternalErrorException, AttributeNotExistsException, UserNotExistsException;
+	void updateUserAttributesAfterUesChanged(PerunSession sess, User user) throws WrongAttributeAssignmentException, WrongAttributeValueException, WrongReferenceAttributeValueException, InternalErrorException, AttributeNotExistsException, UserNotExistsException;
 
 	/**
 	 * This method set the lowest priority for userExtSource or return the priority if the priority was already setted
+	 *
 	 * @param sess PerunSession
 	 * @param user User
 	 * @param userExtSource UserExtSource

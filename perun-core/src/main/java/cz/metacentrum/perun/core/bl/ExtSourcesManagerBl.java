@@ -278,15 +278,27 @@ public interface ExtSourcesManagerBl {
 
 	/**
 	 * Run synchronization for all extSources
+	 *
 	 * @param sess PerunSession
 	 * @throws InternalErrorException
 	 */
 	void synchronizeExtSources(PerunSession sess) throws InternalErrorException;
 
+	/**
+	 * Run force synchronization of extSource
+	 *
+	 * @param sess PerunSession
+	 * @param extSource ExtSource for synchronization
+	 * @throws InternalErrorException
+	 */
 	void forceExtSourceSynchronization(PerunSession sess, ExtSource extSource) throws InternalErrorException;
 
+	/**
+	 * Returns list of overwrite user attribute list
+	 * @param extSource ExtSource
+	 * @return List of overwrite user attributes names
+	 * @throws InternalErrorException
+	 */
 	List<String> getOverwriteUserAttributeList(ExtSource extSource) throws InternalErrorException;
-
-	List<String> getSynchronizedUserAttributeList(ExtSource extSource) throws InternalErrorException;
 
 	}
