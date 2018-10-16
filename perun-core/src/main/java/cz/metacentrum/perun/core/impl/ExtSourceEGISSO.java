@@ -64,7 +64,7 @@ public class ExtSourceEGISSO extends ExtSourceLdap implements ExtSourceApi {
 	}
 
 	@Override
-	public List<Map<String, String>> getSubjects(Map<String, String> attributes) throws InternalErrorException, ExtSourceUnsupportedOperationException {
+	public List<Map<String, String>> getAllSubjects(Map<String, String> attributes) throws InternalErrorException, ExtSourceUnsupportedOperationException {
 		throw new ExtSourceUnsupportedOperationException();
 	}
 

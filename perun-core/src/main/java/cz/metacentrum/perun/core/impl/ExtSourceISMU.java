@@ -65,7 +65,7 @@ public class ExtSourceISMU extends ExtSource implements ExtSourceSimpleApi {
 	}
 
 	@Override
-	public List<Map<String, String>> getSubjects(Map<String, String> attributes) throws InternalErrorException, ExtSourceUnsupportedOperationException {
+	public List<Map<String, String>> getAllSubjects(Map<String, String> attributes) throws InternalErrorException, ExtSourceUnsupportedOperationException {
 		throw new ExtSourceUnsupportedOperationException();
 	}
 

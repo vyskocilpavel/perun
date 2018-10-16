@@ -73,7 +73,7 @@ public interface ExtSourceSimpleApi {
 	 * @throws InternalErrorException
 	 * @throws ExtSourceUnsupportedOperationException
 	 */
-	List<Map<String, String>> getSubjects(Map<String, String> attributes) throws InternalErrorException, ExtSourceUnsupportedOperationException;
+	List<Map<String, String>> getAllSubjects(Map<String, String> attributes) throws InternalErrorException, ExtSourceUnsupportedOperationException;
 
 	/**
 	 * If extSource needs to be closed, this method must be called.

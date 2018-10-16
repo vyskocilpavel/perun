@@ -48,15 +48,11 @@ public interface ExtSourcesManager {
 
 	String CONFIGURATIONFILE = Utils.configurationsLocations + "perun-extSources.xml";
 
-	String USERSYNCHROENABLED_ATTRNAME = "userSynchronizationEnabled";
-	String USERSYNCHROTIMES_ATTRNAME = "userSynchronizationTimes";
-	String USEROVERWRITEATTRIBUTES_ATTRNAME = "overwriteUserAttributes";
-	String USERSYNCHRONIZEDATTRIBUTES_ATTRNAME = "synchronizedUserAttributes";
+	String EXTSOURCE_SYNCHRONIZATION_ENABLED_ATTRNAME = "extSourceSynchronizationEnabled";
+	String EXTSOURCE_SYNCHRONIZATION_TIMES_ATTRNAME = "extSourceSynchronizationTimes";
+	String OVERWRITEATTRIBUTES_ATTRNAME = "overwriteUserAttributes";
 
-
-
-
-	String SUBJECTSQUERY_ATTRNAME = "subjectQuery";
+	String ALL_SUBJECTS_QUERY_ATTRNAME = "allSubjectsQuery";
 	/**
 	 * Creates an external source.
 	 *

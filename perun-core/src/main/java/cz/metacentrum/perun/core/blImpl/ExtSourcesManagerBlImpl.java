@@ -476,14 +476,25 @@ public class ExtSourcesManagerBlImpl implements ExtSourcesManagerBl {
 	public synchronized void synchronizeExtSource(PerunSession sess, ExtSource extSource) throws InternalErrorException, ExtSourceUnsupportedOperationException, CandidateNotExistsException, ExtSourceNotExistsException {
 		log.trace("ExtSource synchronization started for extSource: {} ", extSource.toString());
 
-		//Get subjects from extSource
-		List<Map<String, String>> subjects = getSubjectsFromExtSource(extSource);
+		try {
+			//Get subjects from extSource
+			List<Map<String, String>> subjects = getSubjectsFromExtSource(extSource);
 
-		for (Map<String, String> subject : subjects) {
-			Candidate candidate = getCandidate(sess, subject, extSource, subject.get("login"));
-			getPerunBl().getUsersManagerBl().addCandidateToPool(candidate);
+			for (Map<String, String> subject : subjects) {
+				Candidate candidate = getCandidate(sess, subject, extSource, subject.get("login"));
+				getPerunBl().getUsersManagerBl().addCandidateToPool(candidate);
+			}
+			log.trace("ExtSource synchronization ended for extSource: {} ", extSource.toString());
+		} finally {
+			//Close open extSource if they support this operation
+			try {
+				((ExtSourceSimpleApi) extSource).close();
+			} catch (ExtSourceUnsupportedOperationException e) {
+				// ExtSource doesn't support that functionality, so silently skip it.
+			} catch (InternalErrorException e) {
+				log.info("Can't close extSource connection. Cause: {}", e);
+			}
 		}
-		log.trace("ExtSource synchronization ended for extSource: {} ", extSource.toString());
 	}
 
 	public void forceExtSourceSynchronization(PerunSession sess, ExtSource extSource) throws InternalErrorException {
@@ -525,7 +536,7 @@ public class ExtSourcesManagerBlImpl implements ExtSourcesManagerBl {
 		int numberOfNewlyAddedExtSource = 0;
 		for (ExtSource extSource : extSources) {
 			Map<String, String> attributes = extSourcesManagerImpl.getAttributes(extSource);
-			String[] synchronizationTimes = attributes.get(ExtSourcesManager.USERSYNCHROTIMES_ATTRNAME).split(",");
+			String[] synchronizationTimes = attributes.get(ExtSourcesManager.EXTSOURCE_SYNCHRONIZATION_TIMES_ATTRNAME).split(",");
 			String time = localDateTime.format(DateTimeFormatter.ofPattern("HH:mm"));
 			for (String synchronizationTime : synchronizationTimes) {
 				if (synchronizationTime.matches(pattern) && synchronizationTime.equals(time)) {
@@ -552,7 +563,7 @@ public class ExtSourcesManagerBlImpl implements ExtSourcesManagerBl {
 
 	public List<String> getOverwriteUserAttributeList(ExtSource extSource) throws InternalErrorException {
 		Map<String, String> extSourceAttributes = getPerunBl().getExtSourcesManagerBl().getAttributes(extSource);
-		String[] overwriteUserAttributes = extSourceAttributes.get(ExtSourcesManager.USEROVERWRITEATTRIBUTES_ATTRNAME).split(",");
+		String[] overwriteUserAttributes = extSourceAttributes.get(ExtSourcesManager.OVERWRITEATTRIBUTES_ATTRNAME).split(",");
 		return  Arrays.asList(overwriteUserAttributes);
 	}
 
@@ -570,7 +581,7 @@ public class ExtSourcesManagerBlImpl implements ExtSourcesManagerBl {
 		Map<String, String> attributes = extSourcesManagerImpl.getAttributes(extSource);
 		List<Map<String, String>> subjects;
 		try {
-			subjects = ((ExtSourceSimpleApi) extSource).getSubjects(attributes);
+			subjects = ((ExtSourceSimpleApi) extSource).getAllSubjects(attributes);
 		} catch (ExtSourceUnsupportedOperationException e) {
 			throw new InternalErrorException("ExtSource " + extSource.getName() + " doesn't support getSubjects", e);
 		}
