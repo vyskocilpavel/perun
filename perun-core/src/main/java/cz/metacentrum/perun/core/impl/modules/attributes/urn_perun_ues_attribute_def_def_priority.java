@@ -46,14 +46,6 @@ public class urn_perun_ues_attribute_def_def_priority extends UserExtSourceAttri
 		} catch (AttributeNotExistsException e) {
 			throw new ConsistencyErrorException("");
 		}
-		/*
-		try {
-			User user = sess.getPerunBl().getUsersManagerBl().getUserById(sess, userExtSource.getUserId());
-			sess.getPerunBl().getUsersManagerBl().updateUserAttributesAfterUesChanged(sess, user);
-		} catch (UserNotExistsException | WrongAttributeValueException | WrongAttributeAssignmentException | AttributeNotExistsException e) {
-			throw new InternalErrorException(e);
-		}
-		*/
 
 	}
 
@@ -66,15 +58,17 @@ public class urn_perun_ues_attribute_def_def_priority extends UserExtSourceAttri
 		attr.setDescription("Priority of UserExtSource. Priority must be bigger than 0.");
 		return attr;
 	}
-//
-//	@Override
-//	public void changedAttributeHook(PerunSessionImpl sess, UserExtSource userExtSource, Attribute attribute) throws InternalErrorException, WrongReferenceAttributeValueException {
-//		try {
-//			User user = sess.getPerunBl().getUsersManagerBl().getUserById(sess, userExtSource.getUserId());
-//			sess.getPerunBl().getUsersManagerBl().updateUserAttributesAfterUesChanged(sess, user);
-//		} catch (UserNotExistsException | WrongAttributeValueException | WrongAttributeAssignmentException | AttributeNotExistsException e) {
-//			throw new InternalErrorException(e);
-//		}
-//	}
+
+	@Override
+	public void changedAttributeHook(PerunSessionImpl sess, UserExtSource userExtSource, Attribute attribute) throws InternalErrorException, WrongReferenceAttributeValueException {
+		try {
+			User user = sess.getPerunBl().getUsersManagerBl().getUserById(sess, userExtSource.getUserId());
+			if (sess.getPerunBl().getUsersManagerBl().getUserExtSourcePriority(sess, userExtSource) != -1 && sess.getPerunBl().getUsersManagerBl().getUserExtSourceStoredAttributesAttr(sess, userExtSource) != null) {
+				sess.getPerunBl().getUsersManagerBl().updateUserAttributesAfterUesChanged(sess, user);
+			}
+		} catch (UserNotExistsException | WrongAttributeValueException | WrongAttributeAssignmentException | AttributeNotExistsException e) {
+			throw new InternalErrorException(e);
+		}
+	}
 
 }

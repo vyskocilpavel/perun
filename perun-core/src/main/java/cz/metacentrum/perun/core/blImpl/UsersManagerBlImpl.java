@@ -2273,12 +2273,15 @@ public class UsersManagerBlImpl implements UsersManagerBl {
 		log.debug("Synchronized attributes for user: " + synchronizedAttributes);
 
 		for (String attrName : synchronizedAttributes) {
+			log.debug("Attribute name: {}", attrName );
 			if (attrName.startsWith(AttributesManager.NS_USER_ATTR_DEF)) {
 				Attribute userAttribute = getPerunBl().getAttributesManagerBl().getAttribute(sess, user, attrName);
 				Attribute attribute = getUserAttributeFromUserExtSourcesWithHighestPriority(sess, user, attrName);
+				log.debug("UserAttribute {} and attribute {}", userAttribute, attribute);
 				if ((userAttribute.getValue() != null && !userAttribute.getValue().equals(attribute.getValue()))
 						|| (userAttribute.getValue() == null && attribute.getValue() != null)) {
 					getPerunBl().getAttributesManagerBl().setAttribute(sess, user, attribute);
+					log.debug("Attribute {} was updated. Old value: {}, New value: {}", userAttribute, userAttribute.getValue(), attribute.getValue());
 				}
 			}
 		}
@@ -2304,9 +2307,12 @@ public class UsersManagerBlImpl implements UsersManagerBl {
 			if (attrName.startsWith(AttributesManager.NS_USER_ATTR_DEF)) {
 				Attribute userAttribute = getPerunBl().getAttributesManagerBl().getAttribute(sess, user, attrName);
 				Attribute attribute = getUserAttributeFromUserExtSourcesWithHighestPriority(sess, user, attrName);
+
 				if ((userAttribute.getValue() != null && !userAttribute.getValue().equals(attribute.getValue()))
 						|| (userAttribute.getValue() == null && attribute.getValue() != null)) {
 					getPerunBl().getAttributesManagerBl().setAttribute(sess, user, attribute);
+					log.debug("Attribute {} was updated. Old value: {}, New value: {}", userAttribute, userAttribute.getValue(), attribute.getValue());
+
 				}
 			}
 		}
@@ -2447,7 +2453,7 @@ public class UsersManagerBlImpl implements UsersManagerBl {
 	 * @return Attribute
 	 * @throws InternalErrorException
 	 */
-	private Attribute getUserExtSourceStoredAttributesAttr(PerunSession sess, UserExtSource userExtSource)  throws InternalErrorException {
+	public Attribute getUserExtSourceStoredAttributesAttr(PerunSession sess, UserExtSource userExtSource)  throws InternalErrorException {
 		try {
 			return getPerunBl().getAttributesManagerBl().getAttribute(sess, userExtSource, UsersManager.USEREXTSOURCESTOREDATTRIBUTES_ATTRNAME);
 		} catch (WrongAttributeAssignmentException | AttributeNotExistsException e) {
@@ -2485,6 +2491,11 @@ public class UsersManagerBlImpl implements UsersManagerBl {
 	 */
 	private void updateUserCoreAttributesByHighestPriority(PerunSession sess, User user) throws InternalErrorException {
 		UserExtSource uesWithHighestPriority = getUserExtSourceWithHighestPositivePriority(sess, user);
+
+		if (uesWithHighestPriority == null) {
+			return;
+		}
+
 		Attribute storedAttribute = getUserExtSourceStoredAttributesAttr(sess, uesWithHighestPriority);
 
 		if (storedAttribute != null && storedAttribute.valueAsString() != null) {

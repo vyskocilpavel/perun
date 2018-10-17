@@ -31,23 +31,27 @@ public class urn_perun_ues_attribute_def_def_storedAttributes extends UserExtSou
 		} catch (JSONException e) {
 			throw new WrongAttributeValueException("Value is not a valid JSON");
 		}
-		/*
+	}
+
+	public AttributeDefinition getAttributeDefinition() {
+		AttributeDefinition attr = new AttributeDefinition();
+		attr.setNamespace(AttributesManager.NS_UES_ATTR_DEF);
+		attr.setFriendlyName("storedAttributes");
+		attr.setDisplayName("Stored attributes");
+		attr.setType(String.class.getName());
+		attr.setDescription("Stored attributes during synchronization.");
+		return attr;
+	}
+
+	@Override
+	public void changedAttributeHook(PerunSessionImpl sess, UserExtSource userExtSource, Attribute attribute) throws InternalErrorException, WrongReferenceAttributeValueException {
 		try {
 			User user = sess.getPerunBl().getUsersManagerBl().getUserById(sess, userExtSource.getUserId());
-			sess.getPerunBl().getUsersManagerBl().updateUserAttributesAfterUesChanged(sess, user);
+			if (sess.getPerunBl().getUsersManagerBl().getUserExtSourcePriority(sess, userExtSource) != -1 && sess.getPerunBl().getUsersManagerBl().getUserExtSourceStoredAttributesAttr(sess, userExtSource) != null) {
+				sess.getPerunBl().getUsersManagerBl().updateUserAttributesAfterUesChanged(sess, user);
+			}
 		} catch (UserNotExistsException | WrongAttributeValueException | WrongAttributeAssignmentException | AttributeNotExistsException e) {
 			throw new InternalErrorException(e);
 		}
-		*/
 	}
-
-//	public AttributeDefinition getAttributeDefinition() {
-//		AttributeDefinition attr = new AttributeDefinition();
-//		attr.setNamespace(AttributesManager.NS_UES_ATTR_DEF);
-//		attr.setFriendlyName("storedAttributes");
-//		attr.setDisplayName("Stored attributes");
-//		attr.setType(String.class.getName());
-//		attr.setDescription("Stored attributes during synchronization.");
-//		return attr;
-//	}
 }

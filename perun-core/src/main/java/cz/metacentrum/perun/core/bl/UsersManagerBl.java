@@ -1329,4 +1329,7 @@ public interface UsersManagerBl {
 	 */
 	void saveInformationAboutUserSynchronization(PerunSession sess, Candidate candidate, boolean failedDueToException, String exceptionMessage) throws AttributeNotExistsException, InternalErrorException, WrongReferenceAttributeValueException, WrongAttributeAssignmentException, WrongAttributeValueException;
 
-}
+
+	Attribute getUserExtSourceStoredAttributesAttr(PerunSession sess, UserExtSource userExtSource)  throws InternalErrorException;
+
+	}
