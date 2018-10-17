@@ -373,20 +373,12 @@ public class MembersManagerBlImpl implements MembersManagerBl {
 
 		// If user hasn't been found, then synchronize him
 		if (user == null) {
-			/*user = new User();
-			user.setFirstName(candidate.getFirstName());
-			user.setLastName(candidate.getLastName());
-			user.setMiddleName(candidate.getMiddleName());
-			user.setTitleAfter(candidate.getTitleAfter());
-			user.setTitleBefore(candidate.getTitleBefore());
-			if(specificUserType.equals(specificUserType.SERVICE)) user.setServiceUser(true);
-			if(specificUserType.equals(specificUserType.SPONSORED)) user.setSponsoredUser(true);
-			// Store the user, this must be done in separate transaction
-			user = getPerunBl().getUsersManagerBl().createUser(sess, user);
-
-			log.debug("createMember: new user: {}", user);*/
 			try {
 				perunBl.getUsersManagerBl().synchronizeUser(sess, candidate);
+				// Try to find the user by userExtSource
+				user = getPerunBl().getUsersManagerBl().getUserByExtSourceNameAndExtLogin(sess, candidate.getUserExtSource().getExtSource().getName(), candidate.getUserExtSource().getLogin());
+				log.debug("User was synchronized from External Source");
+
 			} catch (UserExtSourceNotExistsException e) {
 				e.printStackTrace();
 			} catch (WrongAttributeAssignmentException e) {
@@ -395,31 +387,11 @@ public class MembersManagerBlImpl implements MembersManagerBl {
 				e.printStackTrace();
 			} catch (AttributeNotExistsException e) {
 				e.printStackTrace();
+			} catch (UserNotExistsException e) {
+				e.printStackTrace();
 			}
 		}
 
-		// Assign missing userExtSource and update LoA
-		/*
-		if (candidate.getUserExtSources() != null) {
-			for (UserExtSource userExtSource : candidate.getUserExtSources()) {
-				try {
-					UserExtSource currentUserExtSource = getPerunBl().getUsersManagerBl().getUserExtSourceByExtLogin(sess, userExtSource.getExtSource(), userExtSource.getLogin());
-					// Update LoA
-					currentUserExtSource.setLoa(userExtSource.getLoa());
-					getPerunBl().getUsersManagerBl().updateUserExtSource(sess, currentUserExtSource);
-				} catch (UserExtSourceNotExistsException e) {
-					// Create userExtSource
-					try {
-						getPerunBl().getUsersManagerBl().addUserExtSource(sess, user, userExtSource);
-					} catch (UserExtSourceExistsException e1) {
-						throw new ConsistencyErrorException("Adding userExtSource which already exists: " + userExtSource);
-					}
-				} catch (UserExtSourceExistsException e1) {
-					throw new ConsistencyErrorException("Updating login of userExtSource to value which already exists: " + userExtSource);
-				}
-			}
-		}
-*/
 		try {
 			Member member = getMemberByUser(sess, vo, user);
 			throw new AlreadyMemberException(member);

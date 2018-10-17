@@ -46,12 +46,14 @@ public class urn_perun_ues_attribute_def_def_priority extends UserExtSourceAttri
 		} catch (AttributeNotExistsException e) {
 			throw new ConsistencyErrorException("");
 		}
+		/*
 		try {
 			User user = sess.getPerunBl().getUsersManagerBl().getUserById(sess, userExtSource.getUserId());
 			sess.getPerunBl().getUsersManagerBl().updateUserAttributesAfterUesChanged(sess, user);
 		} catch (UserNotExistsException | WrongAttributeValueException | WrongAttributeAssignmentException | AttributeNotExistsException e) {
 			throw new InternalErrorException(e);
 		}
+		*/
 
 	}
 
@@ -64,7 +66,7 @@ public class urn_perun_ues_attribute_def_def_priority extends UserExtSourceAttri
 		attr.setDescription("Priority of UserExtSource. Priority must be bigger than 0.");
 		return attr;
 	}
-
+//
 //	@Override
 //	public void changedAttributeHook(PerunSessionImpl sess, UserExtSource userExtSource, Attribute attribute) throws InternalErrorException, WrongReferenceAttributeValueException {
 //		try {

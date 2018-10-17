@@ -419,7 +419,7 @@ public interface UsersManagerBl {
 	 */
 	UserExtSource addUserExtSource(PerunSession perunSession, User user, UserExtSource userExtSource) throws InternalErrorException, UserExtSourceExistsException;
 
-	UserExtSource addUserExtSourceWithPriority(PerunSession sess, User user, UserExtSource userExtSource) throws InternalErrorException, UserExtSourceExistsException;
+	UserExtSource addUserExtSourceWithPriorityAndUpdateUserAtrributes(PerunSession sess, User user, UserExtSource userExtSource) throws InternalErrorException, UserExtSourceExistsException;
 
 	/**
 	 * Removes user's external sources.

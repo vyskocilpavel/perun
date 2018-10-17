@@ -345,7 +345,7 @@ public class UsersManagerBlImpl implements UsersManagerBl {
 		UserExtSource ues = new UserExtSource(es, 0, String.valueOf(user.getId()));
 		try {
 //			this.addUserExtSource(sess, user, ues);
-			this.addUserExtSourceWithPriority(sess, user, ues);
+			this.addUserExtSourceWithPriorityAndUpdateUserAtrributes(sess, user, ues);
 		} catch (UserExtSourceExistsException e) {
 			throw new ConsistencyErrorException(e);
 		}
@@ -382,7 +382,7 @@ public class UsersManagerBlImpl implements UsersManagerBl {
 		UserExtSource ues = new UserExtSource(es, 0, String.valueOf(user.getId()));
 		try {
 //			this.addUserExtSource(sess, user, ues);
-			this.addUserExtSourceWithPriority(sess, user, ues);
+			this.addUserExtSourceWithPriorityAndUpdateUserAtrributes(sess, user, ues);
 		} catch (UserExtSourceExistsException e) {
 			throw new ConsistencyErrorException(e);
 		}
@@ -596,25 +596,24 @@ public class UsersManagerBlImpl implements UsersManagerBl {
 
 		userExtSource = getUsersManagerImpl().addUserExtSource(sess, user, userExtSource);
 		getPerunBl().getAuditer().log(sess, "{} added to {}.", userExtSource, user);
-
-		//UpdateUserAttributes
-		try {
-			updateUserAttributesAfterUesChanged(sess, user);
-		} catch (AttributeNotExistsException | WrongAttributeAssignmentException | WrongAttributeValueException | WrongReferenceAttributeValueException e) {
-			e.printStackTrace();
-		}
-
 		return userExtSource;
 	}
 
-	public UserExtSource addUserExtSourceWithPriority(PerunSession sess, User user, UserExtSource userExtSource) throws InternalErrorException, UserExtSourceExistsException {
+	public UserExtSource addUserExtSourceWithPriorityAndUpdateUserAtrributes(PerunSession sess, User user, UserExtSource userExtSource) throws InternalErrorException, UserExtSourceExistsException {
 		UserExtSource ues = addUserExtSource(sess, user, userExtSource);
+		try {
+			updateUserAttributesAfterUesChanged(sess, user);
+			log.debug("User attributes was updated.");
+		} catch (WrongAttributeValueException | WrongAttributeAssignmentException | AttributeNotExistsException | WrongReferenceAttributeValueException e) {
+			e.printStackTrace();
+		}
 		try {
 			setLowestPriority(sess, user, ues);
 			log.debug("Priority was stored for userExtSource");
 		} catch (WrongAttributeValueException | WrongAttributeAssignmentException | AttributeNotExistsException | WrongReferenceAttributeValueException e) {
 			e.printStackTrace();
 		}
+
 		return ues;
 	}
 
@@ -2210,7 +2209,7 @@ public class UsersManagerBlImpl implements UsersManagerBl {
 	}
 
 	public synchronized void synchronizeUser(PerunSession sess, Candidate candidate) throws InternalErrorException, AttributeNotExistsException, WrongAttributeAssignmentException, WrongAttributeValueException, WrongReferenceAttributeValueException {
-		log.info("User synchronization started for candidate: {}", candidate);
+		log.debug("User synchronization started for candidate: {}", candidate);
 
 		User user = null;
 		UserExtSource ues;
@@ -2231,7 +2230,7 @@ public class UsersManagerBlImpl implements UsersManagerBl {
 		// If user hasn't been found, then create him
 		if (user == null) {
 			user = createUser(sess, candidate);
-			log.debug("User was created.");
+			log.debug("User {} was created.", user);
 		}
 
 		// Assign missing userExtSource and update LoA
@@ -2248,8 +2247,8 @@ public class UsersManagerBlImpl implements UsersManagerBl {
 				} catch (UserExtSourceNotExistsException e) {
 					// Create userExtSource
 					try {
-						uesFromPerun = addUserExtSourceWithPriority(sess, user, userExtSource);
-						log.debug("UserExtSource was added.");
+						uesFromPerun = addUserExtSourceWithPriorityAndUpdateUserAtrributes(sess, user, userExtSource);
+						log.debug("UserExtSource {} was added to user {}.", userExtSource, user);
 					} catch (UserExtSourceExistsException e1) {
 						throw new ConsistencyErrorException("Adding userExtSource which already exists: " + userExtSource);
 					}
@@ -2257,13 +2256,12 @@ public class UsersManagerBlImpl implements UsersManagerBl {
 					throw new ConsistencyErrorException("Updating login of userExtSource to value which already exists: " + userExtSource);
 				}
 				storeUserExtSourceStoredAttributes(sess, candidate, uesFromPerun);
-				log.debug("UserExtSource attribute was stored.");
-
 			}
 		}
 		if (ues != null) {
 			updateUserAttributesAfterUesChanged(sess, user);
 		}
+		log.debug("User synchronization ended for candidate: {}", candidate);
 	}
 
 	public void storeUserExtSourceStoredAttributes(PerunSession sess, Candidate candidate, UserExtSource userExtSource) throws AttributeNotExistsException, InternalErrorException, WrongAttributeAssignmentException, WrongAttributeValueException, WrongReferenceAttributeValueException {

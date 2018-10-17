@@ -474,7 +474,7 @@ public class ExtSourcesManagerBlImpl implements ExtSourcesManagerBl {
 	}
 
 	public synchronized void synchronizeExtSource(PerunSession sess, ExtSource extSource) throws InternalErrorException, ExtSourceUnsupportedOperationException, CandidateNotExistsException, ExtSourceNotExistsException {
-		log.trace("ExtSource synchronization started for extSource: {} ", extSource.toString());
+		log.debug("ExtSource synchronization started for extSource: {} ", extSource.toString());
 
 		try {
 			//Get subjects from extSource
@@ -484,7 +484,7 @@ public class ExtSourcesManagerBlImpl implements ExtSourcesManagerBl {
 				Candidate candidate = getCandidate(sess, subject, extSource, subject.get("login"));
 				getPerunBl().getUsersManagerBl().addCandidateToPool(candidate);
 			}
-			log.trace("ExtSource synchronization ended for extSource: {} ", extSource.toString());
+			log.debug("ExtSource synchronization ended for extSource: {} . Synchronization for {} users was scheduled.", extSource.toString(), subjects.size());
 		} finally {
 			//Close open extSource if they support this operation
 			try {
