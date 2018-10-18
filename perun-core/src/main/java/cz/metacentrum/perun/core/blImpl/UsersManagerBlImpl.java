@@ -2239,6 +2239,10 @@ public class UsersManagerBlImpl implements UsersManagerBl {
 						uesFromPerun.setLoa(userExtSource.getLoa());
 						getPerunBl().getUsersManagerBl().updateUserExtSourceWithoutUpdateUserAttributes(sess, uesFromPerun);
 					}
+					//Store userExtSource priority if the attribute doesn't stored yet.
+					if (getUserExtSourcePriority(sess, uesFromPerun) == -1) {
+						setLowestPriority(sess, user, ues);
+					}
 				} catch (UserExtSourceNotExistsException e) {
 					// Create userExtSource
 					try {
@@ -2269,10 +2273,10 @@ public class UsersManagerBlImpl implements UsersManagerBl {
 
 	public void updateUserAttributesAfterUesChanged(PerunSession sess, User user) throws InternalErrorException, AttributeNotExistsException, WrongAttributeAssignmentException, WrongAttributeValueException, WrongReferenceAttributeValueException {
 		log.debug("Update user attributes after UserExtSource chanded started");
+
 		updateUserCoreAttributesByHighestPriority(sess, user);
 
 		List<String> synchronizedAttributes = getSynchronizedAttributeListForUser(sess, user);
-		log.debug("Synchronized attributes for user: " + synchronizedAttributes);
 
 		for (String attrName : synchronizedAttributes) {
 			log.debug("Attribute name: {}", attrName );
@@ -2287,14 +2291,15 @@ public class UsersManagerBlImpl implements UsersManagerBl {
 				}
 			}
 		}
-		log.debug("Update user attributes after UserExtSource chanded ended");
 
+		log.debug("Update user attributes after UserExtSource chanded ended");
 	}
 
 	public void updateUserAttributesAfterUesRemoved(PerunSession sess, User user, List<String> synchronizedAttributesFromRemovedExtSource) throws InternalErrorException, AttributeNotExistsException, WrongAttributeAssignmentException, WrongAttributeValueException, WrongReferenceAttributeValueException {
 		log.debug("Update user attributes after UserExtSource removed started");
 
 		updateUserCoreAttributesByHighestPriority(sess, user);
+
 		List<String> attributesToRemoved = new ArrayList<>();
 		List<String> synchronizedAttributes = getSynchronizedAttributeListForUser(sess, user);
 
@@ -2321,10 +2326,12 @@ public class UsersManagerBlImpl implements UsersManagerBl {
 
 		//Removed attributes from removed extSource
 		for (String attrName : attributesToRemoved) {
-			Attribute attribute = getPerunBl().getAttributesManagerBl().getAttribute(sess, user, attrName);
-			attribute.setValue(null);
-			getPerunBl().getAttributesManagerBl().setAttribute(sess, user, attribute);
-			log.debug("Attribute {} was removed from user {}.", attribute, user);
+			if (attrName.startsWith(AttributesManager.NS_USER_ATTR_DEF)) {
+				Attribute attribute = getPerunBl().getAttributesManagerBl().getAttribute(sess, user, attrName);
+				attribute.setValue(null);
+				getPerunBl().getAttributesManagerBl().setAttribute(sess, user, attribute);
+				log.debug("Attribute {} was removed from user {}.", attribute, user);
+			}
 		}
 
 		log.debug("Update user attributes after UserExtSource removed ended. ");
