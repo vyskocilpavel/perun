@@ -2260,9 +2260,11 @@ public class UsersManagerBlImpl implements UsersManagerBl {
 	}
 
 	public void storeUserExtSourceStoredAttributes(PerunSession sess, Candidate candidate, UserExtSource userExtSource) throws AttributeNotExistsException, InternalErrorException, WrongAttributeAssignmentException, WrongAttributeValueException, WrongReferenceAttributeValueException {
+		log.debug("Method storeUserExtSourceStoredAttributes for candidate {} started.", candidate);
 		Attribute userExtSourceStoredAttributesAttr = new Attribute(((PerunBl) sess.getPerun()).getAttributesManagerBl().getAttributeDefinition(sess, UsersManager.USEREXTSOURCESTOREDATTRIBUTES_ATTRNAME));
 		userExtSourceStoredAttributesAttr.setValue(candidate.convertAttributesToJSON().toString());
 		getPerunBl().getAttributesManagerBl().setAttribute(sess, userExtSource, userExtSourceStoredAttributesAttr);
+		log.debug("Method storeUserExtSourceStoredAttributes for candidate {} ended.", candidate);
 	}
 
 	public void updateUserAttributesAfterUesChanged(PerunSession sess, User user) throws InternalErrorException, AttributeNotExistsException, WrongAttributeAssignmentException, WrongAttributeValueException, WrongReferenceAttributeValueException {
@@ -2322,6 +2324,7 @@ public class UsersManagerBlImpl implements UsersManagerBl {
 			Attribute attribute = getPerunBl().getAttributesManagerBl().getAttribute(sess, user, attrName);
 			attribute.setValue(null);
 			getPerunBl().getAttributesManagerBl().setAttribute(sess, user, attribute);
+			log.debug("Attribute {} was removed from user {}.", attribute, user);
 		}
 
 		log.debug("Update user attributes after UserExtSource removed ended. ");
