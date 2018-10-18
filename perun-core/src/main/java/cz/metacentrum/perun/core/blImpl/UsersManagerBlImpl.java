@@ -2239,10 +2239,6 @@ public class UsersManagerBlImpl implements UsersManagerBl {
 						uesFromPerun.setLoa(userExtSource.getLoa());
 						getPerunBl().getUsersManagerBl().updateUserExtSourceWithoutUpdateUserAttributes(sess, uesFromPerun);
 					}
-					//Store userExtSource priority if the attribute doesn't stored yet.
-					if (getUserExtSourcePriority(sess, uesFromPerun) == -1) {
-						setLowestPriority(sess, user, ues);
-					}
 				} catch (UserExtSourceNotExistsException e) {
 					// Create userExtSource
 					try {
@@ -2253,6 +2249,10 @@ public class UsersManagerBlImpl implements UsersManagerBl {
 					}
 				} catch (UserExtSourceExistsException e1) {
 					throw new ConsistencyErrorException("Updating login of userExtSource to value which already exists: " + userExtSource);
+				}
+				//Store userExtSource priority if the attribute doesn't stored yet.
+				if (getUserExtSourcePriority(sess, uesFromPerun) == -1) {
+					setLowestPriority(sess, user, ues);
 				}
 				storeUserExtSourceStoredAttributes(sess, candidate, uesFromPerun);
 			}
@@ -2347,7 +2347,8 @@ public class UsersManagerBlImpl implements UsersManagerBl {
 	}
 
 	public int setLowestPriority(PerunSession sess, User user, UserExtSource userExtSource) throws WrongAttributeAssignmentException, WrongAttributeValueException, WrongReferenceAttributeValueException, InternalErrorException, AttributeNotExistsException {
-		Attribute priorityAttribute = new Attribute(perunBl.getAttributesManagerBl().getAttributeDefinition(sess, UsersManager.USEREXTSOURCEPRIORITY_ATTRNAME));
+//		Attribute priorityAttribute = new Attribute(perunBl.getAttributesManagerBl().getAttributeDefinition(sess, UsersManager.USEREXTSOURCEPRIORITY_ATTRNAME));
+		Attribute priorityAttribute = getPerunBl().getAttributesManagerBl().getAttribute(sess, userExtSource, UsersManager.USEREXTSOURCEPRIORITY_ATTRNAME);
 		int priority = getNewLowestPriority(sess, user);
 		priorityAttribute.setValue(priority);
 		getPerunBl().getAttributesManagerBl().setAttributeInNestedTransaction(sess, userExtSource, priorityAttribute);
