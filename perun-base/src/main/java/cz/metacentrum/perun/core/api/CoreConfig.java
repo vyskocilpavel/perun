@@ -30,6 +30,7 @@ public class CoreConfig {
 
 	private boolean dbInitializatorEnabled;
 	private boolean readOnlyPerun;
+	private int userSynchronizationTimeout;
 	private int userMaxConcurentUsersToSynchronize;
 	private int extSourceSynchronizationTimeout;
 	private int extSourceMaxConcurentExtSourcesToSynchronize;
@@ -64,6 +65,14 @@ public class CoreConfig {
 	private String rtUrl;
 	private String smsProgram;
 	private String userExtSourcesPersistent;
+
+	public int getUserSynchronizationTimeout() {
+		return userSynchronizationTimeout;
+	}
+
+	public void setUserSynchronizationTimeout(int userSynchronizationTimeout) {
+		this.userSynchronizationTimeout = userSynchronizationTimeout;
+	}
 
 	public int getUserMaxConcurentUsersToSynchronize() {
 		return userMaxConcurentUsersToSynchronize;

@@ -65,7 +65,7 @@ public class UsersManagerBlImpl implements UsersManagerBl {
 		this.usersManagerImpl = usersManagerImpl;
 		this.userSynchronizerThreads = new ArrayList<>();
 		this.poolOfCandidatesToBeSynchronized = new PerunBeanProcessingPool<>();
-		//set maximum concurrent groups to synchronize by property
+		//set maximum concurrent users to synchronize by property
 		this.maxConcurentUsersToSynchronize = BeansUtils.getCoreConfig().getUserMaxConcurentUsersToSynchronize();
 
 	}
@@ -604,11 +604,9 @@ public class UsersManagerBlImpl implements UsersManagerBl {
 		UserExtSource ues = addUserExtSource(sess, user, userExtSource);
 		try {
 			setLowestPriority(sess, user, ues);
-			log.debug("Priority was stored for userExtSource");
 		} catch (WrongAttributeValueException | WrongAttributeAssignmentException | AttributeNotExistsException | WrongReferenceAttributeValueException e) {
-			e.printStackTrace();
+			throw new IllegalArgumentException("Problem with storing priority for UserExtSource!");
 		}
-
 		return ues;
 	}
 
@@ -2239,6 +2237,10 @@ public class UsersManagerBlImpl implements UsersManagerBl {
 						uesFromPerun.setLoa(userExtSource.getLoa());
 						getPerunBl().getUsersManagerBl().updateUserExtSourceWithoutUpdateUserAttributes(sess, uesFromPerun);
 					}
+					//Store userExtSource priority if the attribute doesn't stored yet.
+					if (getUserExtSourcePriority(sess, uesFromPerun) == -1) {
+						setLowestPriority(sess, user, uesFromPerun);
+					}
 				} catch (UserExtSourceNotExistsException e) {
 					// Create userExtSource
 					try {
@@ -2249,10 +2251,6 @@ public class UsersManagerBlImpl implements UsersManagerBl {
 					}
 				} catch (UserExtSourceExistsException e1) {
 					throw new ConsistencyErrorException("Updating login of userExtSource to value which already exists: " + userExtSource);
-				}
-				//Store userExtSource priority if the attribute doesn't stored yet.
-				if (getUserExtSourcePriority(sess, uesFromPerun) == -1) {
-					setLowestPriority(sess, user, ues);
 				}
 				storeUserExtSourceStoredAttributes(sess, candidate, uesFromPerun);
 			}
@@ -2347,11 +2345,11 @@ public class UsersManagerBlImpl implements UsersManagerBl {
 	}
 
 	public int setLowestPriority(PerunSession sess, User user, UserExtSource userExtSource) throws WrongAttributeAssignmentException, WrongAttributeValueException, WrongReferenceAttributeValueException, InternalErrorException, AttributeNotExistsException {
-//		Attribute priorityAttribute = new Attribute(perunBl.getAttributesManagerBl().getAttributeDefinition(sess, UsersManager.USEREXTSOURCEPRIORITY_ATTRNAME));
-		Attribute priorityAttribute = getPerunBl().getAttributesManagerBl().getAttribute(sess, userExtSource, UsersManager.USEREXTSOURCEPRIORITY_ATTRNAME);
+		Attribute priorityAttribute = new Attribute(perunBl.getAttributesManagerBl().getAttributeDefinition(sess, UsersManager.USEREXTSOURCEPRIORITY_ATTRNAME));
+//		Attribute priorityAttribute = getPerunBl().getAttributesManagerBl().getAttribute(sess, userExtSource, UsersManager.USEREXTSOURCEPRIORITY_ATTRNAME);
 		int priority = getNewLowestPriority(sess, user);
 		priorityAttribute.setValue(priority);
-		getPerunBl().getAttributesManagerBl().setAttributeInNestedTransaction(sess, userExtSource, priorityAttribute);
+		getPerunBl().getAttributesManagerBl().setAttribute(sess, userExtSource, priorityAttribute);
 		return priority;
 	}
 
@@ -2657,7 +2655,7 @@ public class UsersManagerBlImpl implements UsersManagerBl {
 		int numberOfNewlyRemovedThreads = 0;
 
 		// Get the default synchronization timeout from the configuration file
-		int timeout = BeansUtils.getCoreConfig().getExtSourceSynchronizationTimeout();
+		int timeout = BeansUtils.getCoreConfig().getUserSynchronizationTimeout();
 
 		Iterator<UserSynchronizerThread> threadIterator = userSynchronizerThreads.iterator();
 
