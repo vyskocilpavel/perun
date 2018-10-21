@@ -2450,7 +2450,7 @@ public class UsersManagerBlImpl implements UsersManagerBl {
 		Attribute uesStoredAttributesAttr = getUserExtSourceStoredAttributesAttr(sess, userExtSource);
 		if (uesStoredAttributesAttr != null && uesStoredAttributesAttr.getValue() != null && uesStoredAttributesAttr.valueAsString() != null) {
 			JSONObject storedAttributes = new JSONObject(uesStoredAttributesAttr.valueAsString());
-			return (List<String>) storedAttributes.keySet();
+			return new ArrayList<>(storedAttributes.keySet());
 		} else {
 			return new ArrayList<String>();
 		}
