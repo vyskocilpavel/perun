@@ -361,6 +361,8 @@ public class UsersManagerBlImpl implements UsersManagerBl {
 		if (candidate.getMiddleName() != null) user.setMiddleName(candidate.getMiddleName().trim());
 		if (candidate.getTitleBefore() != null) user.setTitleBefore(candidate.getTitleBefore().trim());
 		if (candidate.getTitleAfter() != null) user.setTitleAfter(candidate.getTitleAfter().trim());
+		if (candidate.isSponsoredUser()) user.setSponsoredUser(true);
+		if (candidate.isServiceUser()) user.setServiceUser(true);
 
 		//Convert empty strings to null
 		if (user.getFirstName() != null && user.getFirstName().isEmpty()) user.setFirstName(null);
