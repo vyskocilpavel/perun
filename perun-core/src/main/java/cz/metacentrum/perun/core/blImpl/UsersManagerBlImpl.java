@@ -383,7 +383,6 @@ public class UsersManagerBlImpl implements UsersManagerBl {
 		}
 		UserExtSource ues = new UserExtSource(es, 0, String.valueOf(user.getId()));
 		try {
-//			this.addUserExtSource(sess, user, ues);
 			this.addUserExtSourceWithPriority(sess, user, ues);
 		} catch (UserExtSourceExistsException e) {
 			throw new ConsistencyErrorException(e);
@@ -549,7 +548,7 @@ public class UsersManagerBlImpl implements UsersManagerBl {
 		} catch (UserNotExistsException e) {
 			throw new ConsistencyErrorException("User from perun not exists when should - removed during sync.", e);
 		} catch (WrongAttributeValueException | WrongAttributeAssignmentException | AttributeNotExistsException | WrongReferenceAttributeValueException e) {
-			e.printStackTrace();
+			throw new InternalErrorException("Error during updating user attributes after UserExtSource update: {}", e);
 		}
 		return updatedUserExtSource;
 	}
@@ -629,7 +628,7 @@ public class UsersManagerBlImpl implements UsersManagerBl {
 		try {
 			updateUserAttributesAfterUesRemoved(sess, user, synchronizedAttributesFromRemovedUes);
 		} catch (WrongAttributeValueException | WrongAttributeAssignmentException | AttributeNotExistsException | WrongReferenceAttributeValueException e) {
-			e.printStackTrace();
+			throw new InternalErrorException("Error during updating user attributes after UserExtSource removed: {}", e);
 		}
 	}
 
@@ -2522,23 +2521,23 @@ public class UsersManagerBlImpl implements UsersManagerBl {
 			Boolean isServiceUser = storedAttributes.optJSONArray(AttributesManager.NS_USER_ATTR_CORE + ":serviceUser").optBoolean(0);
 			Boolean isSponsoredUser = storedAttributes.optJSONArray(AttributesManager.NS_USER_ATTR_CORE + ":sponsoredUser").optBoolean(0);
 
-			if (!user.getFirstName().equals(firstName) && !(user.getFirstName() == null && firstName.equals(""))) {
+			if ((user.getFirstName() == null && !firstName.equals("")) || (user.getFirstName() != null && !user.getFirstName().equals(firstName))) {
 				user.setFirstName(firstName);
 				attributeChanged = true;
 			}
-			if (!user.getLastName().equals(lastName) && !(user.getLastName() == null && lastName.equals(""))) {
+			if ((user.getLastName() == null && !lastName.equals("")) || (user.getLastName() != null && !user.getLastName().equals(lastName))) {
 				user.setLastName(lastName);
 				attributeChanged = true;
 			}
-			if (!user.getLastName().equals(middleName) && !(user.getMiddleName() == null && middleName.equals(""))) {
+			if ((user.getMiddleName() == null && !middleName.equals("")) || (user.getMiddleName() != null && !user.getMiddleName().equals(middleName))) {
 				user.setMiddleName(middleName);
 				attributeChanged = true;
 			}
-			if (!user.getLastName().equals(tittleBefore) && !(user.getTitleBefore() == null && tittleBefore.equals(""))) {
+			if ((user.getTitleBefore() == null && !tittleBefore.equals("")) || (user.getTitleBefore() != null && !user.getTitleBefore().equals(tittleBefore))) {
 				user.setTitleAfter(tittleBefore);
 				attributeChanged = true;
 			}
-			if (!user.getLastName().equals(tittleAfter) && !(user.getTitleAfter() == null && tittleAfter.equals(""))) {
+			if ((user.getTitleAfter() == null && !tittleAfter.equals("")) || (user.getTitleAfter() != null && !user.getTitleAfter().equals(tittleAfter))) {
 				user.setTitleBefore(tittleAfter);
 				attributeChanged = true;
 			}

@@ -373,16 +373,8 @@ public class MembersManagerBlImpl implements MembersManagerBl {
 
 		// If user hasn't been found, then synchronize him
 		if (user == null) try {
-			/*
-			ExtSource extSource = getPerunBl().getExtSourcesManagerBl().getExtSourceByName(sess, candidate.getUserExtSource().getExtSource().getName());
-			if (extSource == null) {
-				throw new InternalErrorException("ExtSource from candidate does not exists!");
-			}
-			Candidate userCandidate = getPerunBl().getExtSourcesManagerBl().getUserCandidate(sess, extSource, candidate.getUserExtSource().getLogin());
-			if (userCandidate != null) {
-				perunBl.getUsersManagerBl().synchronizeUser(sess, userCandidate);
-			} else {
-			}*/
+			if(specificUserType.equals(specificUserType.SERVICE)) candidate.setServiceUser(true);
+			if(specificUserType.equals(specificUserType.SPONSORED)) candidate.setSponsoredUser(true);
 			perunBl.getUsersManagerBl().synchronizeUser(sess, candidate);
 
 
@@ -391,7 +383,7 @@ public class MembersManagerBlImpl implements MembersManagerBl {
 			log.debug("User was synchronized from External Source");
 
 		} catch (UserExtSourceNotExistsException | WrongAttributeAssignmentException | ExtSourceNotExistsException | AttributeNotExistsException | UserNotExistsException e) {
-			e.printStackTrace();
+			throw new InternalErrorException("Error during synchronize user from external source: {}", e);
 		}
 
 		try {

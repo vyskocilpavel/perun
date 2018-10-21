@@ -293,13 +293,4 @@ public interface ExtSourcesManagerBl {
 	 */
 	List<String> getOverwriteUserAttributeList(ExtSource extSource) throws InternalErrorException;
 
-	/**
-	 * Returns candidate from extSource with login
-	 * @param sess PerunSession
-	 * @param extSource ExtSource
-	 * @param login String
-	 * @return Candidate
-	 * @throws InternalErrorException
-	 */
-	Candidate getUserCandidate(PerunSession sess, ExtSource extSource, String login) throws InternalErrorException;
 	}
