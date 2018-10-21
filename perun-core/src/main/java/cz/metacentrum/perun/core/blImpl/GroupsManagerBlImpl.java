@@ -2433,12 +2433,14 @@ public class GroupsManagerBlImpl implements GroupsManagerBl {
 			//load attrDefinitions just once for first candidate
 			if(attrDefs.isEmpty()) {
 				for(String attrName : candidate.getAttributes().keySet()) {
-					try {
-						AttributeDefinition attrDef = getPerunBl().getAttributesManagerBl().getAttributeDefinition(sess, attrName);
-						attrDefs.add(attrDef);
-					} catch (AttributeNotExistsException ex) {
-						log.error("Can't synchronize attribute " + attrName + " for candidate " + candidate + " and for group " + group);
-						//skip this attribute at all
+					if(attrName.startsWith(AttributesManager.NS_MEMBER_ATTR)) {
+						try {
+							AttributeDefinition attrDef = getPerunBl().getAttributesManagerBl().getAttributeDefinition(sess, attrName);
+							attrDefs.add(attrDef);
+						} catch (AttributeNotExistsException ex) {
+							log.error("Can't synchronize attribute " + attrName + " for candidate " + candidate + " and for group " + group);
+							//skip this attribute at all
+						}
 					}
 				}
 			}
@@ -2446,14 +2448,12 @@ public class GroupsManagerBlImpl implements GroupsManagerBl {
 			//get RichMember with attributes
 			richMember = getPerunBl().getMembersManagerBl().convertMembersToRichMembersWithAttributes(sess, Arrays.asList(richMember), attrDefs).get(0);
 
-			for (String attributeName : candidate.getAttributes().keySet()) {
+			for (String attrName : candidate.getAttributes().keySet()) {
 				//update member attribute
-				if(attributeName.startsWith(AttributesManager.NS_MEMBER_ATTR)) {
-					updateMemberAttribute(sess, richMember, candidate, group, attributeName, mergeMemberAttributesList);
-				} else {
-					//we are not supporting other attributes then member or user so skip it without error, but log it
-					log.error("Attribute {} can't be set, because it is not member attribute.", attributeName);
+				if(attrName.startsWith(AttributesManager.NS_MEMBER_ATTR)) {
+					updateMemberAttribute(sess, richMember, candidate, group, attrName, mergeMemberAttributesList);
 				}
+
 			}
 
 			//Set correct member Status
