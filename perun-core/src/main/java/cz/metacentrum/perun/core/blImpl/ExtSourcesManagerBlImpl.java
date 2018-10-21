@@ -581,7 +581,7 @@ public class ExtSourcesManagerBlImpl implements ExtSourcesManagerBl {
 		Map<String, String> attributes = extSourcesManagerImpl.getAttributes(extSource);
 		List<Map<String, String>> subjects;
 		try {
-			subjects = ((ExtSourceSimpleApi) extSource).getAllSubjects(attributes);
+			subjects = ((ExtSourceSimpleApi) extSource).getAllUsersSubjects(attributes);
 		} catch (ExtSourceUnsupportedOperationException e) {
 			throw new InternalErrorException("ExtSource " + extSource.getName() + " doesn't support getSubjects", e);
 		}

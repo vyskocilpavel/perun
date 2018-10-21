@@ -104,8 +104,8 @@ public class ExtSourceSql extends ExtSource implements ExtSourceSimpleApi {
 		return this.querySource(sqlQueryForGroup, null, 0);
 	}
 
-	public List<Map<String,String>> getAllSubjects(Map<String, String> attributes) throws InternalErrorException {
-		String sqlQuery = attributes.get(ExtSourcesManager.ALL_SUBJECTS_QUERY_ATTRNAME);
+	public List<Map<String,String>> getAllUsersSubjects(Map<String, String> attributes) throws InternalErrorException {
+		String sqlQuery = getAttributes().get(ExtSourcesManager.ALL_SUBJECTS_QUERY_ATTRNAME);
 
 		return this.querySource(sqlQuery, null, 0);
 
