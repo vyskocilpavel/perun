@@ -83,11 +83,6 @@ public class ExtSourceREMS extends ExtSourceSqlComplex implements ExtSourceApi {
 		throw new ExtSourceUnsupportedOperationException();
 	}
 
-	@Override
-	public Map<String, String> getUserSubject(String login) throws InternalErrorException, ExtSourceUnsupportedOperationException, SubjectNotExistsException {
-		throw new ExtSourceUnsupportedOperationException();
-	}
-
 
 	/**
 	 * Filters subjects that does not have a corresponding user in Perun by ues REMS

@@ -45,11 +45,6 @@ public class ExtSourceKerberos extends ExtSource implements ExtSourceSimpleApi {
 		throw new ExtSourceUnsupportedOperationException();
 	}
 
-	@Override
-	public Map<String, String> getUserSubject(String login) throws InternalErrorException, ExtSourceUnsupportedOperationException, SubjectNotExistsException {
-		throw new ExtSourceUnsupportedOperationException();
-	}
-
 	public void close() throws InternalErrorException, ExtSourceUnsupportedOperationException {
 		throw new ExtSourceUnsupportedOperationException();
 	}

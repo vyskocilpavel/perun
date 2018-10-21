@@ -105,32 +105,12 @@ public class ExtSourceSql extends ExtSource implements ExtSourceSimpleApi {
 	}
 
 	public List<Map<String,String>> getUsersSubjects(String login) throws InternalErrorException {
-		List<Map<String, String>> subjects;
 		String query = getAttributes().get("usersQuery");
 
 		if (query == null) {
 			throw new InternalErrorException("usersQuery attribute is required");
 		}
-
-		if (login != null) {
-			subjects = this.querySource(query, login, 0);
-		} else {
-			subjects = this.querySource(query, "*", 0);
-		}
-		return subjects;
-	}
-
-	@Override
-	public Map<String, String> getUserSubject(String login) throws InternalErrorException, ExtSourceUnsupportedOperationException, SubjectNotExistsException {
-		List<Map<String, String>> subjects = getUsersSubjects(login);
-		if (subjects.size() < 1) {
-			throw new SubjectNotExistsException("Login: " + login);
-		}
-		if (subjects.size() > 1) {
-			throw new InternalErrorException("External source must return exactly one result, search string: " + login);
-		}
-
-		return subjects.get(0);
+		return this.querySource(query, null, 0);
 	}
 
 	protected List<Map<String,String>> querySource(String query, String searchString, int maxResults) throws InternalErrorException {

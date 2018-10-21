@@ -570,7 +570,7 @@ public class ExtSourcesManagerBlImpl implements ExtSourcesManagerBl {
 	public Candidate getUserCandidate(PerunSession sess, ExtSource extSource, String login) throws InternalErrorException {
 		Map<String, String> subject;
 		try {
-			subject = ((ExtSourceSimpleApi) extSource).getUserSubject(login);
+			subject = ((ExtSourceSimpleApi) extSource).getSubjectByLogin(login);
 		} catch (ExtSourceUnsupportedOperationException e) {
 			throw new InternalErrorException("ExtSource " + extSource.getName() + " doesn't support getSubjectByLogin", e);
 		} catch (SubjectNotExistsException e) {

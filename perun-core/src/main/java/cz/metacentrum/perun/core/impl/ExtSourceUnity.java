@@ -132,11 +132,6 @@ public class ExtSourceUnity extends ExtSource implements ExtSourceApi {
         throw new ExtSourceUnsupportedOperationException();
     }
 
-    @Override
-    public Map<String, String> getUserSubject(String login) throws InternalErrorException, ExtSourceUnsupportedOperationException, SubjectNotExistsException {
-        throw new ExtSourceUnsupportedOperationException();
-    }
-
 
     @Override
     public void close() {

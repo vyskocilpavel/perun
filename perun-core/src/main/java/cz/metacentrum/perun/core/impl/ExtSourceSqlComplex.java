@@ -119,11 +119,6 @@ public class ExtSourceSqlComplex extends ExtSource implements ExtSourceApi {
 		throw new ExtSourceUnsupportedOperationException();
 	}
 
-	@Override
-	public Map<String, String> getUserSubject(String login) throws InternalErrorException, ExtSourceUnsupportedOperationException, SubjectNotExistsException {
-		throw new ExtSourceUnsupportedOperationException();
-	}
-
 
 	protected List<Map<String,String>> querySource(String query, String searchString, int maxResults) throws InternalErrorException {
 		PreparedStatement st = null;

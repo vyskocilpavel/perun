@@ -67,11 +67,6 @@ public class ExtSourceISMU extends ExtSource implements ExtSourceSimpleApi {
 		throw new ExtSourceUnsupportedOperationException();
 	}
 
-	@Override
-	public Map<String, String> getUserSubject(String login) throws InternalErrorException, ExtSourceUnsupportedOperationException, SubjectNotExistsException {
-		throw new ExtSourceUnsupportedOperationException();
-	}
-
 
 	protected List<Map<String,String>> querySource(String query, String searchString, int maxResults) throws InternalErrorException {
 

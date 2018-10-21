@@ -122,11 +122,6 @@ public class ExtSourcePerun extends ExtSource implements ExtSourceApi {
 		throw new ExtSourceUnsupportedOperationException();
 	}
 
-	@Override
-	public Map<String, String> getUserSubject(String login) throws InternalErrorException, ExtSourceUnsupportedOperationException, SubjectNotExistsException {
-		throw new ExtSourceUnsupportedOperationException();
-	}
-
 	private List<Map<String, String>> convertRichUsersToListOfSubjects(List<RichUser> richUsers) throws InternalErrorException {
 		List<Map<String, String>> listOfSubjects = new ArrayList<>();
 		for(RichUser ru: richUsers) {

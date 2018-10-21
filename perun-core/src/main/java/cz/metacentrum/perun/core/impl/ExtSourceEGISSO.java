@@ -68,11 +68,6 @@ public class ExtSourceEGISSO extends ExtSourceLdap implements ExtSourceApi {
 		throw new ExtSourceUnsupportedOperationException();
 	}
 
-	@Override
-	public Map<String, String> getUserSubject(String login) throws InternalErrorException, ExtSourceUnsupportedOperationException, SubjectNotExistsException {
-		throw new ExtSourceUnsupportedOperationException();
-	}
-
 
 	@Override
 	protected List<Map<String, String>> querySource(String query, String base, int maxResults) throws InternalErrorException {

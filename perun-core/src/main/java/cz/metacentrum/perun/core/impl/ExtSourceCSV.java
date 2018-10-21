@@ -146,11 +146,6 @@ public class ExtSourceCSV extends ExtSource implements ExtSourceApi {
     }
 
 	@Override
-	public Map<String, String> getUserSubject(String login) throws InternalErrorException, ExtSourceUnsupportedOperationException, SubjectNotExistsException {
-        throw new ExtSourceUnsupportedOperationException();
-    }
-
-	@Override
     public void close() throws InternalErrorException, ExtSourceUnsupportedOperationException {
         throw new ExtSourceUnsupportedOperationException("Using this method is not supported for CSV.");
     }
