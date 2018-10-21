@@ -79,7 +79,12 @@ public class ExtSourceREMS extends ExtSourceSqlComplex implements ExtSourceApi {
 	}
 
 	@Override
-	public List<Map<String, String>> getAllUsersSubjects(Map<String, String> attributes) throws InternalErrorException, ExtSourceUnsupportedOperationException {
+	public List<Map<String, String>> getUsersSubjects(String login) throws InternalErrorException, ExtSourceUnsupportedOperationException {
+		throw new ExtSourceUnsupportedOperationException();
+	}
+
+	@Override
+	public Map<String, String> getUserSubject(String login) throws InternalErrorException, ExtSourceUnsupportedOperationException, SubjectNotExistsException {
 		throw new ExtSourceUnsupportedOperationException();
 	}
 

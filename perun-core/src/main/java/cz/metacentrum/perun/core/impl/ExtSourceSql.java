@@ -14,7 +14,7 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.Properties;
 
-import cz.metacentrum.perun.core.api.ExtSourcesManager;
+import cz.metacentrum.perun.core.api.exceptions.ExtSourceUnsupportedOperationException;
 import cz.metacentrum.perun.core.blImpl.PerunBlImpl;
 import org.apache.commons.codec.binary.Base64;
 import org.apache.commons.dbcp2.DriverManagerConnectionFactory;
@@ -104,11 +104,29 @@ public class ExtSourceSql extends ExtSource implements ExtSourceSimpleApi {
 		return this.querySource(sqlQueryForGroup, null, 0);
 	}
 
-	public List<Map<String,String>> getAllUsersSubjects(Map<String, String> attributes) throws InternalErrorException {
-		String sqlQuery = getAttributes().get(ExtSourcesManager.ALL_SUBJECTS_QUERY_ATTRNAME);
+	public List<Map<String,String>> getUsersSubjects(String login) throws InternalErrorException {
+		List<Map<String, String>> subjects;
+		String query = getAttributes().get("usersQuery");
 
-		return this.querySource(sqlQuery, null, 0);
+		if (query == null) {
+			throw new InternalErrorException("usersQuery attribute is required");
+		}
 
+		subjects = this.querySource(query, login, 0);
+		return subjects;
+	}
+
+	@Override
+	public Map<String, String> getUserSubject(String login) throws InternalErrorException, ExtSourceUnsupportedOperationException, SubjectNotExistsException {
+		List<Map<String, String>> subjects = getUsersSubjects(login);
+		if (subjects.size() < 1) {
+			throw new SubjectNotExistsException("Login: " + login);
+		}
+		if (subjects.size() > 1) {
+			throw new InternalErrorException("External source must return exactly one result, search string: " + login);
+		}
+
+		return subjects.get(0);
 	}
 
 	protected List<Map<String,String>> querySource(String query, String searchString, int maxResults) throws InternalErrorException {
