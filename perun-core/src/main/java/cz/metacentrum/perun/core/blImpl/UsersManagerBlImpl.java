@@ -612,17 +612,19 @@ public class UsersManagerBlImpl implements UsersManagerBl {
 
 	public void removeUserExtSource(PerunSession sess, User user, UserExtSource userExtSource) throws InternalErrorException, UserExtSourceAlreadyRemovedException {
 		//FIXME zkontrolovat zda na userExtSource neni navazan nejaky member
-		//First remove all user extSource attributes before removing userExtSource
+		//First get synchronizedAttributes from this userExtSource
+		List<String> synchronizedAttributesFromRemovedUes = getSynchronizedAttributeListForUserExtSource(sess, userExtSource);
+
+		//Remove all user extSource attributes before removing userExtSource
 		try {
 			getPerunBl().getAttributesManagerBl().removeAllAttributes(sess, userExtSource);
 		} catch (WrongReferenceAttributeValueException | WrongAttributeValueException ex) {
 			throw new InternalErrorException("Can't remove userExtSource because there is problem with removing all it's attributes.", ex);
 		}
-		List<String> synchronizedAttributesFromRemovedUes = getSynchronizedAttributeListForUserExtSource(sess, userExtSource);
 		getUsersManagerImpl().removeUserExtSource(sess, user, userExtSource);
 		getPerunBl().getAuditer().log(sess, "{} removed from {}.", userExtSource, user);
 
-		//UpdateUserAttributes
+		//Update user attributes
 		try {
 			updateUserAttributesAfterUesRemoved(sess, user, synchronizedAttributesFromRemovedUes);
 		} catch (WrongAttributeValueException | WrongAttributeAssignmentException | AttributeNotExistsException | WrongReferenceAttributeValueException e) {
@@ -2277,11 +2279,9 @@ public class UsersManagerBlImpl implements UsersManagerBl {
 		List<String> synchronizedAttributes = getSynchronizedAttributeListForUser(sess, user);
 
 		for (String attrName : synchronizedAttributes) {
-			log.debug("Attribute name: {}", attrName );
 			if (attrName.startsWith(AttributesManager.NS_USER_ATTR_DEF)) {
 				Attribute userAttribute = getPerunBl().getAttributesManagerBl().getAttribute(sess, user, attrName);
 				Attribute attribute = getUserAttributeFromUserExtSourcesWithHighestPriority(sess, user, attrName);
-				log.debug("UserAttribute {} and attribute {}", userAttribute, attribute);
 				if ((userAttribute.getValue() != null && !userAttribute.getValue().equals(attribute.getValue()))
 						|| (userAttribute.getValue() == null && attribute.getValue() != null)) {
 					getPerunBl().getAttributesManagerBl().setAttribute(sess, user, attribute);
