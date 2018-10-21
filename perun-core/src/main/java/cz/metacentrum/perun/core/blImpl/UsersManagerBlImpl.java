@@ -2301,6 +2301,9 @@ public class UsersManagerBlImpl implements UsersManagerBl {
 		List<String> attributesToRemoved = new ArrayList<>();
 		List<String> synchronizedAttributes = getSynchronizedAttributeListForUser(sess, user);
 
+		log.debug("synchronized attributes {}", synchronizedAttributes);
+		log.debug("synchronized attributes from removed UES {}", synchronizedAttributesFromRemovedExtSource);
+
 		for (String attrName : synchronizedAttributesFromRemovedExtSource ) {
 			if (!synchronizedAttributes.contains(attrName)) {
 				attributesToRemoved.add(attrName);
