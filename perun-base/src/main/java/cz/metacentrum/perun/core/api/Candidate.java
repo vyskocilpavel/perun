@@ -24,6 +24,7 @@ import org.json.JSONObject;
 public class Candidate extends User {
 
 	private String NS_USER_ATTR_CORE = "urn:perun:user:attribute-def:core:";
+	private String NS_USER_ATTR = "urn:perun:user:attribute-def:";
 
 	private UserExtSource userExtSource;
 	private List<UserExtSource> additionalUserExtSources;
@@ -192,6 +193,7 @@ public class Candidate extends User {
 
 		//Convert other attributes to JSON
 		for (Map.Entry<String, String> attribute : attributes.entrySet()) {
+			if (attribute.getKey().startsWith(NS_USER_ATTR))
 			candidateAttributes.append(attribute.getKey(), attribute.getValue());
 		}
 		return candidateAttributes;

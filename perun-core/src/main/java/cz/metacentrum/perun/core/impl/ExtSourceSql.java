@@ -112,7 +112,11 @@ public class ExtSourceSql extends ExtSource implements ExtSourceSimpleApi {
 			throw new InternalErrorException("usersQuery attribute is required");
 		}
 
-		subjects = this.querySource(query, login, 0);
+		if (login != null) {
+			subjects = this.querySource(query, login, 0);
+		} else {
+			subjects = this.querySource(query, "*", 0);
+		}
 		return subjects;
 	}
 

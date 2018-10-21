@@ -224,11 +224,8 @@ public interface ExtSourcesManagerBl {
 	 *
 	 * @return a Candidate object
 	 * @throws InternalErrorException
-	 * @throws ExtSourceNotExistsException
-	 * @throws CandidateNotExistsException
-	 * @throws ExtSourceUnsupportedOperationException
 	 */
-	Candidate getCandidate(PerunSession perunSession, Map<String,String> subjectData ,ExtSource source, String login) throws InternalErrorException, ExtSourceNotExistsException, CandidateNotExistsException, ExtSourceUnsupportedOperationException;
+	Candidate getCandidate(PerunSession perunSession, Map<String,String> subjectData ,ExtSource source, String login) throws InternalErrorException;
 
 	void checkExtSourceExists(PerunSession sess, ExtSource extSource) throws InternalErrorException, ExtSourceNotExistsException;
 
@@ -301,4 +298,13 @@ public interface ExtSourcesManagerBl {
 	 */
 	List<String> getOverwriteUserAttributeList(ExtSource extSource) throws InternalErrorException;
 
+	/**
+	 * Returns candidate from extSource with login
+	 * @param sess PerunSession
+	 * @param extSource ExtSource
+	 * @param login String
+	 * @return Candidate
+	 * @throws InternalErrorException
+	 */
+	Candidate getUserCandidate(PerunSession sess, ExtSource extSource, String login) throws InternalErrorException;
 	}

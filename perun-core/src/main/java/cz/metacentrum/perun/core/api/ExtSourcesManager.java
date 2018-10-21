@@ -52,7 +52,6 @@ public interface ExtSourcesManager {
 	String EXTSOURCE_SYNCHRONIZATION_TIMES_ATTRNAME = "extSourceSynchronizationTimes";
 	String OVERWRITEATTRIBUTES_ATTRNAME = "overwriteUserAttributes";
 
-	String ALL_SUBJECTS_QUERY_ATTRNAME = "allSubjectsQuery";
 	/**
 	 * Creates an external source.
 	 *

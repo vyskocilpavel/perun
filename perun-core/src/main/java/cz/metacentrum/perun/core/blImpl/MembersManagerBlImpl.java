@@ -372,24 +372,19 @@ public class MembersManagerBlImpl implements MembersManagerBl {
 		}
 
 		// If user hasn't been found, then synchronize him
-		if (user == null) {
-			try {
-				perunBl.getUsersManagerBl().synchronizeUser(sess, candidate);
-				// Try to find the user by userExtSource
-				user = getPerunBl().getUsersManagerBl().getUserByExtSourceNameAndExtLogin(sess, candidate.getUserExtSource().getExtSource().getName(), candidate.getUserExtSource().getLogin());
-				log.debug("User was synchronized from External Source");
-
-			} catch (UserExtSourceNotExistsException e) {
-				e.printStackTrace();
-			} catch (WrongAttributeAssignmentException e) {
-				e.printStackTrace();
-			} catch (ExtSourceNotExistsException e) {
-				e.printStackTrace();
-			} catch (AttributeNotExistsException e) {
-				e.printStackTrace();
-			} catch (UserNotExistsException e) {
-				e.printStackTrace();
+		if (user == null) try {
+			ExtSource extSource = getPerunBl().getExtSourcesManagerBl().getExtSourceByName(sess, candidate.getUserExtSource().getExtSource().getName());
+			if (extSource == null) {
+				throw new InternalErrorException("ExtSource from candidate does not exists!");
 			}
+			Candidate userCandidate = getPerunBl().getExtSourcesManagerBl().getUserCandidate(sess, extSource, candidate.getUserExtSource().getLogin());
+			perunBl.getUsersManagerBl().synchronizeUser(sess, userCandidate);
+			// Try to find the user by userExtSource
+			user = getPerunBl().getUsersManagerBl().getUserByExtSourceNameAndExtLogin(sess, userCandidate.getUserExtSource().getExtSource().getName(), userCandidate.getUserExtSource().getLogin());
+			log.debug("User was synchronized from External Source");
+
+		} catch (UserExtSourceNotExistsException | WrongAttributeAssignmentException | ExtSourceNotExistsException | AttributeNotExistsException | UserNotExistsException e) {
+			e.printStackTrace();
 		}
 
 		try {

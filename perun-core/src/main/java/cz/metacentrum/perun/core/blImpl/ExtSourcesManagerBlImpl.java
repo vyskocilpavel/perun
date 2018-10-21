@@ -337,7 +337,7 @@ public class ExtSourcesManagerBlImpl implements ExtSourcesManagerBl {
 		return candidate;
 	}
 
-	public Candidate getCandidate(PerunSession perunSession, Map<String,String> subjectData, ExtSource source, String login) throws InternalErrorException, ExtSourceNotExistsException, CandidateNotExistsException, ExtSourceUnsupportedOperationException {
+	public Candidate getCandidate(PerunSession perunSession, Map<String,String> subjectData, ExtSource source, String login) throws InternalErrorException {
 		if(login == null || login.isEmpty()) throw new InternalErrorException("Login can't be empty or null.");
 		if(subjectData == null || subjectData.isEmpty()) throw new InternalErrorException("Subject data can't be null or empty, at least login there must exists.");
 
@@ -567,6 +567,17 @@ public class ExtSourcesManagerBlImpl implements ExtSourcesManagerBl {
 		return  Arrays.asList(overwriteUserAttributes);
 	}
 
+	public Candidate getUserCandidate(PerunSession sess, ExtSource extSource, String login) throws InternalErrorException {
+		Map<String, String> subject;
+		try {
+			subject = ((ExtSourceSimpleApi) extSource).getUserSubject(login);
+		} catch (ExtSourceUnsupportedOperationException e) {
+			throw new InternalErrorException("ExtSource " + extSource.getName() + " doesn't support getSubjectByLogin", e);
+		} catch (SubjectNotExistsException e) {
+			throw new InternalErrorException("There is no subject with login" + login + "in extSource", e);
+		}
+		return getCandidate(sess, subject, extSource, subject.get("login"));
+	}
 
 	//----------- PRIVATE METHODS
 
