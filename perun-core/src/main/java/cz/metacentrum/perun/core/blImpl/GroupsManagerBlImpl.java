@@ -1183,7 +1183,6 @@ public class GroupsManagerBlImpl implements GroupsManagerBl {
 	}
 
 	/**
-	 * DEPRECATED
 	 * Compare richMember userExtSources with Candidate's userExtSources, if some of the useExtSource fits.
 	 *
 	 * @param richMember

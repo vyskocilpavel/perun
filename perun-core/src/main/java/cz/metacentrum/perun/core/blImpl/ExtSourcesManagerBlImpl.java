@@ -469,8 +469,8 @@ public class ExtSourcesManagerBlImpl implements ExtSourcesManagerBl {
 		return getExtSourcesManagerImpl().getAttributes(extSource);
 	}
 
-	public synchronized void synchronizeExtSource(PerunSession sess, ExtSource extSource) throws InternalErrorException, ExtSourceUnsupportedOperationException, CandidateNotExistsException, ExtSourceNotExistsException {
-		log.debug("ExtSource synchronization method starts for extSource: {} ", extSource);
+	public synchronized void synchronizeExtSource(PerunSession sess, ExtSource extSource) throws InternalErrorException {
+		log.info("ExtSource synchronization method starts for extSource: {} ", extSource);
 
 		try {
 			//Get subjects from extSource
@@ -491,35 +491,35 @@ public class ExtSourcesManagerBlImpl implements ExtSourcesManagerBl {
 				log.warn("Can't close extSource connection. Cause: {}", e);
 			}
 		}
-		log.debug("ExtSource synchronization method ends for extSource: {}", extSource);
+		log.info("ExtSource synchronization method ends for extSource: {}", extSource);
 	}
 
 	public void forceExtSourceSynchronization(PerunSession sess, ExtSource extSource) throws InternalErrorException {
+		log.info("Force synchronization for ExtSource: {} started.", extSource);
+
 		int numberOfNewlyRemovedThreads = removeInteruptedThreads();
 		int numberOfNewlyCreatedThreads = initializeNewSynchronizationThreads(sess);
-		int numberOfNewlyAddedExtSource = 0;
 
 		this.perunBl.getUsersManagerBl().reinitializeUserSynchronizerThreads(sess);
 
 		if (extSourcesManagerImpl.getExtSourcesToSynchronize(sess).contains(extSource)) {
 			poolOfExtSourcesToBeSynchronized.putJobIfAbsent(extSource, true);
-			numberOfNewlyAddedExtSource++;
-			log.debug("Force synchronization for ExtSource: {} started.", extSource);
 		} else {
-			log.debug("Synchronization for ExtSource: {} wasn't enable.", extSource);
+			log.warn("Synchronization for ExtSource: {} wasn't enable.", extSource);
 		}
 
 		// Save state of synchronization to the info log
 		log.info("Force ExtSource synchronization method ends with these states: " +
 				"'number of newly removed threads'='" + numberOfNewlyRemovedThreads + "', " +
 				"'number of newly created threads'='" + numberOfNewlyCreatedThreads + "', " +
-				"'number of newly added extSources to the pool'='" + numberOfNewlyAddedExtSource + "', " +
+				"'number of newly added extSource to the pool'='1', " +
 				"'right now synchronized extSources'='" + poolOfExtSourcesToBeSynchronized.getRunningJobs() + "', " +
 				"'right now waiting extSources'='" + poolOfExtSourcesToBeSynchronized.getWaitingJobs() + "'.");
 	}
 
 
 	public synchronized void synchronizeExtSources(PerunSession sess) throws InternalErrorException {
+		log.info("SynchronizeExtSources method starts");
 		LocalDateTime localDateTime = LocalDateTime.now();
 		String pattern = "^(([0-1][0-9])|(2[0-3])):[0-5][0,5]$";
 

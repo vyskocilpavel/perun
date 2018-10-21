@@ -266,7 +266,7 @@ public interface ExtSourcesManagerBl {
 	 * @throws CandidateNotExistsException
 	 * @throws ExtSourceNotExistsException
 	 */
-	void synchronizeExtSource(PerunSession sess, ExtSource extSource) throws UserNotExistsException, InternalErrorException, AttributeNotExistsException, ExtSourceUnsupportedOperationException, CandidateNotExistsException, ExtSourceNotExistsException;
+	void synchronizeExtSource(PerunSession sess, ExtSource extSource) throws InternalErrorException;
 
 	/**
 	 * Run synchronization for all extSources
