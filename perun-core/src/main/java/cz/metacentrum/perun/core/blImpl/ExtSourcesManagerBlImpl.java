@@ -55,7 +55,7 @@ public class ExtSourcesManagerBlImpl implements ExtSourcesManagerBl {
 	private final ExtSourcesManagerImplApi extSourcesManagerImpl;
 	private PerunBl perunBl;
 	private AtomicBoolean initialized = new AtomicBoolean(false);
-	private Integer maxConcurentExtSourcesToSynchronize;
+	private Integer maxConcurrentExtSourcesToSynchronize;
 	private final PerunBeanProcessingPool<ExtSource> poolOfExtSourcesToBeSynchronized;
 	private final ArrayList<ExtSourceSynchronizerThread> extSourceSynchronizerThreads;
 
@@ -65,7 +65,7 @@ public class ExtSourcesManagerBlImpl implements ExtSourcesManagerBl {
 		this.extSourceSynchronizerThreads = new ArrayList<>();
 		this.poolOfExtSourcesToBeSynchronized = new PerunBeanProcessingPool<>();
 		//set maximum concurrent extSources to synchronize by property
-		this.maxConcurentExtSourcesToSynchronize = BeansUtils.getCoreConfig().getExtSourceMaxConcurentExtSourcesToSynchronize();
+		this.maxConcurrentExtSourcesToSynchronize = BeansUtils.getCoreConfig().getExtSourceMaxConcurentExtSourcesToSynchronize();
 	}
 
 	public void initialize(PerunSession sess) {
@@ -129,10 +129,6 @@ public class ExtSourcesManagerBlImpl implements ExtSourcesManagerBl {
 				throw new ConsistencyErrorException("Creating existing extSource", e1);
 			}
 		}
-	}
-
-	public ExtSource checkOrCreateExtSourceInNestedTransaction(PerunSession sess, String extSourceName, String extSourceType) throws InternalErrorException {
-		return checkOrCreateExtSource(sess, extSourceName, extSourceType);
 	}
 
 	public void removeExtSource(PerunSession sess, Vo vo, ExtSource source) throws InternalErrorException, ExtSourceNotAssignedException, ExtSourceAlreadyRemovedException {
@@ -474,7 +470,7 @@ public class ExtSourcesManagerBlImpl implements ExtSourcesManagerBl {
 	}
 
 	public synchronized void synchronizeExtSource(PerunSession sess, ExtSource extSource) throws InternalErrorException, ExtSourceUnsupportedOperationException, CandidateNotExistsException, ExtSourceNotExistsException {
-		log.debug("ExtSource synchronization started for extSource: {} ", extSource.toString());
+		log.debug("ExtSource synchronization method starts for extSource: {} ", extSource);
 
 		try {
 			//Get subjects from extSource
@@ -484,7 +480,7 @@ public class ExtSourcesManagerBlImpl implements ExtSourcesManagerBl {
 				Candidate candidate = getCandidate(sess, subject, extSource, subject.get("login"));
 				getPerunBl().getUsersManagerBl().addCandidateToPool(candidate);
 			}
-			log.debug("ExtSource synchronization ended for extSource: {} . Synchronization for {} users was scheduled.", extSource.toString(), subjects.size());
+			log.info("Synchronization for {} users was scheduled.", subjects.size());
 		} finally {
 			//Close open extSource if they support this operation
 			try {
@@ -492,9 +488,10 @@ public class ExtSourcesManagerBlImpl implements ExtSourcesManagerBl {
 			} catch (ExtSourceUnsupportedOperationException e) {
 				// ExtSource doesn't support that functionality, so silently skip it.
 			} catch (InternalErrorException e) {
-				log.info("Can't close extSource connection. Cause: {}", e);
+				log.warn("Can't close extSource connection. Cause: {}", e);
 			}
 		}
+		log.debug("ExtSource synchronization method ends for extSource: {}", extSource);
 	}
 
 	public void forceExtSourceSynchronization(PerunSession sess, ExtSource extSource) throws InternalErrorException {
@@ -523,7 +520,6 @@ public class ExtSourcesManagerBlImpl implements ExtSourcesManagerBl {
 
 
 	public synchronized void synchronizeExtSources(PerunSession sess) throws InternalErrorException {
-		log.info("ExtSourceManagerBlImpl:  synchronizeExtSources started");
 		LocalDateTime localDateTime = LocalDateTime.now();
 		String pattern = "^(([0-1][0-9])|(2[0-3])):[0-5][0,5]$";
 
@@ -542,10 +538,10 @@ public class ExtSourcesManagerBlImpl implements ExtSourcesManagerBl {
 				if (synchronizationTime.matches(pattern) && synchronizationTime.equals(time)) {
 					if (poolOfExtSourcesToBeSynchronized.putJobIfAbsent(extSource, false)) {
 						numberOfNewlyAddedExtSource++;
-						log.info("ExtSource {} was added to the pool of extSources waiting for synchronization.", extSource);
+						log.debug("ExtSource {} was added to the pool of extSources waiting for synchronization.", extSource);
 						continue;
 					} else {
-						log.info("ExtSource {} synchronization is already running.", extSource);
+						log.debug("ExtSource {} synchronization is already running.", extSource);
 					}
 				}
 			}
@@ -608,7 +604,7 @@ public class ExtSourcesManagerBlImpl implements ExtSourcesManagerBl {
 		int numberOfNewlyCreatedThreads = 0;
 
 		// Start new threads if there is place for them
-		while(extSourceSynchronizerThreads.size() < maxConcurentExtSourcesToSynchronize) {
+		while(extSourceSynchronizerThreads.size() < maxConcurrentExtSourcesToSynchronize) {
 			ExtSourceSynchronizerThread thread = new ExtSourceSynchronizerThread(sess);
 			thread.start();
 			extSourceSynchronizerThreads.add(thread);

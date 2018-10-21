@@ -1255,7 +1255,7 @@ public interface UsersManagerBl {
 	 *
 	 * @param sess PerunSession
 	 * @param userExtSource UserExtSource
-	 * @return priority
+	 * @return priority or -1
 	 */
 	int getUserExtSourcePriority(PerunSession sess, UserExtSource userExtSource) throws WrongAttributeAssignmentException, InternalErrorException, AttributeNotExistsException;
 
@@ -1274,7 +1274,7 @@ public interface UsersManagerBl {
 	void storeUserExtSourceStoredAttributes(PerunSession sess, Candidate candidate, UserExtSource userExtSource) throws AttributeNotExistsException, InternalErrorException, WrongAttributeAssignmentException, WrongAttributeValueException, WrongReferenceAttributeValueException;
 
 	/**
-	 * Updates all user attributes after UserExtSource was changed or removed
+	 * Updates all user attributes after UserExtSource was changed
 	 *
 	 * @param sess PerunSession
 	 * @param user User
@@ -1287,6 +1287,18 @@ public interface UsersManagerBl {
 	 */
 	void updateUserAttributesAfterUesChanged(PerunSession sess, User user) throws WrongAttributeAssignmentException, WrongAttributeValueException, WrongReferenceAttributeValueException, InternalErrorException, AttributeNotExistsException, UserNotExistsException;
 
+	/**
+	 * Updates all user attributes after UserExtSource was removed
+	 *
+	 * @param sess PerunSession
+	 * @param user User
+	 * @param synchronizedAttributesFromRemovedExtSource List of user attributes names to remove
+	 * @throws InternalErrorException
+	 * @throws AttributeNotExistsException
+	 * @throws WrongAttributeAssignmentException
+	 * @throws WrongAttributeValueException
+	 * @throws WrongReferenceAttributeValueException
+	 */
 	void updateUserAttributesAfterUesRemoved(PerunSession sess, User user, List<String> synchronizedAttributesFromRemovedExtSource) throws InternalErrorException, AttributeNotExistsException, WrongAttributeAssignmentException, WrongAttributeValueException, WrongReferenceAttributeValueException;
 
 		/**

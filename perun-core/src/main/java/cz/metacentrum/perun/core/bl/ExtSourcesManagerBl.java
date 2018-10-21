@@ -181,11 +181,6 @@ public interface ExtSourcesManagerBl {
 	 */
 	ExtSource checkOrCreateExtSource(PerunSession perunSession, String extSourceName, String extSourceType) throws InternalErrorException;
 
-
-	ExtSource checkOrCreateExtSourceInNestedTransaction(PerunSession perunSession, String extSourceName, String extSourceType) throws InternalErrorException;
-
-
-
 	/**
 	 * Returns list of users stored by this ExtSource, which are not valid.
 	 *
