@@ -68,12 +68,11 @@ public interface ExtSourceSimpleApi {
 
 	/**
 	 * Get the list of the subjects in the external source. If the login is null return all subjects, subjects with login otherwise.
-	 * @param login toDelete
 	 * @return list of maps, which contains attr_name-&gt;attr_value, e.g. firstName-&gt;Michal
 	 * @throws InternalErrorException
 	 * @throws ExtSourceUnsupportedOperationException
 	 */
-	List<Map<String, String>> getUsersSubjects(String login) throws InternalErrorException, ExtSourceUnsupportedOperationException;
+	List<Map<String, String>> getUsersSubjects() throws InternalErrorException, ExtSourceUnsupportedOperationException;
 
 	/**
 	 * If extSource needs to be closed, this method must be called.
