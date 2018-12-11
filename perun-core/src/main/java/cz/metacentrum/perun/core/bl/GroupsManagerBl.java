@@ -183,7 +183,7 @@ public interface GroupsManagerBl {
 	 * Updates group by ID.
 	 *
 	 * Update shortName (use shortName) and description. Group.name is ignored.
-	 * Return Group with correctly set parameters (including group.name)
+	 * Return Group with correctly set parameters (including group.name
 	 *
 	 * @param perunSession
 	 * @param group to update (use only ID, shortName and description)

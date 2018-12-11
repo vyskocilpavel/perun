@@ -461,6 +461,17 @@ public interface AttributesManagerBl {
 	List<Attribute> getAttributes(PerunSession sess, User user) throws InternalErrorException;
 
 	/**
+	 * Get all attributes associated with the user.
+	 *
+	 * @param sess perun session
+	 * @param user to get the attributes from
+	 * @return list of attributes
+	 *
+	 * @throws InternalErrorException if an exception raise in concrete implementation, the exception is wrapped in InternalErrorException
+	 */
+	List<Attribute> getAllAttributes(PerunSession sess, User user) throws InternalErrorException;
+
+	/**
 	 * Get all <b>non-empty</b> attributes associated with the host
 	 * @param sess perun session
 	 * @param host host to get attributes from
@@ -1705,6 +1716,23 @@ public interface AttributesManagerBl {
 	 * @throws WrongReferenceAttributeValueException
 	 */
 	void setAttribute(PerunSession sess, UserExtSource ues, Attribute attribute) throws InternalErrorException, WrongAttributeValueException, WrongAttributeAssignmentException, WrongReferenceAttributeValueException;
+
+	/**
+	 * Store the particular attribute associated with the user external source. Core attributes can't be set this way.
+	 *
+	 * This method creates nested transaction to prevent storing value to DB if it throws any exception.
+	 *
+	 * @param sess perun session
+	 * @param ues user external source to set on
+	 * @param attribute attribute to set
+	 *
+	 * @throws InternalErrorException if an exception raise in concrete implementation, the exception is wrapped in InternalErrorException
+	 * @throws WrongAttributeValueException if the attribute value is illegal
+	 * @throws WrongAttributeAssignmentException if attribute is not member-resource attribute or if it is core attribute
+	 * @throws WrongReferenceAttributeValueException
+	 */
+	void setAttributeInNestedTransaction(PerunSession sess, UserExtSource ues, Attribute attribute) throws InternalErrorException, WrongAttributeValueException, WrongAttributeAssignmentException, WrongReferenceAttributeValueException;
+
 
 	/**
 	 * Creates an attribute, the attribute is stored into the appropriate DB table according to the namespace
