@@ -1228,6 +1228,26 @@ public enum UsersManagerMethod implements ManagerMethod {
 					parms.read("parameters", HashMap.class));
 		}
 
+	},
+
+
+	/*#
+	 * Updates user attributes by values stored in UserExtSources
+	 * @param user int User <code>id</code>
+	 */
+	updateUserAttributesByUserExtSources {
+
+		@Override
+		public Void call(ApiCaller ac, Deserializer parms) throws PerunException {
+			if (parms.contains("user")) {
+				ac.getUsersManager().updateUserAttributesByUserExtSources(ac.getSession(),
+						ac.getUserById(parms.readInt("user")),
+						parms.read("attributes", ArrayList.class));
+			} else {
+				throw new RpcException(RpcException.Type.MISSING_VALUE, "extSource");
+			}
+			return null;
+		}
 	};
 
 }

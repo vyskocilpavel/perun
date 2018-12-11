@@ -1100,6 +1100,21 @@ public class AttributesManagerImpl implements AttributesManagerImplApi {
 		}
 	}
 
+	public List<Attribute> getAllAttributes(PerunSession sess, User user) throws InternalErrorException {
+		try {
+			return jdbc.query("select " + getAttributeMappingSelectQuery("usr") + " from attr_names " +
+							"left join      user_attr_values    usr    on      id=usr.attr_id    and   user_id=? " +
+							"where namespace=? or (namespace in (?,?))",
+					new SingleBeanAttributeRowMapper<>(sess, this, user), user.getId(),
+					AttributesManager.NS_USER_ATTR_CORE, AttributesManager.NS_USER_ATTR_DEF, AttributesManager.NS_USER_ATTR_OPT);
+		} catch (EmptyResultDataAccessException ex) {
+			log.debug("No attribute for user exists.");
+			return new ArrayList<>();
+		} catch (RuntimeException ex) {
+			throw new InternalErrorException(ex);
+		}
+	}
+
 	public List<Attribute> getAttributes(PerunSession sess, User user, List<String> attrNames) throws InternalErrorException {
 
 		MapSqlParameterSource parameters = new MapSqlParameterSource();
@@ -1823,6 +1838,7 @@ public class AttributesManagerImpl implements AttributesManagerImplApi {
 						} catch (DataAccessException ex) {
 							// unsuccessful insert, do it again in while loop
 							if (++repetatCounter > MERGE_TRY_CNT) {
+								log.debug("Attribute: {}", attribute);
 								throw new InternalErrorException("SQL merger (or other UPSERT command) failed more than " + MERGE_TRY_CNT + " times.");
 							}
 							try {
@@ -1839,6 +1855,7 @@ public class AttributesManagerImpl implements AttributesManagerImplApi {
 						} catch (DataAccessException ex) {
 							// unsuccessful insert, do it again in while loop
 							if (++repetatCounter > MERGE_TRY_CNT) {
+								log.debug("Attribute: {}", attribute);
 								throw new InternalErrorException("SQL merger (or other UPSERT command) failed more than " + MERGE_TRY_CNT + " times.");
 							}
 							try {

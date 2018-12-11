@@ -1,5 +1,6 @@
 package cz.metacentrum.perun.core.api;
 
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 
@@ -14,6 +15,9 @@ import cz.metacentrum.perun.core.api.exceptions.*;
  * @author Sona Mastrakova
  */
 public interface UsersManager {
+
+	String USEREXTSOURCEPRIORITY_ATTRNAME = AttributesManager.NS_UES_ATTR_DEF + ":priority";
+	String USEREXTSOURCESTOREDATTRIBUTES_ATTRNAME = AttributesManager.NS_UES_ATTR_DEF + ":storedAttributes";
 
 	/**
 	 * Returns user by his login in external source and external source.
@@ -1102,4 +1106,11 @@ public interface UsersManager {
 	 */
 	List<RichUser> getSponsors(PerunSession sess, Member member, List<String> attrNames) throws InternalErrorException, PrivilegeException, UserNotExistsException;
 
+	/**
+	 * Updates User attributes by values in UserExtSources
+	 * @param sess Perun session
+	 * @param user User
+	 * @param attributes List of attributes, which will be updated too
+	 */
+	void updateUserAttributesByUserExtSources(PerunSession sess, User user, ArrayList<String> attributes) throws InternalErrorException, PrivilegeException;
 }

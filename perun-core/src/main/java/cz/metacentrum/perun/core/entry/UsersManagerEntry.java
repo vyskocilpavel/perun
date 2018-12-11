@@ -1220,4 +1220,20 @@ public class UsersManagerEntry implements UsersManager {
 			return usersManagerBl.convertUsersToRichUsersWithAttributesByNames(sess, sponsors, attrNames);
 		}
 	}
+
+	public void updateUserAttributesByUserExtSources(PerunSession sess, User user, ArrayList<String> attributes) throws InternalErrorException, PrivilegeException {
+		Utils.checkPerunSession(sess);
+
+		// Authorization
+		if (!AuthzResolver.isAuthorized(sess, Role.SELF)) {
+			throw new PrivilegeException(sess, "updateUserAttributesByUserExtSources");
+		}
+
+		try {
+			getUsersManagerBl().updateUserAttributesByUserExtSources(sess, user, attributes);
+		} catch (AttributeNotExistsException | WrongReferenceAttributeValueException | WrongAttributeAssignmentException | WrongAttributeValueException e) {
+			throw new InternalErrorException("Error during updateUserAttributesByUserExtSources for user " + user);
+		}
+	}
+
 }

@@ -458,6 +458,14 @@ public class AttributesManagerBlImpl implements AttributesManagerBl {
 		return attributes;
 	}
 
+	public List<Attribute> getAllAttributes(PerunSession sess, User user) throws InternalErrorException {
+		//get virtual attributes
+		List<Attribute> attributes = getAttributesManagerImpl().getVirtualAttributes(sess, user);
+		attributes.addAll(getAttributesManagerImpl().getAllAttributes(sess, user));
+		return attributes;
+	}
+
+
 	public List<Attribute> getAttributes(PerunSession sess, User user, List<String> attrNames) throws InternalErrorException {
 		if (attrNames.isEmpty()) return new ArrayList<>();
 
@@ -2105,6 +2113,10 @@ public class AttributesManagerBlImpl implements AttributesManagerBl {
 			checkAttributeValue(sess, ues, attribute);
 			this.checkAttributeDependencies(sess, new RichAttribute<>(ues, null, attribute));
 		}
+	}
+
+	public void setAttributeInNestedTransaction(PerunSession sess, UserExtSource userExtSource, Attribute attribute) throws InternalErrorException, WrongAttributeValueException, WrongAttributeAssignmentException, WrongReferenceAttributeValueException {
+		setAttribute(sess, userExtSource, attribute);
 	}
 
 	public AttributeDefinition createAttribute(PerunSession sess, AttributeDefinition attribute) throws InternalErrorException, AttributeDefinitionExistsException {
