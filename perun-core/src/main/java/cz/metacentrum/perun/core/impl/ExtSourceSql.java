@@ -15,6 +15,7 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.Properties;
 
+import cz.metacentrum.perun.core.api.exceptions.ExtSourceUnsupportedOperationException;
 import cz.metacentrum.perun.core.blImpl.PerunBlImpl;
 import org.apache.commons.codec.binary.Base64;
 import org.slf4j.Logger;
@@ -107,7 +108,7 @@ public class ExtSourceSql extends ExtSource implements ExtSourceSimpleApi {
 		return this.querySource(sqlQueryForGroup, null, 0);
 	}
 
-	public List<Map<String,String>> getUsersSubjects() throws InternalErrorException {
+	public List<Map<String,String>> getUsersSubjects() throws InternalErrorException, ExtSourceUnsupportedOperationException{
 		String query = getAttributes().get("usersQuery");
 
 		if (query == null) {

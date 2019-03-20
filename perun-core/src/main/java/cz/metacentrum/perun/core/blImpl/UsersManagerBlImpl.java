@@ -9,6 +9,7 @@ import java.io.PrintWriter;
 import java.security.SecureRandom;
 import java.util.*;
 
+import cz.metacentrum.perun.audit.events.GroupManagerEvents.GroupSyncFailed;
 import cz.metacentrum.perun.audit.events.UserManagerEvents.AllUserExtSourcesDeletedForUser;
 import cz.metacentrum.perun.audit.events.UserManagerEvents.OwnershipDisabledForSpecificUser;
 import cz.metacentrum.perun.audit.events.UserManagerEvents.OwnershipEnabledForSpecificUser;
@@ -19,6 +20,8 @@ import cz.metacentrum.perun.audit.events.UserManagerEvents.UserDeleted;
 import cz.metacentrum.perun.audit.events.UserManagerEvents.UserExtSourceAddedToUser;
 import cz.metacentrum.perun.audit.events.UserManagerEvents.UserExtSourceRemovedFromUser;
 import cz.metacentrum.perun.audit.events.UserManagerEvents.UserExtSourceUpdated;
+import cz.metacentrum.perun.audit.events.UserManagerEvents.UserSyncFailed;
+import cz.metacentrum.perun.audit.events.UserManagerEvents.UserSyncFinishedWithErrors;
 import cz.metacentrum.perun.audit.events.UserManagerEvents.UserUpdated;
 import cz.metacentrum.perun.core.api.*;
 import cz.metacentrum.perun.core.api.exceptions.*;
@@ -448,7 +451,7 @@ public class UsersManagerBlImpl implements UsersManagerBl {
 		if(user.getTitleAfter() != null && user.getTitleAfter().isEmpty()) user.setTitleAfter(null);
 
 		user = getUsersManagerImpl().createUser(sess, user);
-		getPerunBl().getAuditer().log(sess, "{} created.", user);
+		getPerunBl().getAuditer().log(sess, new UserCreated(user));
 
 		// Add default userExtSource
 		ExtSource es;
@@ -2630,9 +2633,11 @@ public class UsersManagerBlImpl implements UsersManagerBl {
 		} else {
 			//Log to auditer_log that synchronization failed or finished with some errors
 			if(failedDueToException) {
-				getPerunBl().getAuditer().log(sess, "{} synchronization failed because of {}.", candidate, originalExceptionMessage);
+				getPerunBl().getAuditer().log(sess, new UserSyncFailed(candidate));
+				log.debug("{} synchronization failed because of {}", candidate, originalExceptionMessage);
 			} else {
-				getPerunBl().getAuditer().log(sess, "{} synchronization finished with errors: {}.", candidate, originalExceptionMessage);
+				getPerunBl().getAuditer().log(sess,new UserSyncFinishedWithErrors(candidate));
+				log.debug("{} synchronization finished with errors: {}", candidate, originalExceptionMessage);
 			}
 		}
 
