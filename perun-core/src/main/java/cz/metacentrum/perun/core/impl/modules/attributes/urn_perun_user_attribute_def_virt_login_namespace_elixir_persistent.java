@@ -25,6 +25,9 @@ import java.util.List;
 public class urn_perun_user_attribute_def_virt_login_namespace_elixir_persistent extends UserVirtualAttributesModuleAbstract {
 
 	public static final String SHADOW = "urn:perun:user:attribute-def:def:login-namespace:elixir-persistent-shadow";
+	public static final String LS_SHADOW = "urn:perun:user:attribute-def:def:login-namespace:lifescienceid-persistent-shadow";
+	public static final String ELIXIR_SCOPE = "elixir-europe.org";
+
 
 	@Override
 	public Attribute getAttributeValue(PerunSessionImpl sess, User user, AttributeDefinition attributeDefinition) {
@@ -35,11 +38,22 @@ public class urn_perun_user_attribute_def_virt_login_namespace_elixir_persistent
 
 			if (elixirPersistentShadow.getValue() == null) {
 
-				elixirPersistentShadow = sess.getPerunBl().getAttributesManagerBl().fillAttribute(sess, user, elixirPersistentShadow);
+				// Check if user has login in namespace lifescienceid-persistent-shadow
+				Attribute lifesciencePersistentShadow = sess.getPerunBl().getAttributesManagerBl().getAttribute(sess, user, LS_SHADOW);
 
-				if (elixirPersistentShadow.getValue() == null) {
-					throw new InternalErrorException("Elixir id couldn't be set automatically");
+				if (lifesciencePersistentShadow.getValue() != null) {
+					String value = lifesciencePersistentShadow.getValue().toString();
+					String valueWithoutScope = value.split("@", 2) [0];
+					String attrValue = valueWithoutScope + "@" + ELIXIR_SCOPE;
+					elixirPersistentShadow.setValue(attrValue);
+				} else {
+					elixirPersistentShadow = sess.getPerunBl().getAttributesManagerBl().fillAttribute(sess, user, elixirPersistentShadow);
+
+					if (elixirPersistentShadow.getValue() == null) {
+						throw new InternalErrorException("Elixir id couldn't be set automatically");
+					}
 				}
+
 				sess.getPerunBl().getAttributesManagerBl().setAttribute(sess, user, elixirPersistentShadow);
 			}
 
